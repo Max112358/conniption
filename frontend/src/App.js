@@ -8,7 +8,10 @@ export default function CounterApp() {
 
   useEffect(() => {
     // Connect to the backend server
-    const newSocket = io("http://localhost:5000");
+    //const newSocket = io("http://localhost:5000"); // Use this for local development
+    // For Render deployment, use the following line:
+    const newSocket = io("https://conniption.onrender.com");
+
     setSocket(newSocket);
 
     // Listen for connection events

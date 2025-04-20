@@ -3,15 +3,27 @@ const http = require("http");
 const socketIo = require("socket.io");
 const cors = require("cors");
 
+// Define the frontend domain in one place
+const FRONTEND_DOMAIN = "https://conniption.pages.dev";
+
 const app = express();
-app.use(cors());
+// Use the shared domain variable for Express CORS
+app.use(
+  cors({
+    origin: FRONTEND_DOMAIN,
+    methods: ["GET", "POST"],
+    credentials: true,
+  })
+);
 app.use(express.json());
 
 const server = http.createServer(app);
+// Use the same shared domain variable for Socket.io CORS
 const io = socketIo(server, {
   cors: {
-    origin: "*",
+    origin: FRONTEND_DOMAIN,
     methods: ["GET", "POST"],
+    credentials: true,
   },
 });
 
