@@ -11,7 +11,7 @@ const FRONTEND_DOMAIN = "https://conniption.pages.dev";
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL, //this is defined in the Render environment variables. Its secret information so dont post it here, only on the render website!
   ssl: {
-    rejectUnauthorized: true, // Change to true for Aiven's SSL
+    rejectUnauthorized: false, // Set to false to accept self-signed certificates
   },
 });
 
