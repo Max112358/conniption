@@ -2,16 +2,22 @@ const express = require("express");
 const http = require("http");
 const socketIo = require("socket.io");
 const cors = require("cors");
-const { Pool } = require("pg"); // Add PostgreSQL client
-
 // Define the frontend domain in one place
 const FRONTEND_DOMAIN = "https://conniption.pages.dev";
+const fs = require("fs");
+const path = require("path");
+const { Pool } = require("pg");
 
-// Configure PostgreSQL connection
+// Path to your CA certificate
+const caCertPath = path.join(__dirname, "certs", "ca.pem");
+const caCert = fs.readFileSync(caCertPath).toString();
+
+// Configure PostgreSQL connection with proper CA certificate
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL, //this is defined in the Render environment variables. Its secret information so dont post it here, only on the render website!
+  connectionString: process.env.DATABASE_URL,
   ssl: {
-    rejectUnauthorized: false, // Set to false to accept self-signed certificates
+    ca: caCert,
+    rejectUnauthorized: true, // Now we can safely set this to true
   },
 });
 
