@@ -2,9 +2,44 @@ const express = require("express");
 const http = require("http");
 const socketIo = require("socket.io");
 const cors = require("cors");
+const { Pool } = require("pg"); // Add PostgreSQL client
 
 // Define the frontend domain in one place
 const FRONTEND_DOMAIN = "https://conniption.pages.dev";
+
+// Configure PostgreSQL connection
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL, //this is defined in the Render environment variables. Its secret information so dont post it here, only on the render website!
+  ssl: {
+    rejectUnauthorized: true, // Change to true for Aiven's SSL
+  },
+});
+
+// Initialize database
+async function initDatabase() {
+  const client = await pool.connect();
+  try {
+    // Create counters table if it doesn't exist
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS counters (
+        id TEXT PRIMARY KEY,
+        value INTEGER NOT NULL
+      )
+    `);
+
+    // Insert default counter if it doesn't exist
+    await client.query(`
+      INSERT INTO counters (id, value)
+      VALUES ('main', 0)
+      ON CONFLICT (id) DO NOTHING
+    `);
+  } finally {
+    client.release();
+  }
+}
+
+// Initialize database on startup
+initDatabase().catch(console.error);
 
 const app = express();
 // Use the shared domain variable for Express CORS
@@ -27,26 +62,53 @@ const io = socketIo(server, {
   },
 });
 
-// Store our counter value
-let counter = 0;
+// Get counter from database
+async function getCounter() {
+  const result = await pool.query(
+    "SELECT value FROM counters WHERE id = 'main'"
+  );
+  return result.rows[0].value;
+}
+
+// Update counter in database
+async function updateCounter(value) {
+  await pool.query("UPDATE counters SET value = $1 WHERE id = 'main'", [value]);
+  return value;
+}
 
 // API endpoint to get the current counter value
-app.get("/api/counter", (req, res) => {
-  res.json({ counter });
+app.get("/api/counter", async (req, res) => {
+  try {
+    const counter = await getCounter();
+    res.json({ counter });
+  } catch (error) {
+    console.error("Error fetching counter:", error);
+    res.status(500).json({ error: "Failed to fetch counter" });
+  }
 });
 
 // Socket.io connection handling
-io.on("connection", (socket) => {
+io.on("connection", async (socket) => {
   console.log("New client connected");
 
-  // Send current counter value to newly connected client
-  socket.emit("counterUpdate", { counter });
+  try {
+    // Send current counter value to newly connected client
+    const counter = await getCounter();
+    socket.emit("counterUpdate", { counter });
 
-  // Handle increment requests
-  socket.on("increment", () => {
-    counter += 1;
-    io.emit("counterUpdate", { counter });
-  });
+    // Handle increment requests
+    socket.on("increment", async () => {
+      try {
+        const counter = await getCounter();
+        const updatedCounter = await updateCounter(counter + 1);
+        io.emit("counterUpdate", { counter: updatedCounter });
+      } catch (error) {
+        console.error("Error incrementing counter:", error);
+      }
+    });
+  } catch (error) {
+    console.error("Error on new connection:", error);
+  }
 
   socket.on("disconnect", () => {
     console.log("Client disconnected");
