@@ -12,16 +12,10 @@ const { Pool } = require("pg");
 const caCertPath = path.join(__dirname, "certs", "ca.pem");
 const caCert = fs.readFileSync(caCertPath).toString();
 
-console.log("Reading CA cert from:", caCertPath);
-console.log("CA cert exists?", fs.existsSync(caCertPath));
-
 // Configure PostgreSQL connection with proper CA certificate
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: {
-    ca: caCert,
-    rejectUnauthorized: true, // Now we can safely set this to true
-  },
+  ssl: true, // Node will now trust the cert via the env var
 });
 
 // Initialize database
