@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import "bootstrap/dist/css/bootstrap.min.css";
+// Remove direct import of Bootstrap CSS
 
 // API constants
 const API_BASE_URL = "https://conniption.onrender.com"; // Update this with your backend URL
