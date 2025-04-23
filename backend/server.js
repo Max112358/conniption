@@ -22,20 +22,29 @@ const pool = new Pool({
 async function initDatabase() {
   const client = await pool.connect();
   try {
-    // Create counters table if it doesn't exist
+    // Create boards table
     await client.query(`
-      CREATE TABLE IF NOT EXISTS counters (
+      CREATE TABLE IF NOT EXISTS boards (
         id TEXT PRIMARY KEY,
-        value INTEGER NOT NULL
+        name TEXT NOT NULL,
+        description TEXT NOT NULL
       )
     `);
 
-    // Insert default counter if it doesn't exist
+    // Insert default boards if they don't exist
     await client.query(`
-      INSERT INTO counters (id, value)
-      VALUES ('main', 0)
+      INSERT INTO boards (id, name, description)
+      VALUES ('tech', 'Technology', 'Technology Discussion')
       ON CONFLICT (id) DO NOTHING
     `);
+
+    await client.query(`
+      INSERT INTO boards (id, name, description)
+      VALUES ('politics', 'Politics', 'Political Discussion')
+      ON CONFLICT (id) DO NOTHING
+    `);
+
+    // We'll create threads and posts tables in the next iteration
   } finally {
     client.release();
   }
@@ -65,53 +74,40 @@ const io = socketIo(server, {
   },
 });
 
-// Get counter from database
-async function getCounter() {
-  const result = await pool.query(
-    "SELECT value FROM counters WHERE id = 'main'"
-  );
-  return result.rows[0].value;
-}
-
-// Update counter in database
-async function updateCounter(value) {
-  await pool.query("UPDATE counters SET value = $1 WHERE id = 'main'", [value]);
-  return value;
-}
-
-// API endpoint to get the current counter value
-app.get("/api/counter", async (req, res) => {
+// API endpoint to get all boards
+app.get("/api/boards", async (req, res) => {
   try {
-    const counter = await getCounter();
-    res.json({ counter });
+    const result = await pool.query("SELECT id, name, description FROM boards");
+    res.json({ boards: result.rows });
   } catch (error) {
-    console.error("Error fetching counter:", error);
-    res.status(500).json({ error: "Failed to fetch counter" });
+    console.error("Error fetching boards:", error);
+    res.status(500).json({ error: "Failed to fetch boards" });
+  }
+});
+
+// API endpoint to get a specific board
+app.get("/api/boards/:boardId", async (req, res) => {
+  try {
+    const { boardId } = req.params;
+    const result = await pool.query(
+      "SELECT id, name, description FROM boards WHERE id = $1",
+      [boardId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Board not found" });
+    }
+
+    res.json({ board: result.rows[0] });
+  } catch (error) {
+    console.error("Error fetching board:", error);
+    res.status(500).json({ error: "Failed to fetch board" });
   }
 });
 
 // Socket.io connection handling
 io.on("connection", async (socket) => {
   console.log("New client connected");
-
-  try {
-    // Send current counter value to newly connected client
-    const counter = await getCounter();
-    socket.emit("counterUpdate", { counter });
-
-    // Handle increment requests
-    socket.on("increment", async () => {
-      try {
-        const counter = await getCounter();
-        const updatedCounter = await updateCounter(counter + 1);
-        io.emit("counterUpdate", { counter: updatedCounter });
-      } catch (error) {
-        console.error("Error incrementing counter:", error);
-      }
-    });
-  } catch (error) {
-    console.error("Error on new connection:", error);
-  }
 
   socket.on("disconnect", () => {
     console.log("Client disconnected");
