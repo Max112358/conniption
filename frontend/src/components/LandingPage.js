@@ -1,5 +1,8 @@
+//components/LandingPage.js
+
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+import "bootstrap/dist/css/bootstrap.min.css";
 
 // API constants
 const API_BASE_URL = "https://conniption.onrender.com"; // Update this with your backend URL
@@ -32,10 +35,15 @@ export default function LandingPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-100">
-        <div className="p-8 bg-white rounded-lg shadow-lg text-center">
-          <h1 className="text-3xl font-bold mb-6">Image Board</h1>
-          <div className="text-gray-600">Loading boards...</div>
+      <div className="container-fluid min-vh-100 d-flex align-items-center justify-content-center bg-dark text-light">
+        <div className="card bg-dark text-light border-secondary p-4 shadow">
+          <div className="card-body text-center">
+            <h1 className="display-4 mb-4">Image Board</h1>
+            <div className="spinner-border text-light" role="status">
+              <span className="visually-hidden">Loading...</span>
+            </div>
+            <p className="mt-3">Loading boards...</p>
+          </div>
         </div>
       </div>
     );
@@ -43,45 +51,57 @@ export default function LandingPage() {
 
   if (error) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-100">
-        <div className="p-8 bg-white rounded-lg shadow-lg text-center">
-          <h1 className="text-3xl font-bold mb-6">Image Board</h1>
-          <div className="text-red-500">{error}</div>
+      <div className="container-fluid min-vh-100 d-flex align-items-center justify-content-center bg-dark text-light">
+        <div className="card bg-dark text-light border-secondary p-4 shadow">
+          <div className="card-body text-center">
+            <h1 className="display-4 mb-4">Image Board</h1>
+            <div className="alert alert-danger" role="alert">
+              {error}
+            </div>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100">
-      <div className="p-8 bg-white rounded-lg shadow-lg text-center w-full max-w-md">
-        <h1 className="text-3xl font-bold mb-6">Image Board</h1>
+    <div className="container-fluid min-vh-100 d-flex align-items-center justify-content-center bg-dark text-light">
+      <div
+        className="card bg-dark text-light border-secondary p-4 shadow"
+        style={{ maxWidth: "500px" }}
+      >
+        <div className="card-body">
+          <h1 className="display-4 mb-4 text-center">Image Board</h1>
 
-        <div className="mb-6">
-          <h2 className="text-xl font-semibold mb-4">Available Boards</h2>
+          <div className="mb-4">
+            <h2 className="h4 mb-3 border-bottom pb-2">Available Boards</h2>
 
-          <div className="grid grid-cols-1 gap-4">
-            {boards.map((board) => (
-              <Link
-                key={board.id}
-                to={`/board/${board.id}`}
-                className={`block p-4 bg-${
-                  board.id === "tech" ? "blue" : "red"
-                }-50 hover:bg-${
-                  board.id === "tech" ? "blue" : "red"
-                }-100 rounded-lg border border-${
-                  board.id === "tech" ? "blue" : "red"
-                }-200 transition-colors`}
-              >
-                <div className="font-bold text-lg">/{board.id}/</div>
-                <div className="text-sm text-gray-600">{board.description}</div>
-              </Link>
-            ))}
+            <div className="list-group">
+              {boards.map((board) => (
+                <Link
+                  key={board.id}
+                  to={`/board/${board.id}`}
+                  className={`list-group-item list-group-item-action bg-dark text-light border-secondary`}
+                >
+                  <div className="d-flex justify-content-between align-items-center">
+                    <strong>/{board.id}/</strong>
+                    <span
+                      className={`badge rounded-pill bg-${
+                        board.id === "tech" ? "primary" : "danger"
+                      }`}
+                    >
+                      {board.name}
+                    </span>
+                  </div>
+                  <small className="text-muted">{board.description}</small>
+                </Link>
+              ))}
+            </div>
           </div>
-        </div>
 
-        <div className="text-sm text-gray-500">
-          Select a board to view threads and posts
+          <div className="text-muted text-center small mt-3">
+            Select a board to view threads and posts
+          </div>
         </div>
       </div>
     </div>
