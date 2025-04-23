@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-// Remove direct import of Bootstrap CSS
 
 import logoSvg from "../assets/conniption_logo4.svg"; // Path may need adjustment based on your folder structure
 
@@ -56,14 +55,15 @@ export default function LandingPage() {
       <div className="container-fluid min-vh-100 d-flex align-items-center justify-content-center bg-dark text-light">
         <div className="card bg-dark text-light border-secondary p-4 shadow">
           <div className="card-body text-center">
-            <img
-              src={logoSvg}
-              alt="Site Logo"
-              className="mb-4"
-              style={{ maxWidth: "200px" }}
-            />
-
-            <h1 className="display-4 mb-4">Conniption</h1>
+            {/* Updated header with logo and text on same line */}
+            <div className="d-flex align-items-center justify-content-center mb-4">
+              <h1 className="display-4 mb-0 me-3">Conniption</h1>
+              <img
+                src={logoSvg}
+                alt="Site Logo"
+                style={{ maxHeight: "60px" }}
+              />
+            </div>
             <div className="alert alert-danger" role="alert">
               {error}
             </div>
@@ -80,14 +80,11 @@ export default function LandingPage() {
         style={{ maxWidth: "500px" }}
       >
         <div className="card-body">
-          <img
-            src={logoSvg}
-            alt="Site Logo"
-            className="mb-4"
-            style={{ maxWidth: "200px" }}
-          />
-
-          <h1 className="display-4 mb-4 text-center">Conniption</h1>
+          {/* Updated header with logo and text on same line */}
+          <div className="d-flex align-items-center justify-content-center mb-4">
+            <h1 className="display-4 mb-0 me-3">Conniption</h1>
+            <img src={logoSvg} alt="Site Logo" style={{ maxHeight: "60px" }} />
+          </div>
 
           <div className="mb-4">
             <h2 className="h4 mb-3 border-bottom pb-2">Available Boards</h2>
