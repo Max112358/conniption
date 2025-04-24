@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 
-import logoSvg from "../assets/conniption_logo4.svg"; // Path may need adjustment based on your folder structure
+import logoSvg from "../assets/conniption_logo5.svg"; // Path may need adjustment based on your folder structure
 
 // API constants
 const API_BASE_URL = "https://conniption.onrender.com"; // Update this with your backend URL
@@ -39,7 +39,14 @@ export default function LandingPage() {
       <div className="container-fluid min-vh-100 d-flex align-items-center justify-content-center bg-dark text-light">
         <div className="card bg-dark text-light border-secondary p-4 shadow">
           <div className="card-body text-center">
-            <h1 className="display-4 mb-4">Image Board</h1>
+            {/* Added logo to loading state */}
+            <div className="d-flex justify-content-center mb-4">
+              <img
+                src={logoSvg}
+                alt="Conniption Logo"
+                style={{ maxHeight: "80px" }}
+              />
+            </div>
             <div className="spinner-border text-light" role="status">
               <span className="visually-hidden">Loading...</span>
             </div>
@@ -55,13 +62,12 @@ export default function LandingPage() {
       <div className="container-fluid min-vh-100 d-flex align-items-center justify-content-center bg-dark text-light">
         <div className="card bg-dark text-light border-secondary p-4 shadow">
           <div className="card-body text-center">
-            {/* Updated header with logo and text on same line */}
-            <div className="d-flex align-items-center justify-content-center mb-4">
-              <h1 className="display-4 mb-0 me-3">Conniption</h1>
+            {/* Only show the logo */}
+            <div className="d-flex justify-content-center mb-4">
               <img
                 src={logoSvg}
-                alt="Site Logo"
-                style={{ maxHeight: "60px" }}
+                alt="Conniption Logo"
+                style={{ maxHeight: "80px" }}
               />
             </div>
             <div className="alert alert-danger" role="alert">
@@ -80,10 +86,13 @@ export default function LandingPage() {
         style={{ maxWidth: "500px" }}
       >
         <div className="card-body">
-          {/* Updated header with logo and text on same line */}
-          <div className="d-flex align-items-center justify-content-center mb-4">
-            <h1 className="display-4 mb-0 me-3">Conniption</h1>
-            <img src={logoSvg} alt="Site Logo" style={{ maxHeight: "60px" }} />
+          {/* Only show the logo */}
+          <div className="d-flex justify-content-center mb-4">
+            <img
+              src={logoSvg}
+              alt="Conniption Logo"
+              style={{ maxHeight: "80px" }}
+            />
           </div>
 
           <div className="mb-4">
