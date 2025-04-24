@@ -2,37 +2,86 @@
 
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
-// Remove direct import of Bootstrap CSS
+import { io } from "socket.io-client";
 
 // API constants
 const API_BASE_URL = "https://conniption.onrender.com"; // Update this with your backend URL
+const SOCKET_URL = "https://conniption.onrender.com";
 
 export default function BoardPage() {
   const { boardId } = useParams();
   const [board, setBoard] = useState(null);
+  const [threads, setThreads] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    // Fetch board details
-    const fetchBoard = async () => {
+    // Socket.io setup
+    const socket = io(SOCKET_URL);
+
+    // Join the board room
+    socket.emit("join_board", boardId);
+
+    // Listen for new threads
+    socket.on("thread_created", (data) => {
+      if (data.boardId === boardId) {
+        // Refresh threads when a new thread is created
+        fetchThreads();
+      }
+    });
+
+    // Fetch board details and threads
+    const fetchBoardData = async () => {
       try {
-        const response = await fetch(`${API_BASE_URL}/api/boards/${boardId}`);
-        if (!response.ok) {
+        // Fetch board details
+        const boardResponse = await fetch(
+          `${API_BASE_URL}/api/boards/${boardId}`
+        );
+        if (!boardResponse.ok) {
           throw new Error("Board not found");
         }
-        const data = await response.json();
-        setBoard(data.board);
+        const boardData = await boardResponse.json();
+        setBoard(boardData.board);
+
+        // Fetch threads
+        await fetchThreads();
+
         setLoading(false);
       } catch (err) {
-        console.error("Error fetching board:", err);
-        setError("Failed to load board. Please try again later.");
+        console.error("Error fetching board data:", err);
+        setError(
+          err.message || "Failed to load board data. Please try again later."
+        );
         setLoading(false);
       }
     };
 
-    fetchBoard();
+    fetchBoardData();
+
+    // Cleanup function to leave the board room
+    return () => {
+      socket.emit("leave_board", boardId);
+      socket.disconnect();
+    };
   }, [boardId]);
+
+  // Function to fetch threads (separate to allow refreshing)
+  const fetchThreads = async () => {
+    try {
+      const threadsResponse = await fetch(
+        `${API_BASE_URL}/api/boards/${boardId}/threads`
+      );
+      if (!threadsResponse.ok) {
+        throw new Error("Failed to load threads");
+      }
+      const threadsData = await threadsResponse.json();
+      setThreads(threadsData.threads || []);
+      return true;
+    } catch (err) {
+      console.error("Error fetching threads:", err);
+      return false;
+    }
+  };
 
   if (loading) {
     return (
@@ -90,15 +139,63 @@ export default function BoardPage() {
         <div className="card bg-dark border-secondary shadow">
           <div className="card-header border-secondary d-flex justify-content-between align-items-center">
             <h2 className="h5 mb-0">Threads</h2>
-            <button className="btn btn-sm btn-primary">New Thread</button>
+            <Link
+              to={`/board/${boardId}/create-thread`}
+              className="btn btn-sm btn-primary"
+            >
+              New Thread
+            </Link>
           </div>
-          <div className="card-body text-center py-5">
-            <p className="text-muted">
-              Board content will be implemented in the next step
-            </p>
-            <div className="spinner-border text-secondary" role="status">
-              <span className="visually-hidden">Loading...</span>
-            </div>
+          <div className="card-body">
+            {threads.length > 0 ? (
+              <div className="list-group">
+                {threads.map((thread) => (
+                  <Link
+                    key={thread.id}
+                    to={`/board/${boardId}/thread/${thread.id}`}
+                    className="list-group-item list-group-item-action bg-dark text-light border-secondary"
+                  >
+                    <div className="d-flex justify-content-between align-items-center">
+                      <h5 className="mb-1">{thread.topic}</h5>
+                      <small className="text-muted">
+                        {new Date(thread.created_at).toLocaleString()}
+                      </small>
+                    </div>
+                    <div className="d-flex">
+                      {thread.image_url && (
+                        <div className="me-3">
+                          <img
+                            src={thread.image_url}
+                            alt="Thread"
+                            className="img-thumbnail"
+                            style={{ maxWidth: "100px", maxHeight: "100px" }}
+                          />
+                        </div>
+                      )}
+                      <div>
+                        <p className="mb-1 text-truncate">{thread.content}</p>
+                        <small className="text-muted">
+                          {thread.post_count}{" "}
+                          {thread.post_count === 1 ? "post" : "posts"}
+                        </small>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-5">
+                <p className="text-muted">
+                  No threads yet. Be the first to create one!
+                </p>
+                <Link
+                  to={`/board/${boardId}/create-thread`}
+                  className="btn btn-primary"
+                >
+                  Create Thread
+                </Link>
+              </div>
+            )}
           </div>
         </div>
       </div>
