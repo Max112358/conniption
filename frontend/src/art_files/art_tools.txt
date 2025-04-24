@@ -1,0 +1,3 @@
+logo font is "koulen" used inside photopea.com
+
+a vectorizer that works and is free is recraft.

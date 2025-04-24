@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 
-import logoSvg from "../assets/conniption_logo5.svg"; // Path may need adjustment based on your folder structure
+import logoSvg from "../assets/conniption_logo6.svg"; // Path may need adjustment based on your folder structure
 
 // API constants
 const API_BASE_URL = "https://conniption.onrender.com"; // Update this with your backend URL
