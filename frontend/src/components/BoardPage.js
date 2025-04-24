@@ -1,7 +1,7 @@
 //components/BoardPage.js
 
 import { useState, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { io } from "socket.io-client";
 
 // API constants
@@ -10,6 +10,7 @@ const SOCKET_URL = "https://conniption.onrender.com";
 
 export default function BoardPage() {
   const { boardId } = useParams();
+  const navigate = useNavigate(); // Added for direct navigation
   const [board, setBoard] = useState(null);
   const [threads, setThreads] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -139,12 +140,48 @@ export default function BoardPage() {
         <div className="card bg-dark border-secondary shadow">
           <div className="card-header border-secondary d-flex justify-content-between align-items-center">
             <h2 className="h5 mb-0">Threads</h2>
+
+            {/* Debug information panel */}
+            <div
+              className="position-fixed top-0 right-0 bg-dark text-light p-2"
+              style={{ zIndex: 9999 }}
+            >
+              Board ID: {boardId}
+            </div>
+
+            {/* Option 1: Enhanced Link with debug logging */}
             <Link
               to={`/board/${boardId}/create-thread`}
               className="btn btn-sm btn-primary"
+              onClick={(e) => {
+                console.log("Create Thread button clicked!");
+                console.log("BoardId:", boardId);
+                console.log("Target URL:", `/board/${boardId}/create-thread`);
+                // We'll also add a temporary alert to make debugging more visible
+                alert(
+                  "Create Thread button clicked! Check console for details."
+                );
+              }}
             >
               New Thread
             </Link>
+
+            {/* Option 2: Direct navigation button (commented out) */}
+            {/*
+            <button
+              className="btn btn-sm btn-primary"
+              onClick={() => {
+                console.log("Create Thread button clicked with direct navigation!");
+                console.log("BoardId:", boardId);
+                const targetUrl = `/board/${boardId}/create-thread`;
+                console.log("Navigating to:", targetUrl);
+                alert("Attempting navigation to: " + targetUrl);
+                navigate(targetUrl);
+              }}
+            >
+              New Thread
+            </button>
+            */}
           </div>
           <div className="card-body">
             {threads.length > 0 ? (
@@ -191,6 +228,10 @@ export default function BoardPage() {
                 <Link
                   to={`/board/${boardId}/create-thread`}
                   className="btn btn-primary"
+                  onClick={(e) => {
+                    console.log("Create Thread button clicked (no threads)!");
+                    console.log("BoardId:", boardId);
+                  }}
                 >
                   Create Thread
                 </Link>
