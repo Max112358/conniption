@@ -1,6 +1,6 @@
 //components/BoardPage.js
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
 import { io } from "socket.io-client";
 
@@ -15,8 +15,8 @@ export default function BoardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Function to fetch threads (defined outside useEffect to fix dependency issue)
-  const fetchThreads = async () => {
+  // Wrap fetchThreads in useCallback to avoid dependency issues
+  const fetchThreads = useCallback(async () => {
     try {
       const threadsResponse = await fetch(
         `${API_BASE_URL}/api/boards/${boardId}/threads`
@@ -31,7 +31,7 @@ export default function BoardPage() {
       console.error("Error fetching threads:", err);
       return false;
     }
-  };
+  }, [boardId]);
 
   useEffect(() => {
     // Socket.io setup
