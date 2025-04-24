@@ -8,6 +8,7 @@ const API_BASE_URL = "https://conniption.onrender.com";
 
 export default function CreateThreadPage() {
   const { boardId } = useParams();
+  console.log("CreateThreadPage mounting, boardId:", boardId);
   const navigate = useNavigate();
 
   const [topic, setTopic] = useState("");
