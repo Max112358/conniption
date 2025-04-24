@@ -1,6 +1,6 @@
 // components/ThreadPage.js
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
 import { io } from "socket.io-client";
 
@@ -19,6 +19,24 @@ export default function ThreadPage() {
   const [imagePreview, setImagePreview] = useState(null);
   const [postLoading, setPostLoading] = useState(false);
   const [postError, setPostError] = useState(null);
+
+  // Use useCallback to memoize fetchPosts function to avoid dependency issues
+  const fetchPosts = useCallback(async () => {
+    try {
+      const postsResponse = await fetch(
+        `${API_BASE_URL}/api/boards/${boardId}/threads/${threadId}/posts`
+      );
+      if (!postsResponse.ok) {
+        throw new Error("Failed to load posts");
+      }
+      const postsData = await postsResponse.json();
+      setPosts(postsData.posts || []);
+      return true;
+    } catch (err) {
+      console.error("Error fetching posts:", err);
+      return false;
+    }
+  }, [boardId, threadId]);
 
   useEffect(() => {
     // Socket.io setup
@@ -68,25 +86,7 @@ export default function ThreadPage() {
       socket.emit("leave_thread", { boardId, threadId });
       socket.disconnect();
     };
-  }, [boardId, threadId]);
-
-  // Function to fetch posts (separate to allow refreshing)
-  const fetchPosts = async () => {
-    try {
-      const postsResponse = await fetch(
-        `${API_BASE_URL}/api/boards/${boardId}/threads/${threadId}/posts`
-      );
-      if (!postsResponse.ok) {
-        throw new Error("Failed to load posts");
-      }
-      const postsData = await postsResponse.json();
-      setPosts(postsData.posts || []);
-      return true;
-    } catch (err) {
-      console.error("Error fetching posts:", err);
-      return false;
-    }
-  };
+  }, [boardId, threadId, fetchPosts]); // Added fetchPosts to dependencies
 
   // Handle image selection
   const handleImageChange = (e) => {
@@ -142,14 +142,7 @@ export default function ThreadPage() {
       setImagePreview(null);
 
       // Fetch updated posts
-      const postsResponse = await fetch(
-        `${API_BASE_URL}/api/boards/${boardId}/threads/${threadId}/posts`
-      );
-      if (!postsResponse.ok) {
-        throw new Error("Failed to refresh posts");
-      }
-      const postsData = await postsResponse.json();
-      setPosts(postsData.posts || []);
+      await fetchPosts();
 
       setPostLoading(false);
     } catch (err) {
