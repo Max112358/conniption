@@ -132,7 +132,7 @@ export default function BoardPage() {
             </h1>
           </div>
           <div className="card-body">
-            <p className="text-muted mb-0">{board.description}</p>
+            <p className="text-secondary mb-0">{board.description}</p>
           </div>
         </div>
 
@@ -187,7 +187,7 @@ export default function BoardPage() {
               </div>
             ) : (
               <div className="text-center py-5">
-                <p className="text-muted">
+                <p className="text-secondary">
                   No threads yet. Be the first to create one!
                 </p>
                 <Link
