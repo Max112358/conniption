@@ -5,3 +5,17 @@
 .bg-high-dark {
   background-color: #343a3f !important;
 }
+
+/* Placeholder text styling for dark mode */
+.form-control::placeholder {
+  color: rgba(255, 255, 255, 0.5) !important;
+}
+.form-control::-webkit-input-placeholder {
+  color: rgba(255, 255, 255, 0.5) !important;
+}
+.form-control::-moz-placeholder {
+  color: rgba(255, 255, 255, 0.5) !important;
+}
+.form-control:-ms-input-placeholder {
+  color: rgba(255, 255, 255, 0.5) !important;
+}
