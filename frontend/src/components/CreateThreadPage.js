@@ -111,7 +111,7 @@ export default function CreateThreadPage() {
           </Link>
         </div>
 
-        <div className="card bg-dark border-secondary shadow mb-4">
+        <div className="card bg-mid-dark border-secondary shadow mb-4">
           <div className="card-header border-secondary">
             <h1 className="h3 mb-0 text-light">Create New Thread</h1>
           </div>
