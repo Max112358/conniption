@@ -130,12 +130,12 @@ export default function CreateThreadPage() {
 
             <form onSubmit={handleSubmit}>
               <div className="mb-3">
-                <label htmlFor="topic" className="form-label fw-bold">
+                <label htmlFor="topic" className="form-label text-secondary">
                   Thread Topic
                 </label>
                 <input
                   type="text"
-                  className="form-control bg-mid-dark text-light border-secondary"
+                  className="form-control bg-dark text-light border-secondary"
                   id="topic"
                   value={topic}
                   onChange={(e) => setTopic(e.target.value)}
@@ -146,11 +146,11 @@ export default function CreateThreadPage() {
               </div>
 
               <div className="mb-3">
-                <label htmlFor="content" className="form-label fw-bold">
+                <label htmlFor="content" className="form-label text-secondary">
                   Content
                 </label>
                 <textarea
-                  className="form-control bg-mid-dark text-light border-secondary"
+                  className="form-control bg-dark text-light border-secondary"
                   id="content"
                   rows="5"
                   value={content}
@@ -162,25 +162,27 @@ export default function CreateThreadPage() {
               </div>
 
               <div className="mb-3">
-                <label htmlFor="image" className="form-label fw-bold">
+                <label htmlFor="image" className="form-label text-secondary">
                   Image (Required)
                 </label>
                 <input
                   type="file"
-                  className="form-control bg-mid-dark text-light border-secondary"
+                  className="form-control bg-dark text-light border-secondary"
                   id="image"
                   accept="image/*"
                   onChange={handleImageChange}
                   required
                 />
-                <div className="text-light mt-1 small">
+                <div className="text-secondary mt-1 small">
                   Supported formats: JPEG, PNG, GIF (Max size: 5MB)
                 </div>
               </div>
 
               {imagePreview && (
                 <div className="mb-3">
-                  <label className="form-label fw-bold">Image Preview</label>
+                  <label className="form-label text-secondary">
+                    Image Preview
+                  </label>
                   <div className="border border-secondary p-2 rounded">
                     <img
                       src={imagePreview}
