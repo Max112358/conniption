@@ -99,8 +99,17 @@ export default function CreateThreadPage() {
     }
   };
 
+  // Add custom CSS to fix placeholder text color
+  const customStyles = `
+    .form-control::placeholder {
+      color: #6c757d !important;
+      opacity: 1;
+    }
+  `;
+
   return (
     <div className="container-fluid min-vh-100 bg-dark text-light py-4">
+      <style>{customStyles}</style>
       <div className="container">
         <div className="mb-4">
           <Link
@@ -113,7 +122,7 @@ export default function CreateThreadPage() {
 
         <div className="card bg-dark border-secondary shadow mb-4">
           <div className="card-header border-secondary">
-            <h1 className="h3 mb-0">Create New Thread</h1>
+            <h1 className="h3 mb-0 text-light">Create New Thread</h1>
           </div>
           <div className="card-body">
             {error && (
