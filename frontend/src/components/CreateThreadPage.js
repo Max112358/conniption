@@ -99,17 +99,8 @@ export default function CreateThreadPage() {
     }
   };
 
-  // Add custom CSS to fix placeholder text color
-  const customStyles = `
-    .form-control::placeholder {
-      color: #6c757d !important;
-      opacity: 1;
-    }
-  `;
-
   return (
     <div className="container-fluid min-vh-100 bg-dark text-light py-4">
-      <style>{customStyles}</style>
       <div className="container">
         <div className="mb-4">
           <Link
@@ -144,7 +135,7 @@ export default function CreateThreadPage() {
                 </label>
                 <input
                   type="text"
-                  className="form-control bg-dark text-light border-secondary"
+                  className="form-control bg-dark text-light border-secondary text-light"
                   id="topic"
                   value={topic}
                   onChange={(e) => setTopic(e.target.value)}
@@ -159,7 +150,7 @@ export default function CreateThreadPage() {
                   Content
                 </label>
                 <textarea
-                  className="form-control bg-dark text-light border-secondary"
+                  className="form-control bg-dark text-light border-secondary text-light"
                   id="content"
                   rows="5"
                   value={content}
@@ -176,7 +167,7 @@ export default function CreateThreadPage() {
                 </label>
                 <input
                   type="file"
-                  className="form-control bg-dark text-light border-secondary"
+                  className="form-control bg-dark text-light border-secondary text-light"
                   id="image"
                   accept="image/*"
                   onChange={handleImageChange}
