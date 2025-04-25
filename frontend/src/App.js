@@ -3,6 +3,7 @@ import LandingPage from "./components/LandingPage";
 import BoardPage from "./components/BoardPage";
 import CreateThreadPage from "./components/CreateThreadPage";
 import ThreadPage from "./components/ThreadPage";
+import "./colors.css";
 
 // Main app with routing
 export default function App() {

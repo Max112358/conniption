@@ -111,7 +111,7 @@ export default function CreateThreadPage() {
           </Link>
         </div>
 
-        <div className="card text-light bg-dark border-secondary shadow mb-4">
+        <div className="card bg-dark border-secondary shadow mb-4">
           <div className="card-header border-secondary">
             <h1 className="h3 mb-0">Create New Thread</h1>
           </div>
@@ -135,7 +135,7 @@ export default function CreateThreadPage() {
                 </label>
                 <input
                   type="text"
-                  className="form-control bg-secondary text-light"
+                  className="form-control bg-mid-dark text-light border-secondary"
                   id="topic"
                   value={topic}
                   onChange={(e) => setTopic(e.target.value)}
@@ -150,7 +150,7 @@ export default function CreateThreadPage() {
                   Content
                 </label>
                 <textarea
-                  className="form-control bg-secondary text-light"
+                  className="form-control bg-mid-dark text-light border-secondary"
                   id="content"
                   rows="5"
                   value={content}
@@ -167,7 +167,7 @@ export default function CreateThreadPage() {
                 </label>
                 <input
                   type="file"
-                  className="form-control bg-secondary text-light"
+                  className="form-control bg-mid-dark text-light border-secondary"
                   id="image"
                   accept="image/*"
                   onChange={handleImageChange}
