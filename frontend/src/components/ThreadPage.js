@@ -217,9 +217,9 @@ export default function ThreadPage() {
         </div>
 
         {/* Posts Section */}
-        <div className="card bg-dark border-secondary shadow mb-4">
+        <div className="card bg-mid-dark border-secondary shadow mb-4">
           <div className="card-header border-secondary">
-            <h2 className="h5 mb-0">Posts</h2>
+            <h2 className="h5 mb-0 text-light">Posts</h2>
           </div>
           <div className="card-body">
             {posts.length > 0 ? (
@@ -227,7 +227,7 @@ export default function ThreadPage() {
                 {posts.map((post, index) => (
                   <div
                     key={post.id}
-                    className="card bg-dark border-secondary mb-3"
+                    className="card bg-high-dark border-secondary mb-3"
                   >
                     <div className="card-header border-secondary d-flex justify-content-between align-items-center">
                       <div>
@@ -264,9 +264,9 @@ export default function ThreadPage() {
         </div>
 
         {/* Reply Form */}
-        <div className="card bg-dark border-secondary shadow">
+        <div className="card bg-mid-dark border-secondary shadow">
           <div className="card-header border-secondary">
-            <h2 className="h5 mb-0">Reply to Thread</h2>
+            <h2 className="h5 mb-0 text-light">Reply to Thread</h2>
           </div>
           <div className="card-body">
             {postError && (
@@ -277,7 +277,7 @@ export default function ThreadPage() {
 
             <form onSubmit={handleSubmitPost}>
               <div className="mb-3">
-                <label htmlFor="content" className="form-label">
+                <label htmlFor="content" className="form-label text-secondary">
                   Content
                 </label>
                 <textarea
@@ -293,7 +293,7 @@ export default function ThreadPage() {
               </div>
 
               <div className="mb-3">
-                <label htmlFor="image" className="form-label">
+                <label htmlFor="image" className="form-label text-secondary">
                   Image (Optional)
                 </label>
                 <input
@@ -310,7 +310,9 @@ export default function ThreadPage() {
 
               {imagePreview && (
                 <div className="mb-3">
-                  <label className="form-label">Image Preview</label>
+                  <label className="form-label text-secondary">
+                    Image Preview
+                  </label>
                   <div className="border border-secondary p-2 rounded">
                     <img
                       src={imagePreview}

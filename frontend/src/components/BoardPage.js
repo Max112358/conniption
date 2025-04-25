@@ -124,9 +124,9 @@ export default function BoardPage() {
           </Link>
         </div>
 
-        <div className="card bg-dark border-secondary shadow mb-4">
+        <div className="card bg-mid-dark border-secondary shadow mb-4">
           <div className="card-header border-secondary">
-            <h1 className="h3 mb-0">
+            <h1 className="h3 mb-0 text-light">
               <span className="badge bg-secondary me-2">/{board.id}/</span>
               {board.name}
             </h1>
@@ -136,9 +136,9 @@ export default function BoardPage() {
           </div>
         </div>
 
-        <div className="card bg-dark border-secondary shadow">
+        <div className="card bg-mid-dark border-secondary shadow">
           <div className="card-header border-secondary d-flex justify-content-between align-items-center">
-            <h2 className="h5 mb-0">Threads</h2>
+            <h2 className="h5 mb-0 text-light">Threads</h2>
 
             {/* Using Link without debug code */}
             <Link
@@ -155,7 +155,7 @@ export default function BoardPage() {
                   <Link
                     key={thread.id}
                     to={`/board/${boardId}/thread/${thread.id}`}
-                    className="list-group-item list-group-item-action bg-dark text-light border-secondary"
+                    className="list-group-item list-group-item-action bg-high-dark text-light border-secondary"
                   >
                     <div className="d-flex justify-content-between align-items-center">
                       <h5 className="mb-1">{thread.topic}</h5>
