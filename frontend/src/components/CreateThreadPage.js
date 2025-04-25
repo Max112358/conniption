@@ -99,22 +99,8 @@ export default function CreateThreadPage() {
     }
   };
 
-  // Create custom CSS object for form styling
-  const formStyles = {
-    container: "container-fluid min-vh-100 bg-dark text-white py-4",
-    card: "card bg-dark border-secondary shadow mb-4",
-    cardHeader: "card-header border-secondary",
-    cardBody: "card-body text-white",
-    formLabel: "form-label text-white", // Explicit text-white for labels
-    formControl: "form-control bg-dark text-white border-secondary",
-    formText: "form-text text-light", // Changed from text-muted to text-light
-    previewContainer: "border border-secondary p-2 rounded",
-    buttonContainer: "d-grid gap-2",
-    submitButton: "btn btn-primary",
-  };
-
   return (
-    <div className={formStyles.container}>
+    <div className="container-fluid min-vh-100 bg-dark text-light py-4">
       <div className="container">
         <div className="mb-4">
           <Link
@@ -125,11 +111,11 @@ export default function CreateThreadPage() {
           </Link>
         </div>
 
-        <div className={formStyles.card}>
-          <div className={formStyles.cardHeader}>
+        <div className="card text-light bg-dark border-secondary shadow mb-4">
+          <div className="card-header border-secondary">
             <h1 className="h3 mb-0">Create New Thread</h1>
           </div>
-          <div className={formStyles.cardBody}>
+          <div className="card-body">
             {error && (
               <div className="alert alert-danger" role="alert">
                 {error}
@@ -144,12 +130,12 @@ export default function CreateThreadPage() {
 
             <form onSubmit={handleSubmit}>
               <div className="mb-3">
-                <label htmlFor="topic" className={formStyles.formLabel}>
+                <label htmlFor="topic" className="form-label fw-bold">
                   Thread Topic
                 </label>
                 <input
                   type="text"
-                  className={formStyles.formControl}
+                  className="form-control bg-secondary text-light"
                   id="topic"
                   value={topic}
                   onChange={(e) => setTopic(e.target.value)}
@@ -160,11 +146,11 @@ export default function CreateThreadPage() {
               </div>
 
               <div className="mb-3">
-                <label htmlFor="content" className={formStyles.formLabel}>
+                <label htmlFor="content" className="form-label fw-bold">
                   Content
                 </label>
                 <textarea
-                  className={formStyles.formControl}
+                  className="form-control bg-secondary text-light"
                   id="content"
                   rows="5"
                   value={content}
@@ -176,26 +162,26 @@ export default function CreateThreadPage() {
               </div>
 
               <div className="mb-3">
-                <label htmlFor="image" className={formStyles.formLabel}>
+                <label htmlFor="image" className="form-label fw-bold">
                   Image (Required)
                 </label>
                 <input
                   type="file"
-                  className={formStyles.formControl}
+                  className="form-control bg-secondary text-light"
                   id="image"
                   accept="image/*"
                   onChange={handleImageChange}
                   required
                 />
-                <div className={formStyles.formText}>
+                <div className="text-light mt-1 small">
                   Supported formats: JPEG, PNG, GIF (Max size: 5MB)
                 </div>
               </div>
 
               {imagePreview && (
                 <div className="mb-3">
-                  <label className={formStyles.formLabel}>Image Preview</label>
-                  <div className={formStyles.previewContainer}>
+                  <label className="form-label fw-bold">Image Preview</label>
+                  <div className="border border-secondary p-2 rounded">
                     <img
                       src={imagePreview}
                       alt="Preview"
@@ -206,10 +192,10 @@ export default function CreateThreadPage() {
                 </div>
               )}
 
-              <div className={formStyles.buttonContainer}>
+              <div className="d-grid gap-2">
                 <button
                   type="submit"
-                  className={formStyles.submitButton}
+                  className="btn btn-primary"
                   disabled={loading}
                 >
                   {loading ? (
