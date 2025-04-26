@@ -248,7 +248,10 @@ export default function ThreadPage() {
                           />
                         </div>
                       )}
-                      <p className="mb-0" style={{ whiteSpace: "pre-wrap" }}>
+                      <p
+                        className="text-light mb-0"
+                        style={{ whiteSpace: "pre-wrap" }}
+                      >
                         {post.content}
                       </p>
                     </div>
