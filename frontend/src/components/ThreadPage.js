@@ -227,13 +227,15 @@ export default function ThreadPage() {
                 {posts.map((post, index) => (
                   <div
                     key={post.id}
-                    className="card bg-high-dark border-secondary mb-3"
+                    className="card bg-dark border-secondary mb-3"
                   >
                     <div className="card-header border-secondary d-flex justify-content-between align-items-center">
                       <div>
-                        <span className="text-muted">Post #{index + 1}</span>
+                        <span className="text-secondary">
+                          Post #{index + 1}
+                        </span>
                       </div>
-                      <small className="text-muted">
+                      <small className="text-secondary">
                         {new Date(post.created_at).toLocaleString()}
                       </small>
                     </div>
