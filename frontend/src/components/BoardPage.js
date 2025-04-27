@@ -159,7 +159,7 @@ export default function BoardPage() {
                   >
                     <div className="d-flex justify-content-between align-items-center">
                       <h5 className="mb-1">{thread.topic}</h5>
-                      <small className="text-muted">
+                      <small className="text-secondary">
                         {new Date(thread.created_at).toLocaleString()}
                       </small>
                     </div>
@@ -176,7 +176,7 @@ export default function BoardPage() {
                       )}
                       <div>
                         <p className="mb-1 text-truncate">{thread.content}</p>
-                        <small className="text-muted">
+                        <small className="text-secondary">
                           {thread.post_count}{" "}
                           {thread.post_count === 1 ? "post" : "posts"}
                         </small>
