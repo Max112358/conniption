@@ -1,11 +1,9 @@
 // backend/routes/posts.js
 const express = require("express");
 const router = express.Router({ mergeParams: true }); // mergeParams to access boardId and threadId
-const path = require("path");
-const fs = require("fs");
 const postModel = require("../models/post");
 const threadModel = require("../models/thread");
-const upload = require("../middleware/upload");
+const { uploadWithUrlTransform } = require("../middleware/upload");
 const io = require("../utils/socketHandler").getIo;
 
 /**
@@ -27,17 +25,8 @@ router.get("/", async (req, res, next) => {
     // Get posts
     const posts = await postModel.getPostsByThreadId(threadId, boardId);
 
-    // Transform the result to provide image_url instead of image_path
-    const postsWithImageUrls = posts.map((post) => ({
-      ...post,
-      image_url: post.image_path
-        ? `${req.protocol}://${req.get("host")}/uploads/${path.basename(
-            post.image_path
-          )}`
-        : null,
-    }));
-
-    res.json({ posts: postsWithImageUrls });
+    // The posts model now returns the image_url directly from the database
+    res.json({ posts: posts });
   } catch (error) {
     console.error(
       `Route Error - GET /api/boards/${boardId}/threads/${threadId}/posts:`,
@@ -51,7 +40,7 @@ router.get("/", async (req, res, next) => {
  * @route   POST /api/boards/:boardId/threads/:threadId/posts
  * @desc    Create a new post in a thread
  */
-router.post("/", upload.single("image"), async (req, res, next) => {
+router.post("/", uploadWithUrlTransform("image"), async (req, res, next) => {
   const { boardId, threadId } = req.params;
   const { content } = req.body;
   console.log(`Route: POST /api/boards/${boardId}/threads/${threadId}/posts`);
@@ -67,24 +56,17 @@ router.post("/", upload.single("image"), async (req, res, next) => {
     const thread = await threadModel.getThreadById(threadId, boardId);
     if (!thread) {
       console.log(`Route: Thread not found - ${threadId}`);
-
-      // Delete uploaded file if there was one
-      if (req.file) {
-        fs.unlink(req.file.path, (err) => {
-          if (err) console.error("Error deleting file:", err);
-        });
-      }
-
       return res.status(404).json({ error: "Thread not found" });
     }
 
     // Create post
-    const imagePath = req.file ? req.file.path : null;
+    // req.file.location now contains the R2.dev public URL
+    const imageUrl = req.file ? req.file.location : null;
     const result = await postModel.createPost(
       threadId,
       boardId,
       content,
-      imagePath
+      imageUrl
     );
 
     // Notify connected clients about the new post
@@ -114,14 +96,6 @@ router.post("/", upload.single("image"), async (req, res, next) => {
       `Route Error - POST /api/boards/${boardId}/threads/${threadId}/posts:`,
       error
     );
-
-    // Delete uploaded file if there was an error
-    if (req.file) {
-      fs.unlink(req.file.path, (err) => {
-        if (err) console.error("Error deleting file:", err);
-      });
-    }
-
     next(error);
   }
 });

@@ -1,112 +1,84 @@
 // backend/utils/fileUtils.js
-const fs = require("fs");
-const path = require("path");
+const {
+  DeleteObjectCommand,
+  ListObjectsV2Command,
+} = require("@aws-sdk/client-s3");
+const { s3Client, R2_BUCKET_NAME } = require("../config/r2");
 
 /**
- * Utility functions for file operations
+ * Utility functions for R2 file operations
  */
 const fileUtils = {
   /**
-   * Delete a file
-   * @param {string} filePath - Path to the file to delete
+   * Delete a file from R2
+   * @param {string} fileUrl - Full URL of the file to delete
    * @returns {Promise<boolean>} Success status
    */
-  deleteFile: (filePath) => {
-    return new Promise((resolve, reject) => {
-      fs.unlink(filePath, (err) => {
-        if (err) {
-          console.error(`Error deleting file ${filePath}:`, err);
-          reject(err);
-          return;
-        }
-        console.log(`File deleted successfully: ${filePath}`);
-        resolve(true);
+  deleteFile: async (fileUrl) => {
+    try {
+      // Extract the object key from the URL
+      const objectKey = fileUrl.split("/").pop();
+
+      console.log(`Deleting file from R2: ${objectKey}`);
+
+      const deleteCommand = new DeleteObjectCommand({
+        Bucket: R2_BUCKET_NAME,
+        Key: objectKey,
       });
-    });
+
+      await s3Client.send(deleteCommand);
+      console.log(`File deleted successfully from R2: ${objectKey}`);
+      return true;
+    } catch (err) {
+      console.error(`Error deleting file from R2:`, err);
+      throw err;
+    }
   },
 
   /**
-   * Ensure upload directory exists
-   * @returns {Promise<string>} Path to upload directory
-   */
-  ensureUploadDir: () => {
-    return new Promise((resolve, reject) => {
-      const uploadDir = path.join(__dirname, "..", "uploads");
-
-      fs.mkdir(uploadDir, { recursive: true }, (err) => {
-        if (err) {
-          console.error(`Error creating upload directory ${uploadDir}:`, err);
-          reject(err);
-          return;
-        }
-        console.log(`Upload directory ensured: ${uploadDir}`);
-        resolve(uploadDir);
-      });
-    });
-  },
-
-  /**
-   * Clean up old files (could be used in a scheduled job)
+   * Clean up old files in R2 based on age
    * @param {number} maxAge - Maximum age in milliseconds
    * @returns {Promise<number>} Number of files deleted
    */
-  cleanupOldFiles: (maxAge) => {
-    return new Promise(async (resolve, reject) => {
-      try {
-        const uploadDir = await fileUtils.ensureUploadDir();
+  cleanupOldFiles: async (maxAge) => {
+    try {
+      console.log(`Cleaning up old files in R2 bucket: ${R2_BUCKET_NAME}`);
 
-        fs.readdir(uploadDir, (err, files) => {
-          if (err) {
-            console.error(`Error reading upload directory ${uploadDir}:`, err);
-            reject(err);
-            return;
-          }
+      const listCommand = new ListObjectsV2Command({
+        Bucket: R2_BUCKET_NAME,
+      });
 
-          const now = Date.now();
-          let deletedCount = 0;
+      const response = await s3Client.send(listCommand);
 
-          const deletePromises = files.map((file) => {
-            return new Promise((resolve) => {
-              const filePath = path.join(uploadDir, file);
+      if (!response.Contents || response.Contents.length === 0) {
+        console.log("No files found in R2 bucket.");
+        return 0;
+      }
 
-              fs.stat(filePath, (err, stats) => {
-                if (err) {
-                  console.error(
-                    `Error getting file stats for ${filePath}:`,
-                    err
-                  );
-                  resolve();
-                  return;
-                }
+      const now = Date.now();
+      let deletedCount = 0;
 
-                const fileAge = now - stats.mtime.getTime();
+      for (const object of response.Contents) {
+        const fileAge = now - object.LastModified.getTime();
 
-                if (fileAge > maxAge) {
-                  fileUtils
-                    .deleteFile(filePath)
-                    .then(() => {
-                      deletedCount++;
-                      resolve();
-                    })
-                    .catch(() => resolve());
-                } else {
-                  resolve();
-                }
-              });
-            });
+        if (fileAge > maxAge) {
+          const deleteCommand = new DeleteObjectCommand({
+            Bucket: R2_BUCKET_NAME,
+            Key: object.Key,
           });
 
-          Promise.all(deletePromises)
-            .then(() => {
-              console.log(`Cleanup complete: ${deletedCount} files deleted`);
-              resolve(deletedCount);
-            })
-            .catch(reject);
-        });
-      } catch (err) {
-        reject(err);
+          await s3Client.send(deleteCommand);
+          deletedCount++;
+          console.log(`Deleted old file from R2: ${object.Key}`);
+        }
       }
-    });
+
+      console.log(`Cleanup complete: ${deletedCount} files deleted from R2`);
+      return deletedCount;
+    } catch (err) {
+      console.error("Error cleaning up old files in R2:", err);
+      throw err;
+    }
   },
 };
 

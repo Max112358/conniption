@@ -1,8 +1,6 @@
 // backend/routes/threads.js
 const express = require("express");
 const router = express.Router({ mergeParams: true }); // mergeParams to access boardId
-const path = require("path");
-const fs = require("fs");
 const threadModel = require("../models/thread");
 const boardModel = require("../models/board");
 const upload = require("../middleware/upload");
@@ -31,17 +29,10 @@ router.get("/", async (req, res, next) => {
     // Get threads
     const threads = await threadModel.getThreadsByBoardId(boardId);
 
-    // Transform the result to provide image_url instead of image_path
-    const threadsWithImageUrls = threads.map((thread) => ({
-      ...thread,
-      image_url: thread.image_path
-        ? `${req.protocol}://${req.get("host")}/uploads/${path.basename(
-            thread.image_path
-          )}`
-        : null,
-    }));
+    // In the updated version, image_path from the database is actually the full R2 URL
+    // We don't need to modify it here as the model will now return the full URL
 
-    res.json({ threads: threadsWithImageUrls });
+    res.json({ threads: threads });
   } catch (error) {
     console.error(`Route Error - GET /api/boards/${boardId}/threads:`, error);
     next(error);
@@ -74,23 +65,16 @@ router.post("/", upload.single("image"), async (req, res, next) => {
     const board = await boardModel.getBoardById(boardId);
     if (!board) {
       console.log(`Route: Board not found - ${boardId}`);
-
-      // Delete uploaded file since we're rejecting the request
-      if (req.file) {
-        fs.unlink(req.file.path, (err) => {
-          if (err) console.error("Error deleting file:", err);
-        });
-      }
-
       return res.status(404).json({ error: "Board not found" });
     }
 
     // Create thread
+    // With R2 integration, req.file.location will contain the S3 URL of the uploaded file
     const result = await threadModel.createThread(
       boardId,
       topic,
       content,
-      req.file.path
+      req.file.location
     );
 
     // Notify connected clients about the new thread
@@ -115,14 +99,6 @@ router.post("/", upload.single("image"), async (req, res, next) => {
     });
   } catch (error) {
     console.error(`Route Error - POST /api/boards/${boardId}/threads:`, error);
-
-    // Delete uploaded file if there was an error
-    if (req.file) {
-      fs.unlink(req.file.path, (err) => {
-        if (err) console.error("Error deleting file:", err);
-      });
-    }
-
     next(error);
   }
 });
