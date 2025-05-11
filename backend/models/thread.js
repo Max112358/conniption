@@ -21,7 +21,7 @@ const threadModel = {
           t.created_at,
           t.updated_at,
           p.content,
-          p.image_path,
+          p.image_url,
           (SELECT COUNT(*) FROM posts WHERE thread_id = t.id) as post_count
         FROM 
           threads t
@@ -153,7 +153,7 @@ const threadModel = {
       // Create initial post with image
       await client.query(
         `
-        INSERT INTO posts (thread_id, board_id, content, image_path, created_at)
+        INSERT INTO posts (thread_id, board_id, content, image_url, created_at)
         VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
         `,
         [threadId, boardId, content, imagePath]

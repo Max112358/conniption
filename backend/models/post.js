@@ -18,7 +18,7 @@ const postModel = {
     try {
       const result = await pool.query(
         `
-        SELECT id, content, image_path, created_at
+        SELECT id, content, image_url, created_at
         FROM posts
         WHERE thread_id = $1 AND board_id = $2
         ORDER BY created_at ASC
@@ -62,7 +62,7 @@ const postModel = {
         // Post with image
         console.log(`Model: Creating post with image: ${imagePath}`);
         postQuery = `
-          INSERT INTO posts (thread_id, board_id, content, image_path, created_at)
+          INSERT INTO posts (thread_id, board_id, content, image_url, created_at)
           VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
           RETURNING id
         `;
