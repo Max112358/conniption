@@ -169,13 +169,11 @@ export default function BoardPage() {
                           <img
                             src={thread.image_url}
                             alt="Thread"
-                            className="img-fluid rounded"
+                            className="img-fluid"
                             style={{
                               maxWidth: "100px",
                               maxHeight: "100px",
                               objectFit: "cover",
-                              backgroundColor: "#343a40",
-                              border: "1px solid #6c757d",
                             }}
                           />
                         </div>
