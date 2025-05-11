@@ -1,17 +1,32 @@
 // backend/config/r2.js
 const { S3Client } = require("@aws-sdk/client-s3");
 
-// Configure R2 credentials
-const R2_ACCOUNT_ID =
-  process.env.R2_ACCOUNT_ID || "ee8bca22445b082633aad26691317236";
-const R2_ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID || "your_access_key_here";
-const R2_SECRET_ACCESS_KEY =
-  process.env.R2_SECRET_ACCESS_KEY || "your_secret_key_here";
-const R2_BUCKET_NAME = process.env.R2_BUCKET_NAME || "conniption-bucket";
+// Configure R2 credentials with strict environment variable requirements
+const R2_ACCOUNT_ID = process.env.R2_ACCOUNT_ID;
+if (!R2_ACCOUNT_ID) {
+  throw new Error("R2_ACCOUNT_ID environment variable is required");
+}
 
-// Custom domain URL (replace with your actual domain)
-const R2_PUBLIC_URL =
-  process.env.R2_PUBLIC_URL || "https://images.yourdomain.com";
+const R2_ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID;
+if (!R2_ACCESS_KEY_ID) {
+  throw new Error("R2_ACCESS_KEY_ID environment variable is required");
+}
+
+const R2_SECRET_ACCESS_KEY = process.env.R2_SECRET_ACCESS_KEY;
+if (!R2_SECRET_ACCESS_KEY) {
+  throw new Error("R2_SECRET_ACCESS_KEY environment variable is required");
+}
+
+const R2_BUCKET_NAME = process.env.R2_BUCKET_NAME;
+if (!R2_BUCKET_NAME) {
+  throw new Error("R2_BUCKET_NAME environment variable is required");
+}
+
+// Custom domain URL - strictly require environment variable
+const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL;
+if (!R2_PUBLIC_URL) {
+  throw new Error("R2_PUBLIC_URL environment variable is required");
+}
 
 // Create an S3 client configured to use R2
 const s3Client = new S3Client({

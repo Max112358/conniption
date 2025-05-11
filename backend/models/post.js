@@ -1,5 +1,6 @@
 // backend/models/post.js
 const { pool } = require("../config/database");
+const transformImageUrl = require("../utils/transformImageUrl");
 
 /**
  * Post model functions
@@ -29,7 +30,14 @@ const postModel = {
       console.log(
         `Model: Found ${result.rows.length} posts for thread: ${threadId}`
       );
-      return result.rows;
+
+      // Transform image URLs to use custom domain
+      const posts = result.rows.map((post) => ({
+        ...post,
+        image_url: transformImageUrl(post.image_url),
+      }));
+
+      return posts;
     } catch (error) {
       console.error(
         `Model Error - getPostsByThreadId(${threadId}, ${boardId}):`,

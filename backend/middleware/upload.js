@@ -23,11 +23,6 @@ const upload = multer({
       );
       cb(null, filename);
     },
-    // Transform the S3 storage URL to the public R2.dev URL
-    transformRequest: function (req, file, cb) {
-      // This runs after the upload but before sending the response
-      cb(null, {});
-    },
   }),
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
   fileFilter: function (req, file, cb) {
@@ -46,15 +41,15 @@ const upload = multer({
   },
 });
 
-// Middleware to transform S3 URLs to public R2.dev URLs
+// Middleware to transform S3 URLs to public custom domain URLs
 const processUploadResult = (req, res, next) => {
   if (req.file) {
     // The S3 client will save the direct S3 URL in req.file.location
-    // We need to replace this with the public R2.dev URL
+    // We need to replace this with the public custom domain URL
     const objectKey = req.file.key;
     req.file.publicUrl = getPublicUrl(objectKey);
-    req.file.originalLocation = req.file.location;
-    req.file.location = req.file.publicUrl;
+    req.file.originalLocation = req.file.location; // Store original R2 URL for reference
+    req.file.location = req.file.publicUrl; // Replace with custom domain URL
 
     console.log(`File uploaded to R2: ${req.file.originalLocation}`);
     console.log(`Public URL: ${req.file.publicUrl}`);

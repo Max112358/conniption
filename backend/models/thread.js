@@ -1,5 +1,6 @@
 // backend/models/thread.js
 const { pool } = require("../config/database");
+const transformImageUrl = require("../utils/transformImageUrl");
 
 /**
  * Thread model functions
@@ -39,7 +40,14 @@ const threadModel = {
       console.log(
         `Model: Found ${result.rows.length} threads for board: ${boardId}`
       );
-      return result.rows;
+
+      // Transform image URLs to use custom domain
+      const threads = result.rows.map((thread) => ({
+        ...thread,
+        image_url: transformImageUrl(thread.image_url),
+      }));
+
+      return threads;
     } catch (error) {
       console.error(`Model Error - getThreadsByBoardId(${boardId}):`, error);
       throw error;

@@ -3,7 +3,7 @@ const express = require("express");
 const router = express.Router({ mergeParams: true }); // mergeParams to access boardId
 const threadModel = require("../models/thread");
 const boardModel = require("../models/board");
-const upload = require("../middleware/upload");
+const { uploadWithUrlTransform } = require("../middleware/upload"); // Changed to use the URL transform
 const postRoutes = require("./posts");
 const io = require("../utils/socketHandler").getIo;
 
@@ -43,7 +43,8 @@ router.get("/", async (req, res, next) => {
  * @route   POST /api/boards/:boardId/threads
  * @desc    Create a new thread with initial post
  */
-router.post("/", upload.single("image"), async (req, res, next) => {
+// Changed from upload.single to uploadWithUrlTransform to use our URL transformation
+router.post("/", uploadWithUrlTransform("image"), async (req, res, next) => {
   const { boardId } = req.params;
   const { topic, content } = req.body;
   console.log(`Route: POST /api/boards/${boardId}/threads`);
@@ -69,7 +70,7 @@ router.post("/", upload.single("image"), async (req, res, next) => {
     }
 
     // Create thread
-    // With R2 integration, req.file.location will contain the S3 URL of the uploaded file
+    // req.file.location now contains the transformed URL with custom domain
     const result = await threadModel.createThread(
       boardId,
       topic,
