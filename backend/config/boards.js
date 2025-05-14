@@ -2,6 +2,12 @@
 
 const boards = [
   {
+    id: "random",
+    name: "Random",
+    description: "Discussion about anything and everything",
+    nsfw: true,
+  },
+  {
     id: "tech",
     name: "Technology",
     description: "Technology Discussion",
@@ -90,6 +96,12 @@ const boards = [
     id: "business",
     name: "Business",
     description: "Business and Finance Discussion",
+    nsfw: false,
+  },
+  {
+    id: "weapons",
+    name: "Weapons",
+    description: "Weapons and Military Discussion",
     nsfw: false,
   },
   // Add more boards as needed
