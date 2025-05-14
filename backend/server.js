@@ -7,6 +7,7 @@ const path = require("path");
 // Import configuration
 const { pool } = require("./config/database");
 const corsConfig = require("./config/cors");
+const boards = require("./config/boards");
 
 // Import middleware
 const logger = require("./middleware/logger");
@@ -33,18 +34,6 @@ const initDatabase = async () => {
     `);
 
     await pool.query(`
-      INSERT INTO boards (id, name, description)
-      VALUES ('tech', 'Technology', 'Technology Discussion')
-      ON CONFLICT (id) DO NOTHING
-    `);
-
-    await pool.query(`
-      INSERT INTO boards (id, name, description)
-      VALUES ('politics', 'Politics', 'Political Discussion')
-      ON CONFLICT (id) DO NOTHING
-    `);
-
-    await pool.query(`
       CREATE TABLE IF NOT EXISTS threads (
         id SERIAL PRIMARY KEY,
         board_id TEXT NOT NULL REFERENCES boards(id) ON DELETE CASCADE,
@@ -67,7 +56,21 @@ const initDatabase = async () => {
       )
     `);
 
-    console.log("Database initialized successfully.");
+    // Insert all boards using a loop
+    for (const board of boards) {
+      await pool.query(
+        `
+        INSERT INTO boards (id, name, description)
+        VALUES ($1, $2, $3)
+        ON CONFLICT (id) DO NOTHING
+      `,
+        [board.id, board.name, board.description]
+      );
+    }
+
+    console.log(
+      `Database initialized successfully with ${boards.length} boards.`
+    );
   } catch (err) {
     console.error("Error initializing database:", err);
     throw err;
