@@ -5,9 +5,7 @@ const socketIo = require("socket.io");
 const path = require("path");
 
 // Import configuration
-const { pool } = require("./config/database");
 const corsConfig = require("./config/cors");
-const boards = require("./config/boards");
 
 // Import middleware
 const logger = require("./middleware/logger");
@@ -15,67 +13,12 @@ const errorHandler = require("./middleware/errorHandler");
 
 // Import route handlers
 const boardRoutes = require("./routes/boards");
-const threadRoutes = require("./routes/threads");
-const postRoutes = require("./routes/posts");
 
 // Import socket handler
 const setupSocketHandlers = require("./utils/socketHandler");
 
-// Initialize database
-const initDatabase = async () => {
-  console.log("Initializing database...");
-  try {
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS boards (
-        id TEXT PRIMARY KEY,
-        name TEXT NOT NULL,
-        description TEXT NOT NULL
-      )
-    `);
-
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS threads (
-        id SERIAL PRIMARY KEY,
-        board_id TEXT NOT NULL REFERENCES boards(id) ON DELETE CASCADE,
-        topic TEXT NOT NULL,
-        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-        CONSTRAINT unique_thread_per_board UNIQUE (id, board_id)
-      )
-    `);
-
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS posts (
-        id SERIAL PRIMARY KEY,
-        thread_id INTEGER NOT NULL,
-        board_id TEXT NOT NULL,
-        content TEXT NOT NULL,
-        image_url TEXT,
-        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (thread_id, board_id) REFERENCES threads(id, board_id) ON DELETE CASCADE
-      )
-    `);
-
-    // Insert all boards using a loop
-    for (const board of boards) {
-      await pool.query(
-        `
-        INSERT INTO boards (id, name, description)
-        VALUES ($1, $2, $3)
-        ON CONFLICT (id) DO NOTHING
-      `,
-        [board.id, board.name, board.description]
-      );
-    }
-
-    console.log(
-      `Database initialized successfully with ${boards.length} boards.`
-    );
-  } catch (err) {
-    console.error("Error initializing database:", err);
-    throw err;
-  }
-};
+// Import database initialization
+const { initDatabase } = require("./utils/dbInit");
 
 // Initialize database on startup
 initDatabase().catch(console.error);
@@ -91,9 +34,6 @@ app.use(express.json());
 
 // Add request logger middleware
 app.use(logger);
-
-// Serve uploaded files
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // Register routes
 app.use("/api/boards", boardRoutes);
