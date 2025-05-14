@@ -13,7 +13,7 @@ const boardModel = {
     console.log("Model: Getting all boards");
     try {
       const result = await pool.query(
-        "SELECT id, name, description FROM boards"
+        "SELECT id, name, description, nsfw FROM boards"
       );
       console.log(`Model: Found ${result.rows.length} boards`);
       return result.rows;
@@ -32,7 +32,7 @@ const boardModel = {
     console.log(`Model: Getting board with ID: ${boardId}`);
     try {
       const result = await pool.query(
-        "SELECT id, name, description FROM boards WHERE id = $1",
+        "SELECT id, name, description, nsfw FROM boards WHERE id = $1",
         [boardId]
       );
 
@@ -58,10 +58,15 @@ const boardModel = {
     console.log(`Model: Creating new board: ${boardData.id}`);
     try {
       const result = await pool.query(
-        `INSERT INTO boards (id, name, description)
-         VALUES ($1, $2, $3)
-         RETURNING id, name, description`,
-        [boardData.id, boardData.name, boardData.description]
+        `INSERT INTO boards (id, name, description, nsfw)
+         VALUES ($1, $2, $3, $4)
+         RETURNING id, name, description, nsfw`,
+        [
+          boardData.id,
+          boardData.name,
+          boardData.description,
+          boardData.nsfw || false,
+        ]
       );
 
       console.log(`Model: Created board: ${result.rows[0].id}`);

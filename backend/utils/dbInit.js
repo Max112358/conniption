@@ -34,9 +34,22 @@ const createTables = async () => {
       CREATE TABLE IF NOT EXISTS boards (
         id TEXT PRIMARY KEY,
         name TEXT NOT NULL,
-        description TEXT NOT NULL
+        description TEXT NOT NULL,
+        nsfw BOOLEAN DEFAULT FALSE
       )
     `);
+
+    // Add nsfw column if it doesn't exist
+    try {
+      await pool.query(`
+        ALTER TABLE boards
+        ADD COLUMN IF NOT EXISTS nsfw BOOLEAN DEFAULT FALSE
+      `);
+      console.log("Added NSFW column to boards table");
+    } catch (err) {
+      console.error("Error adding NSFW column:", err);
+      // Continue with initialization even if this fails
+    }
 
     // Create threads table
     await pool.query(`
@@ -79,11 +92,12 @@ const seedBoards = async () => {
     for (const board of boards) {
       await pool.query(
         `
-        INSERT INTO boards (id, name, description)
-        VALUES ($1, $2, $3)
-        ON CONFLICT (id) DO NOTHING
+        INSERT INTO boards (id, name, description, nsfw)
+        VALUES ($1, $2, $3, $4)
+        ON CONFLICT (id) DO UPDATE 
+        SET name = $2, description = $3, nsfw = $4
       `,
-        [board.id, board.name, board.description]
+        [board.id, board.name, board.description, board.nsfw || false]
       );
     }
 

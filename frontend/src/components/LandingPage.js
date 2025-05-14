@@ -12,6 +12,8 @@ export default function LandingPage() {
   const [boards, setBoards] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showNsfw, setShowNsfw] = useState(false);
+  const [allBoards, setAllBoards] = useState([]);
 
   useEffect(() => {
     // Fetch boards from API
@@ -22,7 +24,9 @@ export default function LandingPage() {
           throw new Error("Failed to fetch boards");
         }
         const data = await response.json();
-        setBoards(data.boards);
+        setAllBoards(data.boards);
+        // Initially filter out NSFW boards
+        setBoards(data.boards.filter((board) => !board.nsfw));
         setLoading(false);
       } catch (err) {
         console.error("Error fetching boards:", err);
@@ -33,6 +37,18 @@ export default function LandingPage() {
 
     fetchBoards();
   }, []);
+
+  // Toggle NSFW content visibility
+  const toggleNsfw = () => {
+    setShowNsfw(!showNsfw);
+    if (!showNsfw) {
+      // Show all boards including NSFW
+      setBoards(allBoards);
+    } else {
+      // Hide NSFW boards
+      setBoards(allBoards.filter((board) => !board.nsfw));
+    }
+  };
 
   if (loading) {
     return (
@@ -96,7 +112,24 @@ export default function LandingPage() {
           </div>
 
           <div className="mb-4">
-            <h2 className="h4 mb-3 border-bottom pb-2">Available Boards</h2>
+            <div className="d-flex justify-content-between align-items-center mb-3">
+              <h2 className="h4 mb-0 border-bottom pb-2">Available Boards</h2>
+              <div className="form-check form-switch">
+                <input
+                  className="form-check-input"
+                  type="checkbox"
+                  id="nsfwToggle"
+                  checked={showNsfw}
+                  onChange={toggleNsfw}
+                />
+                <label
+                  className="form-check-label text-danger"
+                  htmlFor="nsfwToggle"
+                >
+                  Show NSFW
+                </label>
+              </div>
+            </div>
 
             <div className="list-group">
               {boards.map((board) => (
@@ -109,7 +142,7 @@ export default function LandingPage() {
                     <strong>/{board.id}/</strong>
                     <span
                       className={`badge rounded-pill bg-${
-                        board.id === "tech" ? "primary" : "danger"
+                        board.nsfw ? "danger" : "primary"
                       }`}
                     >
                       {board.name}

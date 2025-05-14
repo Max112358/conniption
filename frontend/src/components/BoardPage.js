@@ -129,6 +129,7 @@ export default function BoardPage() {
             <h1 className="h3 mb-0 text-light">
               <span className="badge bg-secondary me-2">/{board.id}/</span>
               {board.name}
+              {board.nsfw && <span className="badge bg-danger ms-2">NSFW</span>}
             </h1>
           </div>
           <div className="card-body">
@@ -140,7 +141,6 @@ export default function BoardPage() {
           <div className="card-header border-secondary d-flex justify-content-between align-items-center">
             <h2 className="h5 mb-0 text-light">Threads</h2>
 
-            {/* Using Link without debug code */}
             <Link
               to={`/board/${boardId}/create-thread`}
               className="btn btn-sm btn-primary"
