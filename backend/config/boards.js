@@ -104,6 +104,12 @@ const boards = [
     description: "Weapons and Military Discussion",
     nsfw: false,
   },
+  {
+    id: "cars",
+    name: "Cars",
+    description: "Cars and Transportation Discussion",
+    nsfw: false,
+  },
   // Add more boards as needed
 ];
 
