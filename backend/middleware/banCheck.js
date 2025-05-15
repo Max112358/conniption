@@ -1,3 +1,6 @@
+// backend/middleware/banCheck.js
+const banModel = require("../models/ban");
+
 /**
  * Middleware to check if user's IP is banned
  */
@@ -52,3 +55,5 @@ const checkBannedIP = async (req, res, next) => {
     next();
   }
 };
+
+module.exports = checkBannedIP;

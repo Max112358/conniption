@@ -15,9 +15,6 @@ router.use("/:boardId/appeal", appealRoutes);
 // Apply ban check middleware to write operations
 router.use("/:boardId/threads", checkBannedIP);
 
-// Use thread routes
-router.use("/:boardId/threads", threadRoutes);
-
 /**
  * @route   GET /api/boards
  * @desc    Get all boards

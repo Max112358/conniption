@@ -1,4 +1,4 @@
-// backend/server.js updated with admin routes and session handling
+// backend/server.js
 const express = require("express");
 const http = require("http");
 const socketIo = require("socket.io");
