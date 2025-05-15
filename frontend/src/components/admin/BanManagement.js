@@ -167,14 +167,19 @@ export default function BanManagement() {
     }
   };
 
-  // Check if user has permission to create global bans (admin only)
-  const canCreateGlobalBans = adminUser && adminUser.role === "admin";
-
   return (
     <div className="container-fluid">
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h1 className="h3 mb-0">Ban Management</h1>
-        <Link to="/admin/bans/create" className="btn btn-danger">
+        <Link
+          to="/admin/bans/create"
+          className="btn btn-danger"
+          title={
+            adminUser.role === "admin"
+              ? "Create global or board-specific bans"
+              : "Create board-specific bans"
+          }
+        >
           Create New Ban
         </Link>
       </div>
@@ -268,7 +273,11 @@ export default function BanManagement() {
                     <tr key={ban.id}>
                       <td>{ban.id}</td>
                       <td>{ban.ip_address}</td>
-                      <td>{ban.board_id || "Global"}</td>
+                      <td>
+                        {ban.board_id || (
+                          <span className="badge bg-danger">Global</span>
+                        )}
+                      </td>
                       <td
                         className="text-truncate"
                         style={{ maxWidth: "200px" }}
