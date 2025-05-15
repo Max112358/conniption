@@ -184,6 +184,7 @@ const moderationModel = {
    * Delete a post and record the moderation action
    * @param {Object} data - Data for deletion
    * @returns {Promise<boolean>} True if deleted successfully
+   * @returns {Promise<{ipAddress: string}>} IP address of the deleted post
    */
   deletePost: async (data) => {
     console.log(
@@ -194,9 +195,10 @@ const moderationModel = {
     try {
       await client.query("BEGIN");
 
-      // Get post info to check if it exists and get image URL
+      // Get post info to check if it exists and get image URL and IP address
       const postResult = await client.query(
-        `SELECT image_url FROM posts WHERE id = $1 AND thread_id = $2 AND board_id = $3`,
+        `SELECT image_url, ip_address, content FROM posts 
+       WHERE id = $1 AND thread_id = $2 AND board_id = $3`,
         [data.post_id, data.thread_id, data.board_id]
       );
 
@@ -207,6 +209,8 @@ const moderationModel = {
       }
 
       const imageUrl = postResult.rows[0].image_url;
+      const ipAddress = postResult.rows[0].ip_address || "Unknown";
+      const postContent = postResult.rows[0].content;
 
       // Delete post
       await client.query(
@@ -217,15 +221,15 @@ const moderationModel = {
       // Log moderation action
       await client.query(
         `INSERT INTO moderation_actions 
-         (admin_user_id, action_type, board_id, thread_id, post_id, reason, ip_address)
-         VALUES ($1, 'delete_post', $2, $3, $4, $5, $6)`,
+       (admin_user_id, action_type, board_id, thread_id, post_id, reason, ip_address)
+       VALUES ($1, 'delete_post', $2, $3, $4, $5, $6)`,
         [
           data.admin_user_id,
           data.board_id,
           data.thread_id,
           data.post_id,
           data.reason,
-          data.ip_address,
+          ipAddress,
         ]
       );
 
@@ -241,7 +245,14 @@ const moderationModel = {
 
       await client.query("COMMIT");
       console.log(`Model: Successfully deleted post ${data.post_id}`);
-      return true;
+
+      // Return true and the IP address for potential banning
+      return {
+        success: true,
+        ipAddress: ipAddress,
+        postContent: postContent,
+        imageUrl: imageUrl,
+      };
     } catch (error) {
       await client.query("ROLLBACK");
       console.error(`Model Error - deletePost:`, error);

@@ -748,7 +748,7 @@ router.delete(
   adminAuth.requireAuth,
   async (req, res, next) => {
     const { postId } = req.params;
-    const { boardId, threadId, reason, ip_address } = req.body;
+    const { boardId, threadId, reason } = req.body;
 
     console.log(
       `Route: DELETE /api/admin/posts/${postId} - by ${req.session.adminUser.username}`
@@ -776,20 +776,24 @@ router.delete(
         }
       }
 
-      const deleted = await moderationModel.deletePost({
+      const result = await moderationModel.deletePost({
         post_id: postId,
         thread_id: threadId,
         board_id: boardId,
         reason,
-        ip_address: ip_address || "Unknown",
         admin_user_id: req.session.adminUser.id,
       });
 
-      if (!deleted) {
+      if (!result.success) {
         return res.status(404).json({ error: "Post not found" });
       }
 
-      res.json({ message: "Post deleted successfully" });
+      res.json({
+        message: "Post deleted successfully",
+        ipAddress: result.ipAddress,
+        postContent: result.postContent,
+        imageUrl: result.imageUrl,
+      });
     } catch (error) {
       console.error(`Route Error - DELETE /api/admin/posts/${postId}:`, error);
       next(error);
