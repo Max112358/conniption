@@ -1,8 +1,11 @@
-// backend/server.js
+// backend/server.js updated with admin routes and session handling
 const express = require("express");
 const http = require("http");
 const socketIo = require("socket.io");
 const path = require("path");
+const session = require("express-session");
+const PgSession = require("connect-pg-simple")(session);
+const { pool } = require("./config/database");
 
 // Import configuration
 const corsConfig = require("./config/cors");
@@ -10,9 +13,11 @@ const corsConfig = require("./config/cors");
 // Import middleware
 const logger = require("./middleware/logger");
 const errorHandler = require("./middleware/errorHandler");
+const { checkBanned, enforceBan } = require("./middleware/adminAuth");
 
 // Import route handlers
 const boardRoutes = require("./routes/boards");
+const adminRoutes = require("./routes/admin");
 
 // Import socket handler
 const setupSocketHandlers = require("./utils/socketHandler");
@@ -32,10 +37,37 @@ app.use(corsConfig);
 // Add JSON body parser
 app.use(express.json());
 
+// Set up session middleware
+app.use(
+  session({
+    store: new PgSession({
+      pool,
+      tableName: "admin_sessions", // Table name for sessions
+      createTableIfMissing: true, // Create table if it doesn't exist
+    }),
+    secret:
+      process.env.SESSION_SECRET || "development_secret_change_in_production",
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      secure: process.env.NODE_ENV === "production", // secure in production
+      httpOnly: true,
+      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    },
+  })
+);
+
 // Add request logger middleware
 app.use(logger);
 
+// Check if user is banned - this just adds ban info to req object
+app.use(checkBanned);
+
 // Register routes
+app.use("/api/admin", adminRoutes);
+
+// Apply ban enforcement to content routes only (not admin routes)
+app.use("/api/boards", enforceBan);
 app.use("/api/boards", boardRoutes);
 // The threads and posts routes are configured in the boards.js route file
 

@@ -1,8 +1,10 @@
+// frontend/src/components/BoardPage.js (updated with ban handling)
 //components/BoardPage.js
 
 import { useState, useEffect, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
 import { io } from "socket.io-client";
+import BanNotification from "./BanNotification";
 
 // API constants
 const API_BASE_URL = "https://conniption.onrender.com";
@@ -14,6 +16,8 @@ export default function BoardPage() {
   const [threads, setThreads] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [banned, setBanned] = useState(false);
+  const [banInfo, setBanInfo] = useState(null);
 
   // Wrap fetchThreads in useCallback to avoid dependency issues
   const fetchThreads = useCallback(async () => {
@@ -21,9 +25,21 @@ export default function BoardPage() {
       const threadsResponse = await fetch(
         `${API_BASE_URL}/api/boards/${boardId}/threads`
       );
+
+      // Check if response indicates the user is banned
+      if (threadsResponse.status === 403) {
+        const errorData = await threadsResponse.json();
+        if (errorData.error === "Banned") {
+          setBanned(true);
+          setBanInfo(errorData.ban);
+          return false;
+        }
+      }
+
       if (!threadsResponse.ok) {
         throw new Error("Failed to load threads");
       }
+
       const threadsData = await threadsResponse.json();
       setThreads(threadsData.threads || []);
       return true;
@@ -55,9 +71,11 @@ export default function BoardPage() {
         const boardResponse = await fetch(
           `${API_BASE_URL}/api/boards/${boardId}`
         );
+
         if (!boardResponse.ok) {
           throw new Error("Board not found");
         }
+
         const boardData = await boardResponse.json();
         setBoard(boardData.board);
 
@@ -82,6 +100,11 @@ export default function BoardPage() {
       socket.disconnect();
     };
   }, [boardId, fetchThreads]); // Added fetchThreads to dependencies
+
+  // If user is banned, show the ban notification
+  if (banned && banInfo) {
+    return <BanNotification ban={banInfo} boardId={boardId} />;
+  }
 
   if (loading) {
     return (

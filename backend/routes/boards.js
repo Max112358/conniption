@@ -3,6 +3,17 @@ const express = require("express");
 const router = express.Router();
 const boardModel = require("../models/board");
 const threadRoutes = require("./threads");
+const appealRoutes = require("./appeals");
+const checkBannedIP = require("../middleware/banCheck");
+
+// Use thread routes
+router.use("/:boardId/threads", threadRoutes);
+
+// Use appeal routes
+router.use("/:boardId/appeal", appealRoutes);
+
+// Apply ban check middleware to write operations
+router.use("/:boardId/threads", checkBannedIP);
 
 // Use thread routes
 router.use("/:boardId/threads", threadRoutes);

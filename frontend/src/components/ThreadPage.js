@@ -1,8 +1,10 @@
-// components/ThreadPage.js
+// components/ThreadPage.js (Updated with mod options)
 
 import { useState, useEffect, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
 import { io } from "socket.io-client";
+import PostModMenu from "./admin/PostModMenu";
+import BanNotification from "./BanNotification";
 
 // API constants
 const API_BASE_URL = "https://conniption.onrender.com";
@@ -19,6 +21,22 @@ export default function ThreadPage() {
   const [imagePreview, setImagePreview] = useState(null);
   const [postLoading, setPostLoading] = useState(false);
   const [postError, setPostError] = useState(null);
+  const [adminUser, setAdminUser] = useState(null);
+  const [banned, setBanned] = useState(false);
+  const [banInfo, setBanInfo] = useState(null);
+
+  // Check for admin user
+  useEffect(() => {
+    const storedUser = localStorage.getItem("adminUser");
+    if (storedUser) {
+      try {
+        const userData = JSON.parse(storedUser);
+        setAdminUser(userData);
+      } catch (err) {
+        console.error("Error parsing admin user data:", err);
+      }
+    }
+  }, []);
 
   // Use useCallback to memoize fetchPosts function to avoid dependency issues
   const fetchPosts = useCallback(async () => {
@@ -26,9 +44,21 @@ export default function ThreadPage() {
       const postsResponse = await fetch(
         `${API_BASE_URL}/api/boards/${boardId}/threads/${threadId}/posts`
       );
+
+      // Check if response indicates the user is banned
+      if (postsResponse.status === 403) {
+        const errorData = await postsResponse.json();
+        if (errorData.error === "Banned") {
+          setBanned(true);
+          setBanInfo(errorData.ban);
+          return false;
+        }
+      }
+
       if (!postsResponse.ok) {
         throw new Error("Failed to load posts");
       }
+
       const postsData = await postsResponse.json();
       setPosts(postsData.posts || []);
       return true;
@@ -60,9 +90,11 @@ export default function ThreadPage() {
         const threadResponse = await fetch(
           `${API_BASE_URL}/api/boards/${boardId}/threads/${threadId}`
         );
+
         if (!threadResponse.ok) {
           throw new Error("Thread not found");
         }
+
         const threadData = await threadResponse.json();
         setThread(threadData.thread);
 
@@ -154,6 +186,16 @@ export default function ThreadPage() {
     }
   };
 
+  // Check if user is admin or moderator
+  const isAdmin = adminUser && adminUser.role === "admin";
+  const isModerator =
+    adminUser && (adminUser.role === "moderator" || adminUser.role === "admin");
+
+  // If user is banned, show the ban notification
+  if (banned && banInfo) {
+    return <BanNotification ban={banInfo} boardId={boardId} />;
+  }
+
   if (loading) {
     return (
       <div className="container-fluid min-vh-100 d-flex align-items-center justify-content-center bg-dark text-light">
@@ -203,16 +245,44 @@ export default function ThreadPage() {
 
         {/* Thread Header */}
         <div className="card bg-dark border-secondary shadow mb-4">
-          <div className="card-header border-secondary">
+          <div className="card-header border-secondary d-flex justify-content-between align-items-center">
             <h1 className="h3 mb-0">
               <span className="badge bg-secondary me-2">/{boardId}/</span>
               {thread.topic}
             </h1>
+
+            {/* Thread mod options for admins/mods */}
+            {isModerator && (
+              <button
+                className="btn btn-sm btn-outline-danger"
+                onClick={() => console.log("Delete thread")}
+              >
+                <i className="bi bi-trash"></i> Delete Thread
+              </button>
+            )}
           </div>
           <div className="card-body">
-            <p className="text-muted mb-0">
-              Thread created: {new Date(thread.created_at).toLocaleString()}
-            </p>
+            <div className="d-flex justify-content-between align-items-center">
+              <p className="text-muted mb-0">
+                Thread created: {new Date(thread.created_at).toLocaleString()}
+              </p>
+
+              {/* Admin badge */}
+              {adminUser && (
+                <span
+                  className={`badge bg-${
+                    adminUser.role === "admin"
+                      ? "danger"
+                      : adminUser.role === "moderator"
+                      ? "warning"
+                      : "info"
+                  }`}
+                >
+                  {adminUser.role.charAt(0).toUpperCase() +
+                    adminUser.role.slice(1)}
+                </span>
+              )}
+            </div>
           </div>
         </div>
 
@@ -235,9 +305,22 @@ export default function ThreadPage() {
                           Post #{index + 1}
                         </span>
                       </div>
-                      <small className="text-secondary">
-                        {new Date(post.created_at).toLocaleString()}
-                      </small>
+                      <div className="d-flex align-items-center gap-2">
+                        <small className="text-secondary">
+                          {new Date(post.created_at).toLocaleString()}
+                        </small>
+
+                        {/* Moderation menu */}
+                        {isModerator && (
+                          <PostModMenu
+                            post={post}
+                            thread={thread}
+                            board={{ id: boardId }}
+                            isAdmin={isAdmin}
+                            isMod={isModerator}
+                          />
+                        )}
+                      </div>
                     </div>
                     <div className="card-body">
                       {post.image_url && (

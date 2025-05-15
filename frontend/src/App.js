@@ -1,8 +1,18 @@
+// Updated App.js with admin routes
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import LandingPage from "./components/LandingPage";
 import BoardPage from "./components/BoardPage";
 import CreateThreadPage from "./components/CreateThreadPage";
 import ThreadPage from "./components/ThreadPage";
+
+// Admin components
+import AdminLogin from "./components/admin/AdminLogin";
+import AdminLayout from "./components/admin/AdminLayout";
+import AdminDashboard from "./components/admin/AdminDashboard";
+import BanManagement from "./components/admin/BanManagement";
+import CreateBan from "./components/admin/CreateBan";
+import AdminUserManagement from "./components/admin/AdminUserManagement";
+
 import "./colors.css";
 
 // Main app with routing
@@ -13,10 +23,12 @@ export default function App() {
   console.log("/board/:boardId -> BoardPage");
   console.log("/board/:boardId/create-thread -> CreateThreadPage");
   console.log("/board/:boardId/thread/:threadId -> ThreadPage");
+  console.log("/admin/* -> Admin routes");
 
   return (
     <Router>
       <Routes>
+        {/* Public routes */}
         <Route path="/" element={<LandingPage />} />
         <Route path="/board/:boardId" element={<BoardPage />} />
         <Route
@@ -27,6 +39,19 @@ export default function App() {
           path="/board/:boardId/thread/:threadId"
           element={<ThreadPage />}
         />
+
+        {/* Admin routes */}
+        <Route path="/admin/login" element={<AdminLogin />} />
+        <Route path="/admin" element={<AdminLayout />}>
+          <Route path="dashboard" element={<AdminDashboard />} />
+          <Route path="bans" element={<BanManagement />} />
+          <Route path="bans/create" element={<CreateBan />} />
+          <Route path="users" element={<AdminUserManagement />} />
+          {/* Add more admin routes as needed */}
+
+          {/* Default redirect for /admin to dashboard */}
+          <Route path="" element={<AdminDashboard />} />
+        </Route>
 
         {/* Add a fallback route to catch invalid URLs */}
         <Route
