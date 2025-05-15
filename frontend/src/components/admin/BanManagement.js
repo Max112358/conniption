@@ -97,7 +97,7 @@ export default function BanManagement() {
         },
         body: JSON.stringify({
           is_active: false,
-          reason: "Ban removed by admin",
+          reason: `Ban removed by ${adminUser.username} (${adminUser.role})`,
         }),
         credentials: "include",
       });
@@ -114,12 +114,12 @@ export default function BanManagement() {
     }
   };
 
-  // Handle responding to an appeal
+  // Handle responding to an appeal - properly using adminUser for logging
   const handleAppealResponse = async (banId, approved) => {
     const status = approved ? "approved" : "denied";
     const reason = approved
-      ? "Appeal approved by admin"
-      : "Appeal denied by admin";
+      ? `Appeal approved by ${adminUser.username}`
+      : `Appeal denied by ${adminUser.username}`;
 
     if (!window.confirm(`Are you sure you want to ${status} this appeal?`)) {
       return;
@@ -166,6 +166,9 @@ export default function BanManagement() {
       setError(`Failed to ${status} appeal. Please try again.`);
     }
   };
+
+  // Check if user has permission to create global bans (admin only)
+  const canCreateGlobalBans = adminUser && adminUser.role === "admin";
 
   return (
     <div className="container-fluid">
@@ -222,7 +225,11 @@ export default function BanManagement() {
                 onChange={(e) => setFilter(e.target.value)}
               >
                 <option value="active">Active Bans</option>
-                <option value="pending">Pending Appeals</option>
+                {/* Show pending appeals option only for moderators and admins */}
+                {(adminUser.role === "admin" ||
+                  adminUser.role === "moderator") && (
+                  <option value="pending">Pending Appeals</option>
+                )}
               </select>
             </div>
           </div>
@@ -285,28 +292,39 @@ export default function BanManagement() {
                           </Link>
 
                           {ban.appeal_status === "pending" ? (
-                            <>
-                              <button
-                                className="btn btn-outline-success"
-                                onClick={() =>
-                                  handleAppealResponse(ban.id, true)
-                                }
-                              >
-                                Approve
-                              </button>
-                              <button
-                                className="btn btn-outline-danger"
-                                onClick={() =>
-                                  handleAppealResponse(ban.id, false)
-                                }
-                              >
-                                Deny
-                              </button>
-                            </>
+                            /* Only show appeal handling for moderators and admins */
+                            (adminUser.role === "admin" ||
+                              adminUser.role === "moderator") && (
+                              <>
+                                <button
+                                  className="btn btn-outline-success"
+                                  onClick={() =>
+                                    handleAppealResponse(ban.id, true)
+                                  }
+                                >
+                                  Approve
+                                </button>
+                                <button
+                                  className="btn btn-outline-danger"
+                                  onClick={() =>
+                                    handleAppealResponse(ban.id, false)
+                                  }
+                                >
+                                  Deny
+                                </button>
+                              </>
+                            )
                           ) : (
                             <button
                               className="btn btn-outline-danger"
                               onClick={() => handleRemoveBan(ban.id)}
+                              /* Only allow removal by admins or moderators */
+                              disabled={
+                                !(
+                                  adminUser.role === "admin" ||
+                                  adminUser.role === "moderator"
+                                )
+                              }
                             >
                               Remove
                             </button>
