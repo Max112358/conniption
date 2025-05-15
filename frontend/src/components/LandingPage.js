@@ -1,19 +1,18 @@
-//components/LandingPage.js
+// components/LandingPage.js
 
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 
-import logoSvg from "../assets/conniption_logo6.svg"; // Path may need adjustment based on your folder structure
+import logoSvg from "../assets/conniption_logo6.svg";
 
 // API constants
-const API_BASE_URL = "https://conniption.onrender.com"; // Update this with your backend URL
+const API_BASE_URL = "https://conniption.onrender.com";
 
 export default function LandingPage() {
-  const [boards, setBoards] = useState([]);
+  const [sfw_boards, setSfwBoards] = useState([]);
+  const [nsfw_boards, setNsfwBoards] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [showNsfw, setShowNsfw] = useState(false);
-  const [allBoards, setAllBoards] = useState([]);
 
   useEffect(() => {
     // Fetch boards from API
@@ -24,9 +23,18 @@ export default function LandingPage() {
           throw new Error("Failed to fetch boards");
         }
         const data = await response.json();
-        setAllBoards(data.boards);
-        // Initially filter out NSFW boards
-        setBoards(data.boards.filter((board) => !board.nsfw));
+
+        // Sort boards alphabetically by ID
+        const sortedBoards = [...data.boards].sort((a, b) =>
+          a.id.localeCompare(b.id)
+        );
+
+        // Split boards into SFW and NSFW
+        const sfwBoards = sortedBoards.filter((board) => !board.nsfw);
+        const nsfwBoards = sortedBoards.filter((board) => board.nsfw);
+
+        setSfwBoards(sfwBoards);
+        setNsfwBoards(nsfwBoards);
         setLoading(false);
       } catch (err) {
         console.error("Error fetching boards:", err);
@@ -38,24 +46,11 @@ export default function LandingPage() {
     fetchBoards();
   }, []);
 
-  // Toggle NSFW content visibility
-  const toggleNsfw = () => {
-    setShowNsfw(!showNsfw);
-    if (!showNsfw) {
-      // Show all boards including NSFW
-      setBoards(allBoards);
-    } else {
-      // Hide NSFW boards
-      setBoards(allBoards.filter((board) => !board.nsfw));
-    }
-  };
-
   if (loading) {
     return (
       <div className="container-fluid min-vh-100 d-flex align-items-center justify-content-center bg-dark text-light">
         <div className="card bg-dark text-light border-secondary p-4 shadow">
           <div className="card-body text-center">
-            {/* Added logo to loading state */}
             <div className="d-flex justify-content-center mb-4">
               <img
                 src={logoSvg}
@@ -78,7 +73,6 @@ export default function LandingPage() {
       <div className="container-fluid min-vh-100 d-flex align-items-center justify-content-center bg-dark text-light">
         <div className="card bg-dark text-light border-secondary p-4 shadow">
           <div className="card-body text-center">
-            {/* Only show the logo */}
             <div className="d-flex justify-content-center mb-4">
               <img
                 src={logoSvg}
@@ -95,68 +89,89 @@ export default function LandingPage() {
     );
   }
 
-  return (
-    <div className="container-fluid min-vh-100 d-flex align-items-center justify-content-center bg-dark text-light">
-      <div
-        className="card bg-dark text-light border-secondary p-4 shadow"
-        style={{ maxWidth: "500px" }}
+  // Function to render a board item
+  const renderBoardItem = (board) => (
+    <Link
+      key={board.id}
+      to={`/board/${board.id}`}
+      className="list-group-item list-group-item-action bg-dark text-light border-secondary p-2"
+    >
+      <div className="d-flex justify-content-between align-items-center">
+        <strong className="small">/{board.id}/</strong>
+        <span
+          className={`badge rounded-pill bg-${
+            board.nsfw ? "danger" : "primary"
+          } small`}
+        >
+          {board.name}
+        </span>
+      </div>
+      <small
+        className="text-muted d-block text-truncate"
+        style={{ fontSize: "0.75rem" }}
       >
-        <div className="card-body">
-          {/* Only show the logo */}
-          <div className="d-flex justify-content-center mb-4">
-            <img
-              src={logoSvg}
-              alt="Conniption Logo"
-              style={{ maxHeight: "80px" }}
-            />
-          </div>
+        {board.description}
+      </small>
+    </Link>
+  );
 
-          <div className="mb-4">
-            <div className="d-flex justify-content-between align-items-center mb-3">
-              <h2 className="h4 mb-0 border-bottom pb-2">Available Boards</h2>
-              <div className="form-check form-switch">
-                <input
-                  className="form-check-input"
-                  type="checkbox"
-                  id="nsfwToggle"
-                  checked={showNsfw}
-                  onChange={toggleNsfw}
-                />
-                <label
-                  className="form-check-label text-danger"
-                  htmlFor="nsfwToggle"
-                >
-                  Show NSFW
-                </label>
+  return (
+    <div className="container-fluid min-vh-100 bg-dark text-light py-4">
+      <div className="container">
+        <div className="text-center mb-4">
+          <img
+            src={logoSvg}
+            alt="Conniption Logo"
+            style={{ maxHeight: "80px" }}
+            className="mb-3"
+          />
+          <h1 className="h4 mb-3">Conniption Boards</h1>
+        </div>
+
+        <div className="row">
+          {/* SFW Boards Section */}
+          <div className="col-md-8 mb-4">
+            <div className="card bg-dark text-light border-secondary shadow h-100">
+              <div className="card-header border-secondary">
+                <h2 className="h5 mb-0">Boards</h2>
+              </div>
+              <div className="card-body">
+                <div className="row">
+                  {/* Create multiple columns for SFW boards */}
+                  {[0, 1, 2].map((colIndex) => {
+                    const colBoards = sfw_boards.filter(
+                      (_, index) => index % 3 === colIndex
+                    );
+                    return (
+                      <div key={colIndex} className="col-md-4 mb-3">
+                        <div className="list-group">
+                          {colBoards.map((board) => renderBoardItem(board))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
+          </div>
 
-            <div className="list-group">
-              {boards.map((board) => (
-                <Link
-                  key={board.id}
-                  to={`/board/${board.id}`}
-                  className={`list-group-item list-group-item-action bg-dark text-light border-secondary`}
-                >
-                  <div className="d-flex justify-content-between align-items-center">
-                    <strong>/{board.id}/</strong>
-                    <span
-                      className={`badge rounded-pill bg-${
-                        board.nsfw ? "danger" : "primary"
-                      }`}
-                    >
-                      {board.name}
-                    </span>
-                  </div>
-                  <small className="text-muted">{board.description}</small>
-                </Link>
-              ))}
+          {/* NSFW Boards Section */}
+          <div className="col-md-4 mb-4">
+            <div className="card bg-dark text-light border-secondary shadow h-100">
+              <div className="card-header border-secondary bg-danger bg-opacity-25">
+                <h2 className="h5 mb-0">NSFW Boards</h2>
+              </div>
+              <div className="card-body">
+                <div className="list-group">
+                  {nsfw_boards.map((board) => renderBoardItem(board))}
+                </div>
+              </div>
             </div>
           </div>
+        </div>
 
-          <div className="text-muted text-center small mt-3">
-            Select a board to view threads and posts
-          </div>
+        <div className="text-center text-muted small mt-3 pb-3">
+          Select a board to view threads and posts
         </div>
       </div>
     </div>
