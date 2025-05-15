@@ -122,10 +122,9 @@ export default function LandingPage() {
           <img
             src={logoSvg}
             alt="Conniption Logo"
-            style={{ maxHeight: "80px" }}
-            className="mb-3"
+            style={{ maxHeight: "80px", maxWidth: "100%" }}
+            className="img-fluid mb-3"
           />
-          <h1 className="h4 mb-3">Conniption Boards</h1>
         </div>
 
         <div className="row">
