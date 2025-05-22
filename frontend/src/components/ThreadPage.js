@@ -39,9 +39,6 @@ const ExpandableImage = ({ src, alt, postId }) => {
         onClick={handleImageClick}
         title={isExpanded ? "Click to collapse" : "Click to expand"}
       />
-      {!isExpanded && (
-        <div className="small text-muted mt-1">Click to expand</div>
-      )}
     </div>
   );
 };
