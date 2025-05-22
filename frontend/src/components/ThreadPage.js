@@ -1,4 +1,4 @@
-// components/ThreadPage.js (Updated with mod options)
+// frontend/src/components/ThreadPage.js
 
 import { useState, useEffect, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
@@ -9,6 +9,58 @@ import BanNotification from "./BanNotification";
 // API constants
 const API_BASE_URL = "https://conniption.onrender.com";
 const SOCKET_URL = "https://conniption.onrender.com";
+
+// Component for expandable images
+const ExpandableImage = ({ src, alt, postId }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  const handleImageClick = (e) => {
+    e.preventDefault();
+    setIsExpanded(!isExpanded);
+  };
+
+  const handleRightClick = (e) => {
+    // For right-click save, we want to save the full-size image
+    // We'll create a temporary link to the full-size image
+    e.preventDefault();
+
+    const link = document.createElement("a");
+    link.href = src;
+    link.download = `image-post-${postId}.jpg`;
+    link.target = "_blank";
+
+    // Trigger download
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  if (!src) return null;
+
+  return (
+    <div className="mb-3">
+      <img
+        src={src}
+        alt={alt}
+        className={`img-fluid ${isExpanded ? "" : "cursor-pointer"}`}
+        style={{
+          maxHeight: isExpanded ? "none" : "250px",
+          maxWidth: isExpanded ? "100%" : "250px",
+          objectFit: isExpanded ? "contain" : "cover",
+          cursor: "pointer",
+          borderRadius: "4px",
+          transition: "all 0.3s ease",
+        }}
+        onClick={handleImageClick}
+        onContextMenu={handleRightClick}
+        title={isExpanded ? "Click to collapse" : "Click to expand"}
+      />
+      {!isExpanded && (
+        <div className="small text-muted mt-1">Click to expand</div>
+      )}
+    </div>
+  );
+};
 
 export default function ThreadPage() {
   const { boardId, threadId } = useParams();
@@ -118,7 +170,7 @@ export default function ThreadPage() {
       socket.emit("leave_thread", { boardId, threadId });
       socket.disconnect();
     };
-  }, [boardId, threadId, fetchPosts]); // Added fetchPosts to dependencies
+  }, [boardId, threadId, fetchPosts]);
 
   // Handle image selection
   const handleImageChange = (e) => {
@@ -323,15 +375,13 @@ export default function ThreadPage() {
                       </div>
                     </div>
                     <div className="card-body">
+                      {/* Use the new ExpandableImage component */}
                       {post.image_url && (
-                        <div className="mb-3">
-                          <img
-                            src={post.image_url}
-                            alt="Post content"
-                            className="img-fluid mb-2"
-                            style={{ maxHeight: "300px" }}
-                          />
-                        </div>
+                        <ExpandableImage
+                          src={post.image_url}
+                          alt="Post content"
+                          postId={post.id}
+                        />
                       )}
                       <p
                         className="text-light mb-0"
