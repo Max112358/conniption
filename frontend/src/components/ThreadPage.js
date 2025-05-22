@@ -19,22 +19,6 @@ const ExpandableImage = ({ src, alt, postId }) => {
     setIsExpanded(!isExpanded);
   };
 
-  const handleRightClick = (e) => {
-    // For right-click save, we want to save the full-size image
-    // We'll create a temporary link to the full-size image
-    e.preventDefault();
-
-    const link = document.createElement("a");
-    link.href = src;
-    link.download = `image-post-${postId}.jpg`;
-    link.target = "_blank";
-
-    // Trigger download
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
   if (!src) return null;
 
   return (
@@ -42,7 +26,7 @@ const ExpandableImage = ({ src, alt, postId }) => {
       <img
         src={src}
         alt={alt}
-        className={`img-fluid ${isExpanded ? "" : "cursor-pointer"}`}
+        className="img-fluid"
         style={{
           maxHeight: isExpanded ? "none" : "250px",
           maxWidth: isExpanded ? "100%" : "250px",
@@ -52,7 +36,6 @@ const ExpandableImage = ({ src, alt, postId }) => {
           transition: "all 0.3s ease",
         }}
         onClick={handleImageClick}
-        onContextMenu={handleRightClick}
         title={isExpanded ? "Click to collapse" : "Click to expand"}
       />
       {!isExpanded && (
