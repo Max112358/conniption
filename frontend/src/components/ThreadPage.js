@@ -28,8 +28,8 @@ const ExpandableImage = ({ src, alt, postId }) => {
         alt={alt}
         className="img-fluid"
         style={{
-          maxHeight: isExpanded ? "800px" : "250px",
-          maxWidth: isExpanded ? "100%" : "250px",
+          maxHeight: isExpanded ? "800px" : "150px",
+          maxWidth: isExpanded ? "100%" : "150px",
           objectFit: isExpanded ? "contain" : "cover",
           cursor: "pointer",
           borderRadius: "4px",
