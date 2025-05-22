@@ -298,7 +298,7 @@ export default function BoardPage() {
                         )}
                         <div className="col">
                           <p
-                            className="mb-0 text-break"
+                            className="mb-0 text-light text-break"
                             style={{
                               whiteSpace: "pre-wrap",
                               wordWrap: "break-word",
@@ -306,7 +306,7 @@ export default function BoardPage() {
                               overflowWrap: "break-word",
                             }}
                           >
-                            {truncateText(thread.content, 5, 300)}
+                            {truncateText(thread.content, 20, 2000)}
                           </p>
                         </div>
                       </div>
@@ -367,7 +367,7 @@ export default function BoardPage() {
                                   )}
                                   <div className="col">
                                     <p
-                                      className="mb-0 small text-break"
+                                      className="mb-0 small text-light text-break"
                                       style={{
                                         whiteSpace: "pre-wrap",
                                         wordWrap: "break-word",
@@ -375,7 +375,7 @@ export default function BoardPage() {
                                         overflowWrap: "break-word",
                                       }}
                                     >
-                                      {truncateText(reply.content, 3, 200)}
+                                      {truncateText(reply.content, 20, 2000)}
                                     </p>
                                   </div>
                                 </div>
