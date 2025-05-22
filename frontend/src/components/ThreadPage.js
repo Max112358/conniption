@@ -28,12 +28,13 @@ const ExpandableImage = ({ src, alt, postId }) => {
         alt={alt}
         className="img-fluid"
         style={{
-          maxHeight: isExpanded ? "none" : "250px",
+          maxHeight: isExpanded ? "800px" : "250px",
           maxWidth: isExpanded ? "100%" : "250px",
           objectFit: isExpanded ? "contain" : "cover",
           cursor: "pointer",
           borderRadius: "4px",
-          transition: "all 0.3s ease",
+          transition:
+            "max-height 0.3s ease, max-width 0.3s ease, object-fit 0.3s ease",
         }}
         onClick={handleImageClick}
         title={isExpanded ? "Click to collapse" : "Click to expand"}
