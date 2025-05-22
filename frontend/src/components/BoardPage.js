@@ -1,5 +1,4 @@
-// frontend/src/components/BoardPage.js (updated with ban handling)
-//components/BoardPage.js
+// frontend/src/components/BoardPage.js (updated with text wrapping and latest posts)
 
 import { useState, useEffect, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
@@ -14,6 +13,7 @@ export default function BoardPage() {
   const { boardId } = useParams();
   const [board, setBoard] = useState(null);
   const [threads, setThreads] = useState([]);
+  const [latestPosts, setLatestPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [banned, setBanned] = useState(false);
@@ -49,6 +49,48 @@ export default function BoardPage() {
     }
   }, [boardId]);
 
+  // Fetch latest posts across all threads
+  const fetchLatestPosts = useCallback(async () => {
+    try {
+      // Get latest posts from the most recent threads
+      const latestThreads = threads.slice(0, 5); // Get top 5 threads
+      const postPromises = latestThreads.map(async (thread) => {
+        try {
+          const postsResponse = await fetch(
+            `${API_BASE_URL}/api/boards/${boardId}/threads/${thread.id}/posts`
+          );
+
+          if (postsResponse.ok) {
+            const postsData = await postsResponse.json();
+            // Get the last post from this thread
+            const posts = postsData.posts || [];
+            if (posts.length > 0) {
+              const lastPost = posts[posts.length - 1];
+              return {
+                ...lastPost,
+                thread_id: thread.id,
+                thread_topic: thread.topic,
+              };
+            }
+          }
+        } catch (err) {
+          console.error(`Error fetching posts for thread ${thread.id}:`, err);
+        }
+        return null;
+      });
+
+      const posts = await Promise.all(postPromises);
+      const validPosts = posts.filter((post) => post !== null);
+      // Sort by creation date, most recent first
+      validPosts.sort(
+        (a, b) => new Date(b.created_at) - new Date(a.created_at)
+      );
+      setLatestPosts(validPosts.slice(0, 5)); // Keep only 5 latest
+    } catch (err) {
+      console.error("Error fetching latest posts:", err);
+    }
+  }, [boardId, threads]);
+
   useEffect(() => {
     // Socket.io setup
     const socket = io(SOCKET_URL);
@@ -61,6 +103,14 @@ export default function BoardPage() {
       if (data.boardId === boardId) {
         // Refresh threads when a new thread is created
         fetchThreads();
+      }
+    });
+
+    // Listen for new posts
+    socket.on("post_created", (data) => {
+      if (data.boardId === boardId) {
+        // Refresh latest posts when a new post is created
+        fetchLatestPosts();
       }
     });
 
@@ -99,7 +149,31 @@ export default function BoardPage() {
       socket.emit("leave_board", boardId);
       socket.disconnect();
     };
-  }, [boardId, fetchThreads]); // Added fetchThreads to dependencies
+  }, [boardId, fetchThreads, fetchLatestPosts]);
+
+  // Fetch latest posts when threads are updated
+  useEffect(() => {
+    if (threads.length > 0) {
+      fetchLatestPosts();
+    }
+  }, [threads, fetchLatestPosts]);
+
+  // Helper function to truncate text
+  const truncateText = (text, maxLines = 20, maxChars = 2000) => {
+    if (!text) return "";
+
+    // First truncate by character count
+    let truncated =
+      text.length > maxChars ? text.substring(0, maxChars) + "..." : text;
+
+    // Then truncate by lines
+    const lines = truncated.split("\n");
+    if (lines.length > maxLines) {
+      truncated = lines.slice(0, maxLines).join("\n") + "\n...";
+    }
+
+    return truncated;
+  };
 
   // If user is banned, show the ban notification
   if (banned && banInfo) {
@@ -160,71 +234,151 @@ export default function BoardPage() {
           </div>
         </div>
 
-        <div className="card bg-mid-dark border-secondary shadow">
-          <div className="card-header border-secondary d-flex justify-content-between align-items-center">
-            <h2 className="h5 mb-0 text-light">Threads</h2>
-
-            <Link
-              to={`/board/${boardId}/create-thread`}
-              className="btn btn-sm btn-primary"
-            >
-              New Thread
-            </Link>
-          </div>
-          <div className="card-body">
-            {threads.length > 0 ? (
-              <div className="list-group">
-                {threads.map((thread) => (
-                  <Link
-                    key={thread.id}
-                    to={`/board/${boardId}/thread/${thread.id}`}
-                    className="list-group-item list-group-item-action bg-high-dark text-light border-secondary"
-                  >
-                    <div className="d-flex justify-content-between align-items-center">
-                      <h5 className="mb-1">{thread.topic}</h5>
-                      <small className="text-secondary">
-                        {new Date(thread.created_at).toLocaleString()}
-                      </small>
-                    </div>
-                    <div className="d-flex">
-                      {thread.image_url && (
-                        <div className="me-3">
-                          <img
-                            src={thread.image_url}
-                            alt="Thread"
-                            className="img-fluid"
-                            style={{
-                              maxWidth: "100px",
-                              maxHeight: "100px",
-                              objectFit: "cover",
-                            }}
-                          />
-                        </div>
-                      )}
-                      <div>
-                        <p className="mb-1 text-truncate">{thread.content}</p>
-                        <small className="text-secondary">
-                          {thread.post_count}{" "}
-                          {thread.post_count === 1 ? "post" : "posts"}
-                        </small>
-                      </div>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-5">
-                <p className="text-secondary">
-                  No threads yet. Be the first to create one!
-                </p>
+        <div className="row">
+          {/* Main Threads Column */}
+          <div className="col-lg-8 mb-4">
+            <div className="card bg-mid-dark border-secondary shadow">
+              <div className="card-header border-secondary d-flex justify-content-between align-items-center">
+                <h2 className="h5 mb-0 text-light">Threads</h2>
                 <Link
                   to={`/board/${boardId}/create-thread`}
-                  className="btn btn-primary"
+                  className="btn btn-sm btn-primary"
                 >
-                  Create Thread
+                  New Thread
                 </Link>
               </div>
-            )}
+              <div className="card-body">
+                {threads.length > 0 ? (
+                  <div className="list-group">
+                    {threads.map((thread) => (
+                      <Link
+                        key={thread.id}
+                        to={`/board/${boardId}/thread/${thread.id}`}
+                        className="list-group-item list-group-item-action bg-high-dark text-light border-secondary mb-2"
+                        style={{ textDecoration: "none" }}
+                      >
+                        <div className="d-flex justify-content-between align-items-start mb-2">
+                          <h5 className="mb-1 text-break">{thread.topic}</h5>
+                          <small className="text-secondary text-nowrap ms-2">
+                            {new Date(thread.created_at).toLocaleString()}
+                          </small>
+                        </div>
+                        <div className="row">
+                          {thread.image_url && (
+                            <div className="col-auto">
+                              <img
+                                src={thread.image_url}
+                                alt="Thread"
+                                className="img-fluid rounded"
+                                style={{
+                                  maxWidth: "120px",
+                                  maxHeight: "120px",
+                                  objectFit: "cover",
+                                }}
+                              />
+                            </div>
+                          )}
+                          <div className="col">
+                            <p
+                              className="mb-1 text-break"
+                              style={{
+                                whiteSpace: "pre-wrap",
+                                wordWrap: "break-word",
+                                wordBreak: "break-word",
+                                overflowWrap: "break-word",
+                              }}
+                            >
+                              {truncateText(thread.content, 3, 200)}
+                            </p>
+                            <small className="text-secondary">
+                              {thread.post_count}{" "}
+                              {thread.post_count === 1 ? "post" : "posts"}
+                            </small>
+                          </div>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-5">
+                    <p className="text-secondary">
+                      No threads yet. Be the first to create one!
+                    </p>
+                    <Link
+                      to={`/board/${boardId}/create-thread`}
+                      className="btn btn-primary"
+                    >
+                      Create Thread
+                    </Link>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Latest Posts Sidebar */}
+          <div className="col-lg-4 mb-4">
+            <div className="card bg-mid-dark border-secondary shadow">
+              <div className="card-header border-secondary">
+                <h2 className="h5 mb-0 text-light">Latest Posts</h2>
+              </div>
+              <div className="card-body">
+                {latestPosts.length > 0 ? (
+                  <div className="list-group">
+                    {latestPosts.map((post, index) => (
+                      <Link
+                        key={`${post.thread_id}-${post.id}`}
+                        to={`/board/${boardId}/thread/${post.thread_id}`}
+                        className="list-group-item list-group-item-action bg-high-dark text-light border-secondary mb-2 p-2"
+                        style={{ textDecoration: "none" }}
+                      >
+                        <div className="d-flex justify-content-between align-items-start mb-1">
+                          <small className="text-primary fw-bold text-break">
+                            {truncateText(post.thread_topic, 1, 40)}
+                          </small>
+                          <small className="text-secondary text-nowrap ms-1">
+                            {new Date(post.created_at).toLocaleString()}
+                          </small>
+                        </div>
+                        <div className="row">
+                          {post.image_url && (
+                            <div className="col-auto">
+                              <img
+                                src={post.image_url}
+                                alt="Post"
+                                className="img-fluid rounded"
+                                style={{
+                                  maxWidth: "60px",
+                                  maxHeight: "60px",
+                                  objectFit: "cover",
+                                }}
+                              />
+                            </div>
+                          )}
+                          <div className="col">
+                            <p
+                              className="mb-0 small text-break"
+                              style={{
+                                whiteSpace: "pre-wrap",
+                                wordWrap: "break-word",
+                                wordBreak: "break-word",
+                                overflowWrap: "break-word",
+                              }}
+                            >
+                              {truncateText(post.content, 3, 150)}
+                            </p>
+                          </div>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-3">
+                    <p className="text-secondary small">No recent posts</p>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </div>
