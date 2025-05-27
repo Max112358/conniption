@@ -1,6 +1,6 @@
 // frontend/src/components/ThreadPage.js
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
 import { io } from "socket.io-client";
 import PostModMenu from "./admin/PostModMenu";
@@ -43,6 +43,106 @@ const ExpandableImage = ({ src, alt, postId }) => {
   );
 };
 
+// Component for post link preview
+const PostLinkPreview = ({ postId, posts, x, y }) => {
+  const post = posts.find((p) => p.id === parseInt(postId));
+
+  if (!post) return null;
+
+  const postIndex = posts.findIndex((p) => p.id === parseInt(postId));
+
+  return (
+    <div
+      className="position-fixed bg-dark border border-secondary rounded shadow-lg p-3"
+      style={{
+        left: `${x}px`,
+        top: `${y}px`,
+        maxWidth: "400px",
+        zIndex: 1050,
+        transform: "translateY(-10px)",
+      }}
+    >
+      <div className="d-flex justify-content-between align-items-center mb-2">
+        <span className="text-secondary">Post #{postIndex + 1}</span>
+        <small className="text-secondary">
+          {new Date(post.created_at).toLocaleString()}
+        </small>
+      </div>
+      {post.image_url && (
+        <img
+          src={post.image_url}
+          alt="Preview"
+          className="img-fluid mb-2"
+          style={{ maxHeight: "100px", maxWidth: "100px", objectFit: "cover" }}
+        />
+      )}
+      <p className="text-light mb-0 small" style={{ whiteSpace: "pre-wrap" }}>
+        {post.content.length > 200
+          ? post.content.substring(0, 200) + "..."
+          : post.content}
+      </p>
+    </div>
+  );
+};
+
+// Component for rendering post content with links
+const PostContent = ({ content, posts, onPostLinkClick }) => {
+  const [hoveredPostId, setHoveredPostId] = useState(null);
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+
+  // Parse content and convert >>postId to links
+  const parseContent = (text) => {
+    const parts = text.split(/(>>\d+)/g);
+
+    return parts.map((part, index) => {
+      const match = part.match(/^>>(\d+)$/);
+      if (match) {
+        const postId = match[1];
+        const targetPost = posts.find((p) => p.id === parseInt(postId));
+
+        if (targetPost) {
+          return (
+            <span
+              key={index}
+              className="text-primary"
+              style={{ cursor: "pointer", textDecoration: "underline" }}
+              onClick={() => onPostLinkClick(postId)}
+              onMouseEnter={(e) => {
+                setHoveredPostId(postId);
+                const rect = e.target.getBoundingClientRect();
+                setMousePos({
+                  x: rect.left + window.scrollX,
+                  y: rect.bottom + window.scrollY + 5,
+                });
+              }}
+              onMouseLeave={() => setHoveredPostId(null)}
+            >
+              {part}
+            </span>
+          );
+        }
+      }
+      return part;
+    });
+  };
+
+  return (
+    <>
+      <p className="text-light mb-0" style={{ whiteSpace: "pre-wrap" }}>
+        {parseContent(content)}
+      </p>
+      {hoveredPostId && (
+        <PostLinkPreview
+          postId={hoveredPostId}
+          posts={posts}
+          x={mousePos.x}
+          y={mousePos.y}
+        />
+      )}
+    </>
+  );
+};
+
 export default function ThreadPage() {
   const { boardId, threadId } = useParams();
   const [thread, setThread] = useState(null);
@@ -57,6 +157,8 @@ export default function ThreadPage() {
   const [adminUser, setAdminUser] = useState(null);
   const [banned, setBanned] = useState(false);
   const [banInfo, setBanInfo] = useState(null);
+
+  const contentTextareaRef = useRef(null);
 
   // Check for admin user
   useEffect(() => {
@@ -219,6 +321,43 @@ export default function ThreadPage() {
     }
   };
 
+  // Handle clicking on a post number to quote it
+  const handlePostNumberClick = (postId) => {
+    const textarea = contentTextareaRef.current;
+    if (!textarea) return;
+
+    const replyLink = `>>${postId}`;
+    const currentContent = content;
+
+    // If content is empty or ends with a newline, just add the link
+    if (!currentContent || currentContent.endsWith("\n")) {
+      setContent(currentContent + replyLink + "\n");
+    } else {
+      // Otherwise add a newline before the link
+      setContent(currentContent + "\n" + replyLink + "\n");
+    }
+
+    // Focus the textarea
+    textarea.focus();
+
+    // Scroll to the textarea
+    textarea.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
+
+  // Handle clicking on a post link to scroll to that post
+  const handlePostLinkClick = (postId) => {
+    const postElement = document.getElementById(`post-${postId}`);
+    if (postElement) {
+      postElement.scrollIntoView({ behavior: "smooth", block: "center" });
+
+      // Add a temporary highlight effect
+      postElement.classList.add("bg-warning", "bg-opacity-25");
+      setTimeout(() => {
+        postElement.classList.remove("bg-warning", "bg-opacity-25");
+      }, 1500);
+    }
+  };
+
   // Check if user is admin or moderator
   const isAdmin = adminUser && adminUser.role === "admin";
   const isModerator =
@@ -330,12 +469,20 @@ export default function ThreadPage() {
                 {posts.map((post, index) => (
                   <div
                     key={post.id}
+                    id={`post-${post.id}`}
                     className="card bg-dark border-secondary mb-3"
+                    style={{ transition: "background-color 0.3s ease" }}
                   >
                     <div className="card-header border-secondary d-flex justify-content-between align-items-center">
                       <div>
-                        <span className="text-secondary">
-                          Post #{index + 1}
+                        <span className="text-secondary">Post #</span>
+                        <span
+                          className="text-primary"
+                          style={{ cursor: "pointer" }}
+                          onClick={() => handlePostNumberClick(post.id)}
+                          title="Click to reply to this post"
+                        >
+                          {post.id}
                         </span>
                       </div>
                       <div className="d-flex align-items-center gap-2">
@@ -364,12 +511,11 @@ export default function ThreadPage() {
                           postId={post.id}
                         />
                       )}
-                      <p
-                        className="text-light mb-0"
-                        style={{ whiteSpace: "pre-wrap" }}
-                      >
-                        {post.content}
-                      </p>
+                      <PostContent
+                        content={post.content}
+                        posts={posts}
+                        onPostLinkClick={handlePostLinkClick}
+                      />
                     </div>
                   </div>
                 ))}
@@ -400,6 +546,7 @@ export default function ThreadPage() {
                   Content
                 </label>
                 <textarea
+                  ref={contentTextareaRef}
                   className="form-control bg-dark text-light border-secondary"
                   id="content"
                   rows="4"
