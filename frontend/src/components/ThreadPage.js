@@ -169,7 +169,6 @@ export default function ThreadPage() {
   const [adminUser, setAdminUser] = useState(null);
   const [banned, setBanned] = useState(false);
   const [banInfo, setBanInfo] = useState(null);
-  const [socketConnected, setSocketConnected] = useState(false);
 
   const contentTextareaRef = useRef(null);
 
@@ -236,14 +235,45 @@ export default function ThreadPage() {
   }, [boardId, threadId]);
 
   useEffect(() => {
-    // Socket.io setup
-    const socket = io(SOCKET_URL);
+    // Socket.io setup with better error handling
+    console.log("Connecting to Socket.io server at:", SOCKET_URL);
 
-    // Join the thread room
-    socket.emit("join_thread", { boardId, threadId });
+    const socket = io(SOCKET_URL, {
+      // Start with polling, allow upgrade to websocket
+      transports: ["polling", "websocket"],
+      // Reconnection settings
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      // Timeout settings
+      timeout: 20000,
+      // Path must match server
+      path: "/socket.io/",
+      // Force new connection
+      forceNew: true,
+      // Additional options for stability
+      rejectUnauthorized: false,
+    });
+
+    // Socket event handlers
+    socket.on("connect", () => {
+      console.log("Socket.io connected successfully");
+      // Join the thread room after connection
+      socket.emit("join_thread", { boardId, threadId });
+    });
+
+    socket.on("disconnect", (reason) => {
+      console.log("Socket.io disconnected:", reason);
+    });
+
+    socket.on("connect_error", (error) => {
+      console.error("Socket.io connection error:", error.message);
+    });
 
     // Listen for new posts
     socket.on("post_created", (data) => {
+      console.log("New post created:", data);
       if (data.threadId === parseInt(threadId) && data.boardId === boardId) {
         // Refresh posts when a new post is created
         fetchPosts();
@@ -282,7 +312,9 @@ export default function ThreadPage() {
 
     // Cleanup function to leave the thread room
     return () => {
-      socket.emit("leave_thread", { boardId, threadId });
+      if (socket.connected) {
+        socket.emit("leave_thread", { boardId, threadId });
+      }
       socket.disconnect();
     };
   }, [boardId, threadId, fetchPosts]);
