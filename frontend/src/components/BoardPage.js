@@ -1,7 +1,7 @@
-// frontend/src/components/BoardPage.js (updated with latest posts under OP)
+// frontend/src/components/BoardPage.js (updated with hover link previews)
 
 import { useState, useEffect, useCallback } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { io } from "socket.io-client";
 import BanNotification from "./BanNotification";
 
@@ -9,8 +9,158 @@ import BanNotification from "./BanNotification";
 const API_BASE_URL = "https://conniption.onrender.com";
 const SOCKET_URL = "https://conniption.onrender.com";
 
+// Component for post link preview
+const PostLinkPreview = ({ postId, allThreadsWithPosts, x, y }) => {
+  // Find the post across all threads
+  let foundPost = null;
+  let foundThread = null;
+
+  for (const thread of allThreadsWithPosts) {
+    if (thread.posts) {
+      const post = thread.posts.find((p) => p.id === parseInt(postId));
+      if (post) {
+        foundPost = post;
+        foundThread = thread;
+        break;
+      }
+    }
+  }
+
+  if (!foundPost || !foundThread) return null;
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        left: `${x}px`,
+        top: `${y}px`,
+        maxWidth: "400px",
+        zIndex: 9999,
+        pointerEvents: "none",
+        backgroundColor: "#1a1d20",
+        border: "2px solid #495057",
+        borderRadius: "0.375rem",
+        padding: "1rem",
+        boxShadow: "0 4px 12px rgba(0, 0, 0, 0.8)",
+      }}
+    >
+      <div className="d-flex justify-content-between align-items-center mb-2">
+        <span className="text-secondary">Post #{foundPost.id}</span>
+        <small className="text-secondary">
+          {new Date(foundPost.created_at).toLocaleString()}
+        </small>
+      </div>
+      <div className="mb-2">
+        <small className="text-info">Thread: {foundThread.topic}</small>
+      </div>
+      {foundPost.image_url && (
+        <img
+          src={foundPost.image_url}
+          alt="Preview"
+          className="img-fluid mb-2"
+          style={{ maxHeight: "100px", maxWidth: "100px", objectFit: "cover" }}
+        />
+      )}
+      <p className="text-light mb-0 small" style={{ whiteSpace: "pre-wrap" }}>
+        {foundPost.content.length > 200
+          ? foundPost.content.substring(0, 200) + "..."
+          : foundPost.content}
+      </p>
+    </div>
+  );
+};
+
+// Component for rendering post content with links
+const PostContent = ({
+  content,
+  allThreadsWithPosts,
+  boardId,
+  onPostLinkClick,
+}) => {
+  const [hoveredPostId, setHoveredPostId] = useState(null);
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+
+  // Parse content and convert >>postId to links
+  const parseContent = (text) => {
+    const parts = text.split(/(>>\d+)/g);
+
+    return parts.map((part, index) => {
+      const match = part.match(/^>>(\d+)$/);
+      if (match) {
+        const postId = match[1];
+
+        // Find the post and thread across all threads
+        let targetPost = null;
+        let targetThread = null;
+
+        for (const thread of allThreadsWithPosts) {
+          if (thread.posts) {
+            const post = thread.posts.find((p) => p.id === parseInt(postId));
+            if (post) {
+              targetPost = post;
+              targetThread = thread;
+              break;
+            }
+          }
+        }
+
+        if (targetPost && targetThread) {
+          // Check if this is the OP (first post in the thread)
+          const isOP =
+            targetThread.posts[0] &&
+            targetThread.posts[0].id === parseInt(postId);
+
+          return (
+            <span
+              key={index}
+              className="text-primary"
+              style={{ cursor: "pointer", textDecoration: "underline" }}
+              onClick={() => {
+                onPostLinkClick(postId, targetThread.id);
+              }}
+              onMouseEnter={(e) => {
+                setHoveredPostId(postId);
+                const rect = e.target.getBoundingClientRect();
+                const pos = {
+                  x: rect.left,
+                  y: rect.bottom + 5,
+                };
+                setMousePos(pos);
+              }}
+              onMouseLeave={() => {
+                setHoveredPostId(null);
+              }}
+            >
+              {part}
+              {isOP ? "(OP)" : ""}
+            </span>
+          );
+        }
+      }
+      return part;
+    });
+  };
+
+  return (
+    <>
+      <p className="text-light mb-0" style={{ whiteSpace: "pre-wrap" }}>
+        {parseContent(content)}
+      </p>
+      {hoveredPostId && (
+        <PostLinkPreview
+          postId={hoveredPostId}
+          allThreadsWithPosts={allThreadsWithPosts}
+          x={mousePos.x}
+          y={mousePos.y}
+        />
+      )}
+    </>
+  );
+};
+
 export default function BoardPage() {
   const { boardId } = useParams();
+  const navigate = useNavigate();
   const [board, setBoard] = useState(null);
   const [threads, setThreads] = useState([]);
   const [threadsWithPosts, setThreadsWithPosts] = useState([]);
@@ -93,6 +243,12 @@ export default function BoardPage() {
       console.error("Error fetching threads with posts:", err);
     }
   }, [boardId, threads]);
+
+  // Handle clicking on a post link - navigate to the thread with the post
+  const handlePostLinkClick = (postId, threadId) => {
+    // Navigate to the thread page with a hash to scroll to the specific post
+    navigate(`/board/${boardId}/thread/${threadId}#post-${postId}`);
+  };
 
   useEffect(() => {
     // Socket.io setup
@@ -297,8 +453,8 @@ export default function BoardPage() {
                           </div>
                         )}
                         <div className="col">
-                          <p
-                            className="mb-0 text-light text-break"
+                          <div
+                            className="text-light text-break"
                             style={{
                               whiteSpace: "pre-wrap",
                               wordWrap: "break-word",
@@ -306,8 +462,13 @@ export default function BoardPage() {
                               overflowWrap: "break-word",
                             }}
                           >
-                            {truncateText(thread.content, 20, 2000)}
-                          </p>
+                            <PostContent
+                              content={truncateText(thread.content, 20, 2000)}
+                              allThreadsWithPosts={threadsWithPosts}
+                              boardId={boardId}
+                              onPostLinkClick={handlePostLinkClick}
+                            />
+                          </div>
                         </div>
                       </div>
 
@@ -366,8 +527,8 @@ export default function BoardPage() {
                                     </div>
                                   )}
                                   <div className="col">
-                                    <p
-                                      className="mb-0 small text-light text-break"
+                                    <div
+                                      className="small text-light text-break"
                                       style={{
                                         whiteSpace: "pre-wrap",
                                         wordWrap: "break-word",
@@ -375,8 +536,17 @@ export default function BoardPage() {
                                         overflowWrap: "break-word",
                                       }}
                                     >
-                                      {truncateText(reply.content, 20, 2000)}
-                                    </p>
+                                      <PostContent
+                                        content={truncateText(
+                                          reply.content,
+                                          20,
+                                          2000
+                                        )}
+                                        allThreadsWithPosts={threadsWithPosts}
+                                        boardId={boardId}
+                                        onPostLinkClick={handlePostLinkClick}
+                                      />
+                                    </div>
                                   </div>
                                 </div>
                               </div>
