@@ -1,4 +1,4 @@
-// frontend/src/components/BoardPage.js (updated with hover link previews)
+// frontend/src/components/BoardPage.js
 
 import { useState, useEffect, useCallback } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
@@ -168,6 +168,7 @@ export default function BoardPage() {
   const [error, setError] = useState(null);
   const [banned, setBanned] = useState(false);
   const [banInfo, setBanInfo] = useState(null);
+  const [socketConnected, setSocketConnected] = useState(false);
 
   // Wrap fetchThreads in useCallback to avoid dependency issues
   const fetchThreads = useCallback(async () => {
@@ -251,14 +252,48 @@ export default function BoardPage() {
   };
 
   useEffect(() => {
-    // Socket.io setup
-    const socket = io(SOCKET_URL);
+    // Socket.io setup with better error handling
+    console.log("Connecting to Socket.io server at:", SOCKET_URL);
 
-    // Join the board room
-    socket.emit("join_board", boardId);
+    const socket = io(SOCKET_URL, {
+      // Start with polling, allow upgrade to websocket
+      transports: ["polling", "websocket"],
+      // Reconnection settings
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      // Timeout settings
+      timeout: 20000,
+      // Path must match server
+      path: "/socket.io/",
+      // Force new connection
+      forceNew: true,
+      // Additional options for stability
+      rejectUnauthorized: false,
+    });
+
+    // Socket event handlers
+    socket.on("connect", () => {
+      console.log("Socket.io connected successfully");
+      setSocketConnected(true);
+      // Join the board room after connection
+      socket.emit("join_board", boardId);
+    });
+
+    socket.on("disconnect", (reason) => {
+      console.log("Socket.io disconnected:", reason);
+      setSocketConnected(false);
+    });
+
+    socket.on("connect_error", (error) => {
+      console.error("Socket.io connection error:", error.message);
+      setSocketConnected(false);
+    });
 
     // Listen for new threads
     socket.on("thread_created", (data) => {
+      console.log("New thread created:", data);
       if (data.boardId === boardId) {
         // Refresh threads when a new thread is created
         fetchThreads();
@@ -267,6 +302,7 @@ export default function BoardPage() {
 
     // Listen for new posts
     socket.on("post_created", (data) => {
+      console.log("New post created:", data);
       if (data.boardId === boardId) {
         // Refresh threads with posts when a new post is created
         fetchThreadsWithPosts();
@@ -305,7 +341,9 @@ export default function BoardPage() {
 
     // Cleanup function to leave the board room
     return () => {
-      socket.emit("leave_board", boardId);
+      if (socket.connected) {
+        socket.emit("leave_board", boardId);
+      }
       socket.disconnect();
     };
   }, [boardId, fetchThreads, fetchThreadsWithPosts]);
@@ -390,6 +428,12 @@ export default function BoardPage() {
           </div>
           <div className="card-body">
             <p className="text-secondary mb-0">{board.description}</p>
+            {/* Socket connection indicator */}
+            <small
+              className={`text-${socketConnected ? "success" : "warning"}`}
+            >
+              {socketConnected ? "● Live updates enabled" : "○ Connecting..."}
+            </small>
           </div>
         </div>
 

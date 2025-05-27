@@ -169,6 +169,7 @@ export default function ThreadPage() {
   const [adminUser, setAdminUser] = useState(null);
   const [banned, setBanned] = useState(false);
   const [banInfo, setBanInfo] = useState(null);
+  const [socketConnected, setSocketConnected] = useState(false);
 
   const contentTextareaRef = useRef(null);
 

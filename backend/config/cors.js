@@ -12,9 +12,21 @@ console.log(
 
 // CORS options object that can be reused for Express and Socket.io
 const corsOptions = {
-  origin: FRONTEND_DOMAINS,
-  methods: ["GET", "POST"],
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+
+    if (FRONTEND_DOMAINS.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      console.log(`CORS blocked origin: ${origin}`);
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   credentials: true,
+  optionsSuccessStatus: 200, // Some legacy browsers (IE11, various SmartTVs) choke on 204
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
 };
 
 // Create middleware function
