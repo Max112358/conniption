@@ -1,6 +1,6 @@
 // frontend/src/components/BoardPage.js
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { io } from "socket.io-client";
 import BanNotification from "./BanNotification";
@@ -170,7 +170,14 @@ export default function BoardPage() {
   const [banInfo, setBanInfo] = useState(null);
   const [socketConnected, setSocketConnected] = useState(false);
 
-  // Wrap fetchThreads in useCallback to avoid dependency issues
+  // Use ref to store socket instance
+  const socketRef = useRef(null);
+
+  // Store callbacks in refs to avoid recreating them
+  const fetchThreadsRef = useRef();
+  const fetchThreadsWithPostsRef = useRef();
+
+  // Fetch threads function
   const fetchThreads = useCallback(async () => {
     try {
       const threadsResponse = await fetch(
@@ -201,49 +208,60 @@ export default function BoardPage() {
   }, [boardId]);
 
   // Fetch latest posts for each thread
-  const fetchThreadsWithPosts = useCallback(async () => {
-    if (threads.length === 0) return;
+  const fetchThreadsWithPosts = useCallback(
+    async (threadsList) => {
+      if (!threadsList || threadsList.length === 0) return;
 
-    try {
-      const threadsWithPostsPromises = threads.map(async (thread) => {
-        try {
-          const postsResponse = await fetch(
-            `${API_BASE_URL}/api/boards/${boardId}/threads/${thread.id}/posts`
-          );
+      try {
+        const threadsWithPostsPromises = threadsList.map(async (thread) => {
+          try {
+            const postsResponse = await fetch(
+              `${API_BASE_URL}/api/boards/${boardId}/threads/${thread.id}/posts`
+            );
 
-          if (postsResponse.ok) {
-            const postsData = await postsResponse.json();
-            const posts = postsData.posts || [];
+            if (postsResponse.ok) {
+              const postsData = await postsResponse.json();
+              const posts = postsData.posts || [];
 
-            // Get the latest 5 replies (excluding the first post which is the OP)
-            const replies = posts.slice(1); // Skip first post (OP)
-            const latestReplies = replies.slice(-5); // Get last 5 replies
+              // Get the latest 5 replies (excluding the first post which is the OP)
+              const replies = posts.slice(1); // Skip first post (OP)
+              const latestReplies = replies.slice(-5); // Get last 5 replies
 
-            return {
-              ...thread,
-              posts: posts,
-              latestReplies: latestReplies,
-              totalReplies: replies.length,
-            };
+              return {
+                ...thread,
+                posts: posts,
+                latestReplies: latestReplies,
+                totalReplies: replies.length,
+              };
+            }
+          } catch (err) {
+            console.error(`Error fetching posts for thread ${thread.id}:`, err);
           }
-        } catch (err) {
-          console.error(`Error fetching posts for thread ${thread.id}:`, err);
-        }
 
-        return {
-          ...thread,
-          posts: [],
-          latestReplies: [],
-          totalReplies: 0,
-        };
-      });
+          return {
+            ...thread,
+            posts: [],
+            latestReplies: [],
+            totalReplies: 0,
+          };
+        });
 
-      const threadsWithPostsData = await Promise.all(threadsWithPostsPromises);
-      setThreadsWithPosts(threadsWithPostsData);
-    } catch (err) {
-      console.error("Error fetching threads with posts:", err);
-    }
-  }, [boardId, threads]);
+        const threadsWithPostsData = await Promise.all(
+          threadsWithPostsPromises
+        );
+        setThreadsWithPosts(threadsWithPostsData);
+      } catch (err) {
+        console.error("Error fetching threads with posts:", err);
+      }
+    },
+    [boardId]
+  );
+
+  // Update refs when functions change
+  useEffect(() => {
+    fetchThreadsRef.current = fetchThreads;
+    fetchThreadsWithPostsRef.current = fetchThreadsWithPosts;
+  }, [fetchThreads, fetchThreadsWithPosts]);
 
   // Handle clicking on a post link - navigate to the thread with the post
   const handlePostLinkClick = (postId, threadId) => {
@@ -251,33 +269,29 @@ export default function BoardPage() {
     navigate(`/board/${boardId}/thread/${threadId}#post-${postId}`);
   };
 
+  // Socket setup - separate effect that only runs once per boardId
   useEffect(() => {
-    // Socket.io setup with better error handling
-    console.log("Connecting to Socket.io server at:", SOCKET_URL);
+    console.log("Setting up Socket.io connection for board:", boardId);
 
+    // Create socket connection
     const socket = io(SOCKET_URL, {
-      // Start with polling, allow upgrade to websocket
       transports: ["polling", "websocket"],
-      // Reconnection settings
       reconnection: true,
       reconnectionAttempts: 5,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
-      // Timeout settings
       timeout: 20000,
-      // Path must match server
       path: "/socket.io/",
-      // Force new connection
       forceNew: true,
-      // Additional options for stability
       rejectUnauthorized: false,
     });
+
+    socketRef.current = socket;
 
     // Socket event handlers
     socket.on("connect", () => {
       console.log("Socket.io connected successfully");
       setSocketConnected(true);
-      // Join the board room after connection
       socket.emit("join_board", boardId);
     });
 
@@ -294,22 +308,41 @@ export default function BoardPage() {
     // Listen for new threads
     socket.on("thread_created", (data) => {
       console.log("New thread created:", data);
-      if (data.boardId === boardId) {
-        // Refresh threads when a new thread is created
-        fetchThreads();
+      if (data.boardId === boardId && fetchThreadsRef.current) {
+        fetchThreadsRef.current();
       }
     });
 
     // Listen for new posts
     socket.on("post_created", (data) => {
       console.log("New post created:", data);
-      if (data.boardId === boardId) {
-        // Refresh threads with posts when a new post is created
-        fetchThreadsWithPosts();
+      if (data.boardId === boardId && fetchThreadsRef.current) {
+        // First fetch threads, then fetch posts
+        fetchThreadsRef.current().then(() => {
+          // Get the latest threads from state
+          setThreads((currentThreads) => {
+            if (fetchThreadsWithPostsRef.current) {
+              fetchThreadsWithPostsRef.current(currentThreads);
+            }
+            return currentThreads;
+          });
+        });
       }
     });
 
-    // Fetch board details and threads
+    // Cleanup
+    return () => {
+      console.log("Cleaning up Socket.io connection for board:", boardId);
+      if (socket.connected) {
+        socket.emit("leave_board", boardId);
+      }
+      socket.disconnect();
+      socketRef.current = null;
+    };
+  }, [boardId]); // Only re-run when boardId changes
+
+  // Initial data fetch - separate effect
+  useEffect(() => {
     const fetchBoardData = async () => {
       try {
         // Fetch board details
@@ -325,7 +358,12 @@ export default function BoardPage() {
         setBoard(boardData.board);
 
         // Fetch threads
-        await fetchThreads();
+        const success = await fetchThreads();
+
+        if (success) {
+          // Threads will be fetched and state will be updated
+          // The next effect will handle fetching posts
+        }
 
         setLoading(false);
       } catch (err) {
@@ -338,20 +376,12 @@ export default function BoardPage() {
     };
 
     fetchBoardData();
+  }, [boardId, fetchThreads]);
 
-    // Cleanup function to leave the board room
-    return () => {
-      if (socket.connected) {
-        socket.emit("leave_board", boardId);
-      }
-      socket.disconnect();
-    };
-  }, [boardId, fetchThreads, fetchThreadsWithPosts]);
-
-  // Fetch posts when threads are updated
+  // Fetch posts when threads change
   useEffect(() => {
     if (threads.length > 0) {
-      fetchThreadsWithPosts();
+      fetchThreadsWithPosts(threads);
     }
   }, [threads, fetchThreadsWithPosts]);
 
