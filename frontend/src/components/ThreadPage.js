@@ -45,9 +45,16 @@ const ExpandableImage = ({ src, alt, postId }) => {
 
 // Component for post link preview
 const PostLinkPreview = ({ postId, posts, x, y }) => {
+  console.log("PostLinkPreview render - postId:", postId, "x:", x, "y:", y);
+
   const post = posts.find((p) => p.id === parseInt(postId));
 
-  if (!post) return null;
+  console.log("Found post for preview:", post);
+
+  if (!post) {
+    console.log("No post found for preview");
+    return null;
+  }
 
   return (
     <div
@@ -58,6 +65,7 @@ const PostLinkPreview = ({ postId, posts, x, y }) => {
         maxWidth: "400px",
         zIndex: 1050,
         transform: "translateY(-10px)",
+        pointerEvents: "none", // Ensure preview doesn't interfere with mouse events
       }}
     >
       <div className="d-flex justify-content-between align-items-center mb-2">
@@ -88,6 +96,8 @@ const PostContent = ({ content, posts, onPostLinkClick }) => {
   const [hoveredPostId, setHoveredPostId] = useState(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
+  console.log("PostContent render - hoveredPostId:", hoveredPostId);
+
   // Parse content and convert >>postId to links
   const parseContent = (text) => {
     const parts = text.split(/(>>\d+)/g);
@@ -98,22 +108,33 @@ const PostContent = ({ content, posts, onPostLinkClick }) => {
         const postId = match[1];
         const targetPost = posts.find((p) => p.id === parseInt(postId));
 
+        console.log("Found post link:", postId, "Target exists:", !!targetPost);
+
         if (targetPost) {
           return (
             <span
               key={index}
               className="text-primary"
               style={{ cursor: "pointer", textDecoration: "underline" }}
-              onClick={() => onPostLinkClick(postId)}
+              onClick={() => {
+                console.log("Post link clicked:", postId);
+                onPostLinkClick(postId);
+              }}
               onMouseEnter={(e) => {
+                console.log("Mouse enter on post link:", postId);
                 setHoveredPostId(postId);
                 const rect = e.target.getBoundingClientRect();
-                setMousePos({
+                const pos = {
                   x: rect.left + window.scrollX,
                   y: rect.bottom + window.scrollY + 5,
-                });
+                };
+                console.log("Setting mouse position:", pos);
+                setMousePos(pos);
               }}
-              onMouseLeave={() => setHoveredPostId(null)}
+              onMouseLeave={() => {
+                console.log("Mouse leave on post link");
+                setHoveredPostId(null);
+              }}
             >
               {part}
             </span>
@@ -130,12 +151,20 @@ const PostContent = ({ content, posts, onPostLinkClick }) => {
         {parseContent(content)}
       </p>
       {hoveredPostId && (
-        <PostLinkPreview
-          postId={hoveredPostId}
-          posts={posts}
-          x={mousePos.x}
-          y={mousePos.y}
-        />
+        <>
+          {console.log(
+            "Rendering PostLinkPreview for:",
+            hoveredPostId,
+            "at position:",
+            mousePos
+          )}
+          <PostLinkPreview
+            postId={hoveredPostId}
+            posts={posts}
+            x={mousePos.x}
+            y={mousePos.y}
+          />
+        </>
       )}
     </>
   );
