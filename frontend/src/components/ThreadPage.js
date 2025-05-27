@@ -49,8 +49,6 @@ const PostLinkPreview = ({ postId, posts, x, y }) => {
 
   if (!post) return null;
 
-  const postIndex = posts.findIndex((p) => p.id === parseInt(postId));
-
   return (
     <div
       className="position-fixed bg-dark border border-secondary rounded shadow-lg p-3"
@@ -63,7 +61,7 @@ const PostLinkPreview = ({ postId, posts, x, y }) => {
       }}
     >
       <div className="d-flex justify-content-between align-items-center mb-2">
-        <span className="text-secondary">Post #{postIndex + 1}</span>
+        <span className="text-secondary">Post #{post.id}</span>
         <small className="text-secondary">
           {new Date(post.created_at).toLocaleString()}
         </small>
@@ -159,6 +157,25 @@ export default function ThreadPage() {
   const [banInfo, setBanInfo] = useState(null);
 
   const contentTextareaRef = useRef(null);
+
+  // Add custom CSS for highlight animation
+  useEffect(() => {
+    const style = document.createElement("style");
+    style.textContent = `
+      @keyframes postHighlight {
+        0% { background-color: rgba(255, 193, 7, 0.5) !important; }
+        100% { background-color: transparent; }
+      }
+      .post-highlight {
+        animation: postHighlight 2s ease-in-out;
+      }
+    `;
+    document.head.appendChild(style);
+
+    return () => {
+      document.head.removeChild(style);
+    };
+  }, []);
 
   // Check for admin user
   useEffect(() => {
@@ -348,13 +365,25 @@ export default function ThreadPage() {
   const handlePostLinkClick = (postId) => {
     const postElement = document.getElementById(`post-${postId}`);
     if (postElement) {
-      postElement.scrollIntoView({ behavior: "smooth", block: "center" });
+      // Get the header height to offset the scroll
+      const headerOffset = 80; // Adjust this based on your header height
+      const elementPosition = postElement.getBoundingClientRect().top;
+      const offsetPosition =
+        elementPosition + window.pageYOffset - headerOffset;
+
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: "smooth",
+      });
 
       // Add a temporary highlight effect
-      postElement.classList.add("bg-warning", "bg-opacity-25");
+      postElement.classList.add("post-highlight");
+
+      // Remove any existing highlight classes after animation
       setTimeout(() => {
-        postElement.classList.remove("bg-warning", "bg-opacity-25");
-      }, 1500);
+        const allPosts = document.querySelectorAll(".post-highlight");
+        allPosts.forEach((post) => post.classList.remove("post-highlight"));
+      }, 2000);
     }
   };
 
@@ -556,6 +585,9 @@ export default function ThreadPage() {
                   required
                   maxLength="2000"
                 ></textarea>
+                <div className="form-text text-muted">
+                  Click on any post number above to quote it
+                </div>
               </div>
 
               <div className="mb-3">
