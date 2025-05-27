@@ -58,14 +58,18 @@ const PostLinkPreview = ({ postId, posts, x, y }) => {
 
   return (
     <div
-      className="position-fixed bg-dark border border-secondary rounded shadow-lg p-3"
       style={{
+        position: "fixed",
         left: `${x}px`,
         top: `${y}px`,
         maxWidth: "400px",
-        zIndex: 1050,
-        transform: "translateY(-10px)",
-        pointerEvents: "none", // Ensure preview doesn't interfere with mouse events
+        zIndex: 9999,
+        pointerEvents: "none",
+        backgroundColor: "#1a1d20",
+        border: "2px solid #495057",
+        borderRadius: "0.375rem",
+        padding: "1rem",
+        boxShadow: "0 4px 12px rgba(0, 0, 0, 0.8)",
       }}
     >
       <div className="d-flex justify-content-between align-items-center mb-2">
@@ -125,8 +129,8 @@ const PostContent = ({ content, posts, onPostLinkClick }) => {
                 setHoveredPostId(postId);
                 const rect = e.target.getBoundingClientRect();
                 const pos = {
-                  x: rect.left + window.scrollX,
-                  y: rect.bottom + window.scrollY + 5,
+                  x: rect.left,
+                  y: rect.bottom + 5,
                 };
                 console.log("Setting mouse position:", pos);
                 setMousePos(pos);
