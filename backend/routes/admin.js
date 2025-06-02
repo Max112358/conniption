@@ -860,4 +860,49 @@ router.put("/posts/:postId", adminAuth.requireAuth, async (req, res, next) => {
   }
 });
 
+// Housekeeping Routes
+const scheduledJobs = require("../utils/scheduledJobs");
+
+// Add these routes after the existing admin routes
+
+/**
+ * @route   GET /api/admin/housekeeping/status
+ * @desc    Get housekeeping job status
+ * @access  Admin only
+ */
+router.get("/housekeeping/status", adminAuth.requireAdmin, (req, res) => {
+  console.log(
+    `Route: GET /api/admin/housekeeping/status - by ${req.session.adminUser.username}`
+  );
+
+  const status = scheduledJobs.getStatus();
+  res.json({ status });
+});
+
+/**
+ * @route   POST /api/admin/housekeeping/run
+ * @desc    Manually trigger housekeeping
+ * @access  Admin only
+ */
+router.post(
+  "/housekeeping/run",
+  adminAuth.requireAdmin,
+  async (req, res, next) => {
+    console.log(
+      `Route: POST /api/admin/housekeeping/run - by ${req.session.adminUser.username}`
+    );
+
+    try {
+      const results = await scheduledJobs.runHousekeeping();
+      res.json({
+        message: "Housekeeping completed successfully",
+        results,
+      });
+    } catch (error) {
+      console.error("Route Error - POST /api/admin/housekeeping/run:", error);
+      next(error);
+    }
+  }
+);
+
 module.exports = router;

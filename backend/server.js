@@ -25,6 +25,16 @@ const setupSocketHandlers = require("./utils/socketHandler");
 // Import database initialization
 const { initDatabase } = require("./utils/dbInit");
 
+// Import scheduled jobs
+const scheduledJobs = require("./utils/scheduledJobs");
+
+// Create housekeeping service directory if needed
+const fs = require("fs");
+const housekeepingPath = path.join(__dirname, "services");
+if (!fs.existsSync(housekeepingPath)) {
+  fs.mkdirSync(housekeepingPath, { recursive: true });
+}
+
 // Initialize database on startup
 initDatabase().catch(console.error);
 
@@ -82,6 +92,7 @@ app.get("/health", (req, res) => {
     timestamp: new Date().toISOString(),
     socketio: io ? "initialized" : "not initialized",
     environment: process.env.NODE_ENV || "development",
+    housekeeping: scheduledJobs.getStatus(),
   });
 });
 
@@ -157,6 +168,75 @@ const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`Socket.io server ready for connections`);
+
+  // Start scheduled jobs after server is running
+  scheduledJobs.start();
+  console.log("Scheduled jobs started");
+});
+
+// Graceful shutdown handling
+let isShuttingDown = false;
+
+const gracefulShutdown = async (signal) => {
+  if (isShuttingDown) {
+    console.log("Shutdown already in progress");
+    return;
+  }
+
+  console.log(`\nReceived ${signal}, starting graceful shutdown`);
+  isShuttingDown = true;
+
+  // Stop scheduled jobs first
+  console.log("Stopping scheduled jobs...");
+  scheduledJobs.stop();
+
+  // Stop accepting new connections
+  console.log("Closing HTTP server...");
+  server.close(async () => {
+    console.log("HTTP server closed");
+
+    // Close Socket.io connections
+    console.log("Closing Socket.io connections...");
+    io.close(() => {
+      console.log("Socket.io connections closed");
+    });
+
+    // Close database pool
+    console.log("Closing database connections...");
+    try {
+      await pool.end();
+      console.log("Database connections closed");
+    } catch (err) {
+      console.error("Error closing database connections:", err);
+    }
+
+    console.log("Graceful shutdown complete");
+    process.exit(0);
+  });
+
+  // Force shutdown after 30 seconds
+  setTimeout(() => {
+    console.error(
+      "Could not close connections in time, forcefully shutting down"
+    );
+    process.exit(1);
+  }, 30000);
+};
+
+// Handle shutdown signals
+process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+process.on("SIGINT", () => gracefulShutdown("SIGINT"));
+
+// Handle uncaught exceptions
+process.on("uncaughtException", (err) => {
+  console.error("Uncaught exception:", err);
+  gracefulShutdown("uncaughtException");
+});
+
+// Handle unhandled promise rejections
+process.on("unhandledRejection", (reason, promise) => {
+  console.error("Unhandled promise rejection:", reason);
+  gracefulShutdown("unhandledRejection");
 });
 
 // Export app and server for testing

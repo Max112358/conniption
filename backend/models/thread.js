@@ -1,6 +1,7 @@
 // backend/models/thread.js
 const { pool } = require("../config/database");
 const transformImageUrl = require("../utils/transformImageUrl");
+const fileUtils = require("../utils/fileUtils");
 
 /**
  * Thread model functions
@@ -120,12 +121,16 @@ const threadModel = {
         console.log(
           `Model: Board ${boardId} has reached 100 threads limit, removing oldest thread`
         );
+
+        // Get the oldest thread and its image URLs before deletion
         const oldestThreadResult = await client.query(
           `
-          SELECT id 
-          FROM threads 
-          WHERE board_id = $1 
-          ORDER BY updated_at ASC 
+          SELECT t.id, array_agg(p.image_url) as image_urls
+          FROM threads t
+          LEFT JOIN posts p ON p.thread_id = t.id AND p.board_id = t.board_id
+          WHERE t.board_id = $1 AND p.image_url IS NOT NULL
+          GROUP BY t.id
+          ORDER BY t.updated_at ASC 
           LIMIT 1
           `,
           [boardId]
@@ -133,15 +138,35 @@ const threadModel = {
 
         if (oldestThreadResult.rows.length > 0) {
           const oldestThreadId = oldestThreadResult.rows[0].id;
+          const imageUrls = oldestThreadResult.rows[0].image_urls || [];
+
           console.log(
-            `Model: Deleting oldest thread ${oldestThreadId} from board ${boardId}`
+            `Model: Deleting oldest thread ${oldestThreadId} from board ${boardId} with ${imageUrls.length} images`
           );
 
-          // Delete the oldest thread and its posts (should cascade delete)
+          // Delete the oldest thread (posts will cascade delete)
           await client.query(
             "DELETE FROM threads WHERE id = $1 AND board_id = $2",
             [oldestThreadId, boardId]
           );
+
+          // Delete images from R2 after transaction commits
+          // We'll do this outside the transaction to avoid blocking
+          setImmediate(async () => {
+            for (const imageUrl of imageUrls) {
+              if (imageUrl) {
+                try {
+                  await fileUtils.deleteFile(imageUrl);
+                  console.log(`Model: Deleted image from R2: ${imageUrl}`);
+                } catch (err) {
+                  console.error(
+                    `Model: Failed to delete image from R2: ${imageUrl}`,
+                    err
+                  );
+                }
+              }
+            }
+          });
         }
       }
 
@@ -175,6 +200,74 @@ const threadModel = {
     } catch (error) {
       await client.query("ROLLBACK");
       console.error(`Model Error - createThread:`, error);
+      throw error;
+    } finally {
+      client.release();
+    }
+  },
+
+  /**
+   * Delete a thread and clean up its images
+   * @param {number} threadId - The thread ID
+   * @param {string} boardId - The board ID
+   * @returns {Promise<boolean>} True if deleted successfully
+   */
+  deleteThread: async (threadId, boardId) => {
+    console.log(`Model: Deleting thread ${threadId} from board ${boardId}`);
+    const client = await pool.connect();
+
+    try {
+      await client.query("BEGIN");
+
+      // Get all image URLs before deletion
+      const imageResult = await client.query(
+        `
+        SELECT image_url 
+        FROM posts 
+        WHERE thread_id = $1 AND board_id = $2 AND image_url IS NOT NULL
+        `,
+        [threadId, boardId]
+      );
+
+      const imageUrls = imageResult.rows.map((row) => row.image_url);
+      console.log(
+        `Model: Found ${imageUrls.length} images to delete for thread ${threadId}`
+      );
+
+      // Delete the thread (posts will cascade delete)
+      const deleteResult = await client.query(
+        "DELETE FROM threads WHERE id = $1 AND board_id = $2 RETURNING id",
+        [threadId, boardId]
+      );
+
+      if (deleteResult.rows.length === 0) {
+        await client.query("ROLLBACK");
+        console.log(`Model: Thread ${threadId} not found`);
+        return false;
+      }
+
+      await client.query("COMMIT");
+
+      // Delete images from R2 (do this after commit to avoid blocking)
+      setImmediate(async () => {
+        for (const imageUrl of imageUrls) {
+          try {
+            await fileUtils.deleteFile(imageUrl);
+            console.log(`Model: Deleted image from R2: ${imageUrl}`);
+          } catch (err) {
+            console.error(
+              `Model: Failed to delete image from R2: ${imageUrl}`,
+              err
+            );
+          }
+        }
+      });
+
+      console.log(`Model: Successfully deleted thread ${threadId}`);
+      return true;
+    } catch (error) {
+      await client.query("ROLLBACK");
+      console.error(`Model Error - deleteThread(${threadId}):`, error);
       throw error;
     } finally {
       client.release();

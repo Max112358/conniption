@@ -1,4 +1,4 @@
-// Updated App.js with admin routes
+// frontend/src/App.js
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import LandingPage from "./components/LandingPage";
 import BoardPage from "./components/BoardPage";
@@ -12,6 +12,7 @@ import AdminDashboard from "./components/admin/AdminDashboard";
 import BanManagement from "./components/admin/BanManagement";
 import CreateBan from "./components/admin/CreateBan";
 import AdminUserManagement from "./components/admin/AdminUserManagement";
+import AdminHousekeeping from "./components/admin/AdminHousekeeping";
 
 import "./colors.css";
 
@@ -47,6 +48,7 @@ export default function App() {
           <Route path="bans" element={<BanManagement />} />
           <Route path="bans/create" element={<CreateBan />} />
           <Route path="users" element={<AdminUserManagement />} />
+          <Route path="housekeeping" element={<AdminHousekeeping />} />
           {/* Add more admin routes as needed */}
 
           {/* Default redirect for /admin to dashboard */}
