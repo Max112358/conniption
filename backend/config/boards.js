@@ -8,16 +8,23 @@ const boards = [
     nsfw: true,
   },
   {
+    id: "politics",
+    name: "Politics",
+    description: "Politics and Current Events Discussion",
+    nsfw: true,
+  },
+  {
+    id: "movies",
+    name: "Movies",
+    description: "Film and Television Discussion",
+    nsfw: false,
+  },
+  /*
+  {
     id: "tech",
     name: "Technology",
     description: "Technology Discussion",
     nsfw: false,
-  },
-  {
-    id: "politics",
-    name: "Politics",
-    description: "Political Discussion",
-    nsfw: true,
   },
   {
     id: "gaming",
@@ -32,12 +39,6 @@ const boards = [
     nsfw: false,
   },
   { id: "music", name: "Music", description: "Music Discussion", nsfw: false },
-  {
-    id: "movies",
-    name: "Movies",
-    description: "Film and Television Discussion",
-    nsfw: false,
-  },
   {
     id: "art",
     name: "Art",
@@ -109,7 +110,7 @@ const boards = [
     name: "Cars",
     description: "Cars and Transportation Discussion",
     nsfw: false,
-  },
+  },*/
   // Add more boards as needed
 ];
 
