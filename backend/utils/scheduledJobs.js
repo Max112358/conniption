@@ -9,6 +9,7 @@ class ScheduledJobs {
     this.intervals = {};
     this.lastRun = {};
     this.isRunning = false;
+    this.isInitialized = false;
   }
 
   /**
@@ -17,15 +18,29 @@ class ScheduledJobs {
   start() {
     console.log("Scheduled Jobs: Starting all scheduled jobs");
 
-    // Run housekeeping immediately on startup
-    this.runHousekeeping();
+    // Don't run housekeeping immediately on startup - wait for first interval
+    // This gives the database time to initialize
+    console.log("Scheduled Jobs: Housekeeping will run in 1 hour");
 
     // Schedule housekeeping to run every hour
     this.intervals.housekeeping = setInterval(() => {
       this.runHousekeeping();
     }, 60 * 60 * 1000); // 1 hour
 
+    // Mark as initialized
+    this.isInitialized = true;
+
     console.log("Scheduled Jobs: All jobs scheduled");
+  }
+
+  /**
+   * Run housekeeping immediately (for manual trigger)
+   */
+  async runHousekeepingNow() {
+    if (!this.isInitialized) {
+      throw new Error("Scheduled jobs not initialized yet");
+    }
+    return this.runHousekeeping();
   }
 
   /**
@@ -41,6 +56,7 @@ class ScheduledJobs {
       }
     });
 
+    this.isInitialized = false;
     console.log("Scheduled Jobs: All jobs stopped");
   }
 
@@ -82,6 +98,7 @@ class ScheduledJobs {
    */
   getStatus() {
     const status = {
+      initialized: this.isInitialized,
       jobs: {},
     };
 
@@ -91,6 +108,14 @@ class ScheduledJobs {
         lastRun: this.lastRun[jobName] || null,
       };
     });
+
+    // Add housekeeping status even if interval hasn't been created yet
+    if (!status.jobs.housekeeping) {
+      status.jobs.housekeeping = {
+        running: this.isInitialized,
+        lastRun: this.lastRun.housekeeping || null,
+      };
+    }
 
     return status;
   }

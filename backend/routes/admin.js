@@ -893,7 +893,7 @@ router.post(
     );
 
     try {
-      const results = await scheduledJobs.runHousekeeping();
+      const results = await scheduledJobs.runHousekeepingNow();
       res.json({
         message: "Housekeeping completed successfully",
         results,
