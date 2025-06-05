@@ -28,6 +28,9 @@ const { initDatabase } = require("./utils/dbInit");
 // Import scheduled jobs
 const scheduledJobs = require("./utils/scheduledJobs");
 
+// Import the security headers middleware
+const securityHeaders = require("./middleware/securityHeaders");
+
 // Create housekeeping service directory if needed
 const fs = require("fs");
 const housekeepingPath = path.join(__dirname, "services");

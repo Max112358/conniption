@@ -62,6 +62,14 @@ router.post("/", uploadWithUrlTransform("image"), async (req, res, next) => {
     // Create post
     // req.file.location now contains the R2.dev public URL
     const imageUrl = req.file ? req.file.location : null;
+
+    // Log file info if present
+    if (req.file) {
+      console.log(
+        `Route: File type: ${req.file.fileType}, Size: ${req.file.size} bytes`
+      );
+    }
+
     const result = await postModel.createPost(
       threadId,
       boardId,

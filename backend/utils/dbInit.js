@@ -1,4 +1,4 @@
-// backend/utils/dbInit.js
+// backend/utils/dbInit.js (updated section)
 const { pool } = require("../config/database");
 const boards = require("../config/boards");
 
@@ -71,6 +71,7 @@ const createTables = async () => {
         board_id TEXT NOT NULL,
         content TEXT NOT NULL,
         image_url TEXT,
+        file_type TEXT,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
         ip_address TEXT, 
         FOREIGN KEY (thread_id, board_id) REFERENCES threads(id, board_id) ON DELETE CASCADE
@@ -87,6 +88,41 @@ const createTables = async () => {
     } catch (err) {
       console.error("Error adding ip_address column:", err);
       // Continue with initialization even if this fails
+    }
+
+    // Add file_type column to posts if it doesn't exist
+    try {
+      await pool.query(`
+        ALTER TABLE posts
+        ADD COLUMN IF NOT EXISTS file_type TEXT
+      `);
+      console.log("Added file_type column to posts table");
+
+      // Update existing posts to set file_type
+      await pool.query(`
+        UPDATE posts
+        SET file_type = 
+          CASE 
+            WHEN image_url LIKE '%.mp4' THEN 'video'
+            WHEN image_url LIKE '%.webm' THEN 'video'
+            WHEN image_url IS NOT NULL THEN 'image'
+            ELSE NULL
+          END
+        WHERE image_url IS NOT NULL AND file_type IS NULL
+      `);
+      console.log("Updated file_type for existing posts");
+    } catch (err) {
+      console.error("Error adding file_type column:", err);
+      // Continue with initialization even if this fails
+    }
+
+    // Create index for file_type
+    try {
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS idx_posts_file_type ON posts(file_type)
+      `);
+    } catch (err) {
+      console.error("Error creating file_type index:", err);
     }
 
     // ==================== ADMIN SYSTEM TABLES ====================

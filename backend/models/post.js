@@ -19,7 +19,7 @@ const postModel = {
     try {
       const result = await pool.query(
         `
-        SELECT id, content, image_url, created_at
+        SELECT id, content, image_url, file_type, created_at
         FROM posts
         WHERE thread_id = $1 AND board_id = $2
         ORDER BY created_at ASC
@@ -67,17 +67,20 @@ const postModel = {
       let postQuery, postParams;
 
       if (imagePath) {
-        // Post with image
-        console.log(`Model: Creating post with image: ${imagePath}`);
+        // Determine file type from path
+        const fileType = imagePath.match(/\.(mp4|webm)$/i) ? "video" : "image";
+
+        // Post with media
+        console.log(`Model: Creating post with ${fileType}: ${imagePath}`);
         postQuery = `
-          INSERT INTO posts (thread_id, board_id, content, image_url, created_at)
-          VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
+          INSERT INTO posts (thread_id, board_id, content, image_url, file_type, created_at)
+          VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
           RETURNING id
         `;
-        postParams = [threadId, boardId, content, imagePath];
+        postParams = [threadId, boardId, content, imagePath, fileType];
       } else {
-        // Post without image
-        console.log(`Model: Creating post without image`);
+        // Post without media
+        console.log(`Model: Creating post without media`);
         postQuery = `
           INSERT INTO posts (thread_id, board_id, content, created_at)
           VALUES ($1, $2, $3, CURRENT_TIMESTAMP)

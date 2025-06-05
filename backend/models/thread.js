@@ -24,6 +24,7 @@ const threadModel = {
           t.updated_at,
           p.content,
           p.image_url,
+          p.file_type,
           (SELECT COUNT(*) FROM posts WHERE thread_id = t.id) as post_count
         FROM 
           threads t
@@ -183,15 +184,20 @@ const threadModel = {
       const threadId = threadResult.rows[0].id;
       console.log(`Model: Created thread with ID: ${threadId}`);
 
-      // Create initial post with image
+      // Determine file type
+      const fileType = imagePath.match(/\.(mp4|webm)$/i) ? "video" : "image";
+
+      // Create initial post with media
       await client.query(
         `
-        INSERT INTO posts (thread_id, board_id, content, image_url, created_at)
-        VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
+        INSERT INTO posts (thread_id, board_id, content, image_url, file_type, created_at)
+        VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
         `,
-        [threadId, boardId, content, imagePath]
+        [threadId, boardId, content, imagePath, fileType]
       );
-      console.log(`Model: Created initial post for thread ${threadId}`);
+      console.log(
+        `Model: Created initial post with ${fileType} for thread ${threadId}`
+      );
 
       // Commit transaction
       await client.query("COMMIT");
@@ -231,7 +237,7 @@ const threadModel = {
 
       const imageUrls = imageResult.rows.map((row) => row.image_url);
       console.log(
-        `Model: Found ${imageUrls.length} images to delete for thread ${threadId}`
+        `Model: Found ${imageUrls.length} media files to delete for thread ${threadId}`
       );
 
       // Delete the thread (posts will cascade delete)
@@ -253,10 +259,10 @@ const threadModel = {
         for (const imageUrl of imageUrls) {
           try {
             await fileUtils.deleteFile(imageUrl);
-            console.log(`Model: Deleted image from R2: ${imageUrl}`);
+            console.log(`Model: Deleted media from R2: ${imageUrl}`);
           } catch (err) {
             console.error(
-              `Model: Failed to delete image from R2: ${imageUrl}`,
+              `Model: Failed to delete media from R2: ${imageUrl}`,
               err
             );
           }

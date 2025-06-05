@@ -58,8 +58,8 @@ router.post("/", uploadWithUrlTransform("image"), async (req, res, next) => {
     }
 
     if (!req.file) {
-      console.log(`Route: Invalid request - missing image`);
-      return res.status(400).json({ error: "Image is required" });
+      console.log(`Route: Invalid request - missing media file`);
+      return res.status(400).json({ error: "Image or video is required" });
     }
 
     // Check if board exists
@@ -68,6 +68,11 @@ router.post("/", uploadWithUrlTransform("image"), async (req, res, next) => {
       console.log(`Route: Board not found - ${boardId}`);
       return res.status(404).json({ error: "Board not found" });
     }
+
+    // Log file info
+    console.log(
+      `Route: File type: ${req.file.fileType}, Size: ${req.file.size} bytes`
+    );
 
     // Create thread
     // req.file.location now contains the transformed URL with custom domain
