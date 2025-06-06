@@ -544,7 +544,9 @@ export default function ThreadPage() {
                             onClick={() => handlePostNumberClick(post.id)}
                             title="Click to reply to this post"
                           >
-                            {post.id}
+                            <span style={{ marginLeft: "20px" }}>
+                              {post.id}
+                            </span>
                           </span>
                         </div>
                         <small className="text-secondary">

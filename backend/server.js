@@ -50,6 +50,13 @@ app.set("trust proxy", 1);
 // Apply CORS configuration
 app.use(corsConfig);
 
+// Apply security headers
+app.use(securityHeaders);
+
+// Add JSON body parser with size limit
+app.use(express.json({ limit: "10mb" })); // Slightly higher than 4MB to account for base64 encoding
+app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+
 // Add JSON body parser
 app.use(express.json());
 
