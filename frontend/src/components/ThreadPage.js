@@ -5,43 +5,11 @@ import { useParams, Link } from "react-router-dom";
 import { io } from "socket.io-client";
 import PostModMenu from "./admin/PostModMenu";
 import BanNotification from "./BanNotification";
+import MediaViewer from "./MediaViewer";
 
 // API constants
 const API_BASE_URL = "https://conniption.onrender.com";
 const SOCKET_URL = "https://conniption.onrender.com";
-
-// Component for expandable images
-const ExpandableImage = ({ src, alt, postId }) => {
-  const [isExpanded, setIsExpanded] = useState(false);
-
-  const handleImageClick = (e) => {
-    e.preventDefault();
-    setIsExpanded(!isExpanded);
-  };
-
-  if (!src) return null;
-
-  return (
-    <div className="mb-3">
-      <img
-        src={src}
-        alt={alt}
-        className="img-fluid"
-        style={{
-          maxHeight: isExpanded ? "800px" : "150px",
-          maxWidth: isExpanded ? "100%" : "150px",
-          objectFit: isExpanded ? "contain" : "cover",
-          cursor: "pointer",
-          borderRadius: "4px",
-          transition:
-            "max-height 0.3s ease, max-width 0.3s ease, object-fit 0.3s ease",
-        }}
-        onClick={handleImageClick}
-        title={isExpanded ? "Click to collapse" : "Click to expand"}
-      />
-    </div>
-  );
-};
 
 // Component for post link preview
 const PostLinkPreview = ({ postId, posts, x, y }) => {
@@ -323,7 +291,17 @@ export default function ThreadPage() {
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
+      // Check file size (4MB limit)
+      if (file.size > 4 * 1024 * 1024) {
+        setPostError("File size must be less than 4MB");
+        e.target.value = null;
+        setImage(null);
+        setImagePreview(null);
+        return;
+      }
+
       setImage(file);
+      setPostError(null);
 
       // Create image preview
       const reader = new FileReader();
@@ -371,6 +349,12 @@ export default function ThreadPage() {
       setContent("");
       setImage(null);
       setImagePreview(null);
+
+      // Clear file input
+      const fileInput = document.getElementById("image");
+      if (fileInput) {
+        fileInput.value = "";
+      }
 
       // Fetch updated posts
       await fetchPosts();
@@ -491,12 +475,12 @@ export default function ThreadPage() {
           </Link>
         </div>
 
-        {/* Thread Header */}
+        {/* Thread Header - FIXED COLORS HERE */}
         <div className="card bg-dark border-secondary shadow mb-4">
           <div className="card-header border-secondary d-flex justify-content-between align-items-center">
-            <h1 className="h3 mb-0">
+            <h1 className="h3 mb-0 text-light">
               <span className="badge bg-secondary me-2">/{boardId}/</span>
-              {thread.topic}
+              <span className="text-light">{thread.topic}</span>
             </h1>
 
             {/* Thread mod options for admins/mods */}
@@ -511,7 +495,7 @@ export default function ThreadPage() {
           </div>
           <div className="card-body">
             <div className="d-flex justify-content-between align-items-center">
-              <p className="text-muted mb-0">
+              <p className="text-secondary mb-0">
                 Thread created: {new Date(thread.created_at).toLocaleString()}
               </p>
 
@@ -550,41 +534,43 @@ export default function ThreadPage() {
                     style={{ transition: "background-color 0.3s ease" }}
                   >
                     <div className="card-header border-secondary d-flex justify-content-between align-items-center">
-                      <div>
-                        <span className="text-secondary">Post #</span>
-                        <span
-                          className="text-primary"
-                          style={{ cursor: "pointer" }}
-                          onClick={() => handlePostNumberClick(post.id)}
-                          title="Click to reply to this post"
-                        >
-                          {post.id}
-                        </span>
-                      </div>
+                      {/* FIXED SPACING HERE */}
                       <div className="d-flex align-items-center gap-2">
+                        <div>
+                          <span className="text-secondary">Post #</span>
+                          <span
+                            className="text-primary"
+                            style={{ cursor: "pointer" }}
+                            onClick={() => handlePostNumberClick(post.id)}
+                            title="Click to reply to this post"
+                          >
+                            {post.id}
+                          </span>
+                        </div>
                         <small className="text-secondary">
                           {new Date(post.created_at).toLocaleString()}
                         </small>
-
-                        {/* Moderation menu */}
-                        {isModerator && (
-                          <PostModMenu
-                            post={post}
-                            thread={thread}
-                            board={{ id: boardId }}
-                            isAdmin={isAdmin}
-                            isMod={isModerator}
-                          />
-                        )}
                       </div>
+
+                      {/* Moderation menu */}
+                      {isModerator && (
+                        <PostModMenu
+                          post={post}
+                          thread={thread}
+                          board={{ id: boardId }}
+                          isAdmin={isAdmin}
+                          isMod={isModerator}
+                        />
+                      )}
                     </div>
                     <div className="card-body">
-                      {/* Use the new ExpandableImage component */}
+                      {/* Use MediaViewer for images and videos */}
                       {post.image_url && (
-                        <ExpandableImage
+                        <MediaViewer
                           src={post.image_url}
                           alt="Post content"
                           postId={post.id}
+                          fileType={post.file_type}
                         />
                       )}
                       <PostContent
@@ -639,32 +625,43 @@ export default function ThreadPage() {
 
               <div className="mb-3">
                 <label htmlFor="image" className="form-label text-secondary">
-                  Image (Optional)
+                  Image or Video (Optional)
                 </label>
                 <input
                   type="file"
                   className="form-control bg-dark text-light border-secondary"
                   id="image"
-                  accept="image/*"
+                  accept="image/png,image/jpeg,image/webp,image/gif,video/mp4,video/webm"
                   onChange={handleImageChange}
                 />
                 <div className="form-text text-muted">
-                  Supported formats: JPEG, PNG, GIF (Max size: 5MB)
+                  Supported formats: PNG, JPG, WebP, GIF, MP4, WebM (Max size:
+                  4MB)
                 </div>
               </div>
 
               {imagePreview && (
                 <div className="mb-3">
                   <label className="form-label text-secondary">
-                    Image Preview
+                    File Preview
                   </label>
                   <div className="border border-secondary p-2 rounded">
-                    <img
-                      src={imagePreview}
-                      alt="Preview"
-                      className="img-fluid"
-                      style={{ maxHeight: "200px" }}
-                    />
+                    {image && image.type.startsWith("video/") ? (
+                      <video
+                        src={imagePreview}
+                        className="img-fluid"
+                        style={{ maxHeight: "200px" }}
+                        controls
+                        muted
+                      />
+                    ) : (
+                      <img
+                        src={imagePreview}
+                        alt="Preview"
+                        className="img-fluid"
+                        style={{ maxHeight: "200px" }}
+                      />
+                    )}
                   </div>
                 </div>
               )}
