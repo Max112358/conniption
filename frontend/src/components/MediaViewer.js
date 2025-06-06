@@ -155,7 +155,7 @@ export default function MediaViewer({ src, alt, postId, fileType }) {
   }
 
   // For images (including GIFs)
-  const isGif = src && src.toLowerCase().endsWith(".gif");
+  //const isGif = src && src.toLowerCase().endsWith(".gif");
 
   return (
     <div className="mb-3">
