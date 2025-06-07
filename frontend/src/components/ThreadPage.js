@@ -34,7 +34,9 @@ const PostLinkPreview = ({ postId, posts, x, y }) => {
       }}
     >
       <div className="d-flex justify-content-between align-items-center mb-2">
-        <span className="text-secondary">Post #{post.id}</span>
+        <span className="text-secondary" style={{ marginRight: "40px" }}>
+          Post #{post.id}
+        </span>
         <small className="text-secondary">
           {new Date(post.created_at).toLocaleString()}
         </small>
@@ -544,9 +546,7 @@ export default function ThreadPage() {
                             onClick={() => handlePostNumberClick(post.id)}
                             title="Click to reply to this post"
                           >
-                            <span style={{ marginLeft: "20px" }}>
-                              {post.id}
-                            </span>
+                            {post.id}
                           </span>
                         </div>
                         <small className="text-secondary">
