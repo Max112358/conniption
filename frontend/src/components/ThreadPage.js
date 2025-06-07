@@ -34,7 +34,7 @@ const PostLinkPreview = ({ postId, posts, x, y }) => {
       }}
     >
       <div className="d-flex justify-content-between align-items-center mb-2">
-        <span className="text-secondary" style={{ marginRight: "40px" }}>
+        <span className="text-secondary" style={{ marginRight: "10px" }}>
           Post #{post.id}
         </span>
         <small className="text-secondary">
