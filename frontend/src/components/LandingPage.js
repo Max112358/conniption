@@ -107,7 +107,7 @@ export default function LandingPage() {
         </span>
       </div>
       <small
-        className="text-muted d-block text-truncate"
+        className="text-secondary d-block text-truncate"
         style={{ fontSize: "0.75rem" }}
       >
         {board.description}
@@ -169,7 +169,7 @@ export default function LandingPage() {
           </div>
         </div>
 
-        <div className="text-center text-muted small mt-3 pb-3">
+        <div className="text-center text-secondary small mt-3 pb-3">
           Select a board to view threads and posts
         </div>
       </div>
