@@ -1,4 +1,4 @@
-// components/CreateThreadPage.js
+// frontend/src/components/CreateThreadPage.js
 
 import { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
@@ -23,9 +23,38 @@ export default function CreateThreadPage() {
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      setImage(file);
+      // Check file size (4MB limit)
+      if (file.size > 4 * 1024 * 1024) {
+        setError("File size must be less than 4MB");
+        e.target.value = null; // Clear the input
+        setImage(null);
+        setImagePreview(null);
+        return;
+      }
 
-      // Create image preview
+      // Check file type
+      const allowedTypes = [
+        "image/png",
+        "image/jpeg",
+        "image/webp",
+        "image/gif",
+        "video/mp4",
+        "video/webm",
+      ];
+      if (!allowedTypes.includes(file.type)) {
+        setError(
+          "Invalid file type. Only PNG, JPG, WebP, GIF, MP4, and WebM files are allowed."
+        );
+        e.target.value = null; // Clear the input
+        setImage(null);
+        setImagePreview(null);
+        return;
+      }
+
+      setImage(file);
+      setError(null);
+
+      // Create preview
       const reader = new FileReader();
       reader.onloadend = () => {
         setImagePreview(reader.result);
@@ -50,7 +79,7 @@ export default function CreateThreadPage() {
     }
 
     if (!image) {
-      setError("Image is required");
+      setError("Image or video is required");
       return;
     }
 
@@ -163,33 +192,44 @@ export default function CreateThreadPage() {
 
               <div className="mb-3">
                 <label htmlFor="image" className="form-label text-secondary">
-                  Image (Required)
+                  Image or Video (Required)
                 </label>
                 <input
                   type="file"
                   className="form-control bg-dark text-light border-secondary text-light"
                   id="image"
-                  accept="image/*"
+                  accept="image/png,image/jpeg,image/webp,image/gif,video/mp4,video/webm"
                   onChange={handleImageChange}
                   required
                 />
                 <div className="text-secondary mt-1 small">
-                  Supported formats: JPEG, PNG, GIF (Max size: 5MB)
+                  Supported formats: PNG, JPG, WebP, GIF, MP4, WebM (Max size:
+                  4MB)
                 </div>
               </div>
 
               {imagePreview && (
                 <div className="mb-3">
                   <label className="form-label text-secondary">
-                    Image Preview
+                    File Preview
                   </label>
                   <div className="border border-secondary p-2 rounded">
-                    <img
-                      src={imagePreview}
-                      alt="Preview"
-                      className="img-fluid"
-                      style={{ maxHeight: "200px" }}
-                    />
+                    {image && image.type.startsWith("video/") ? (
+                      <video
+                        src={imagePreview}
+                        className="img-fluid"
+                        style={{ maxHeight: "200px" }}
+                        controls
+                        muted
+                      />
+                    ) : (
+                      <img
+                        src={imagePreview}
+                        alt="Preview"
+                        className="img-fluid"
+                        style={{ maxHeight: "200px" }}
+                      />
+                    )}
                   </div>
                 </div>
               )}
