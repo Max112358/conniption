@@ -618,7 +618,6 @@ export default function ThreadPage() {
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
                   placeholder="Enter your reply"
-                  required
                   maxLength="2000"
                 ></textarea>
                 <div className="form-text text-muted">
