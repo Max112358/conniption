@@ -46,10 +46,12 @@ router.post("/", uploadWithUrlTransform("image"), async (req, res, next) => {
   console.log(`Route: POST /api/boards/${boardId}/threads/${threadId}/posts`);
 
   try {
-    // Validate request
-    if (!content) {
-      console.log(`Route: Invalid request - missing content`);
-      return res.status(400).json({ error: "Content is required" });
+    // Validate request - allow either content OR image
+    if (!content && !req.file) {
+      console.log(`Route: Invalid request - missing both content and image`);
+      return res
+        .status(400)
+        .json({ error: "Either content or an image/video is required" });
     }
 
     // Check if thread exists
@@ -70,10 +72,13 @@ router.post("/", uploadWithUrlTransform("image"), async (req, res, next) => {
       );
     }
 
+    // If no content provided, use empty string
+    const postContent = content || "";
+
     const result = await postModel.createPost(
       threadId,
       boardId,
-      content,
+      postContent,
       imageUrl
     );
 
