@@ -318,8 +318,9 @@ export default function ThreadPage() {
   const handleSubmitPost = async (e) => {
     e.preventDefault();
 
-    if (!content.trim()) {
-      setPostError("Content is required");
+    // validation (checks for content OR image):
+    if (!content.trim() && !image) {
+      setPostError("Either content or an image/video is required");
       return;
     }
 
