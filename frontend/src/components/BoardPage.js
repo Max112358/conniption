@@ -9,6 +9,68 @@ import BanNotification from "./BanNotification";
 const API_BASE_URL = "https://conniption.onrender.com";
 const SOCKET_URL = "https://conniption.onrender.com";
 
+// Component for rendering media thumbnails
+const MediaThumbnail = ({ src, alt, fileType, size = "150px" }) => {
+  // Determine if this is a video based on extension or fileType
+  const isVideo =
+    fileType === "video" ||
+    (src &&
+      (src.toLowerCase().endsWith(".mp4") ||
+        src.toLowerCase().endsWith(".webm")));
+
+  if (!src) return null;
+
+  // For videos, show a thumbnail with play icon
+  if (isVideo) {
+    return (
+      <div className="position-relative d-inline-block">
+        <video
+          src={src}
+          className="img-fluid rounded"
+          style={{
+            maxWidth: size,
+            maxHeight: size,
+            objectFit: "cover",
+          }}
+          muted
+          playsInline
+          preload="metadata"
+        />
+        <div
+          className="position-absolute top-50 start-50 translate-middle"
+          style={{
+            width: "40px",
+            height: "40px",
+            backgroundColor: "rgba(0, 0, 0, 0.7)",
+            borderRadius: "50%",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            pointerEvents: "none",
+          }}
+        >
+          <i className="bi bi-play-fill text-white fs-4"></i>
+        </div>
+      </div>
+    );
+  }
+
+  // For images
+  return (
+    <img
+      src={src}
+      alt={alt}
+      className="img-fluid rounded"
+      style={{
+        maxWidth: size,
+        maxHeight: size,
+        objectFit: "cover",
+      }}
+      loading="lazy"
+    />
+  );
+};
+
 // Component for post link preview
 const PostLinkPreview = ({ postId, allThreadsWithPosts, x, y }) => {
   // Find the post across all threads
@@ -512,16 +574,11 @@ export default function BoardPage() {
                         {thread.image_url && (
                           <div className="col-auto">
                             <Link to={`/board/${boardId}/thread/${thread.id}`}>
-                              <img
+                              <MediaThumbnail
                                 src={thread.image_url}
                                 alt="Thread"
-                                className="img-fluid rounded"
-                                style={{
-                                  maxWidth: "150px",
-                                  maxHeight: "150px",
-                                  objectFit: "cover",
-                                  cursor: "pointer",
-                                }}
+                                fileType={thread.file_type}
+                                size="150px"
                               />
                             </Link>
                           </div>
@@ -586,16 +643,11 @@ export default function BoardPage() {
                                       <Link
                                         to={`/board/${boardId}/thread/${thread.id}`}
                                       >
-                                        <img
+                                        <MediaThumbnail
                                           src={reply.image_url}
                                           alt="Reply"
-                                          className="img-fluid rounded"
-                                          style={{
-                                            maxWidth: "80px",
-                                            maxHeight: "80px",
-                                            objectFit: "cover",
-                                            cursor: "pointer",
-                                          }}
+                                          fileType={reply.file_type}
+                                          size="80px"
                                         />
                                       </Link>
                                     </div>
