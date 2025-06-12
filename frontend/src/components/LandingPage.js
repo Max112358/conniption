@@ -2,11 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-
+import { API_BASE_URL } from "../config/api"; // Import from config
 import logoSvg from "../assets/conniption_logo6.svg";
-
-// API constants
-const API_BASE_URL = "https://conniption.onrender.com";
 
 export default function LandingPage() {
   const [sfw_boards, setSfwBoards] = useState([]);
@@ -18,6 +15,7 @@ export default function LandingPage() {
     // Fetch boards from API
     const fetchBoards = async () => {
       try {
+        // Now using the imported API_BASE_URL
         const response = await fetch(`${API_BASE_URL}/api/boards`);
         if (!response.ok) {
           throw new Error("Failed to fetch boards");
