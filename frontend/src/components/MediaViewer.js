@@ -24,15 +24,26 @@ export default function MediaViewer({ src, alt, postId, fileType }) {
 
   const handleMediaClick = (e) => {
     e.preventDefault();
-    setIsExpanded(!isExpanded);
 
-    // If expanding a video, start playing
-    if (!isExpanded && isVideo && videoRef.current) {
-      videoRef.current.play().catch((err) => {
-        console.log("Video autoplay failed:", err);
-      });
-    } else if (isExpanded && isVideo && videoRef.current) {
-      videoRef.current.pause();
+    // Check if middle mouse button (button === 1)
+    if (e.button === 1) {
+      // Middle click - open in new tab
+      window.open(src, "_blank");
+      return;
+    }
+
+    // Left click - expand/collapse
+    if (e.button === 0) {
+      setIsExpanded(!isExpanded);
+
+      // If expanding a video, start playing
+      if (!isExpanded && isVideo && videoRef.current) {
+        videoRef.current.play().catch((err) => {
+          console.log("Video autoplay failed:", err);
+        });
+      } else if (isExpanded && isVideo && videoRef.current) {
+        videoRef.current.pause();
+      }
     }
   };
 
@@ -62,7 +73,7 @@ export default function MediaViewer({ src, alt, postId, fileType }) {
           <div
             className="position-relative d-inline-block"
             style={{ cursor: "pointer" }}
-            onClick={handleMediaClick}
+            onMouseDown={handleMediaClick}
           >
             <video
               src={src}
@@ -104,19 +115,24 @@ export default function MediaViewer({ src, alt, postId, fileType }) {
                 maxHeight: "600px",
                 maxWidth: "100%",
                 borderRadius: "4px",
+                cursor: "pointer",
               }}
               controls
               autoPlay
               loop
               muted={isMuted}
               playsInline
+              onMouseDown={handleMediaClick}
             />
 
             {/* Custom controls overlay */}
             <div className="bg-dark p-2 rounded d-flex align-items-center gap-2">
               <button
                 className="btn btn-sm btn-outline-light"
-                onClick={handleMediaClick}
+                onClick={(e) => {
+                  e.preventDefault();
+                  setIsExpanded(false);
+                }}
                 title="Collapse video"
               >
                 <i className="bi bi-arrows-angle-contract"></i>
@@ -155,8 +171,6 @@ export default function MediaViewer({ src, alt, postId, fileType }) {
   }
 
   // For images (including GIFs)
-  //const isGif = src && src.toLowerCase().endsWith(".gif");
-
   return (
     <div className="mb-3">
       <img
@@ -172,8 +186,12 @@ export default function MediaViewer({ src, alt, postId, fileType }) {
           transition:
             "max-height 0.3s ease, max-width 0.3s ease, object-fit 0.3s ease",
         }}
-        onClick={handleMediaClick}
-        title={isExpanded ? "Click to collapse" : "Click to expand"}
+        onMouseDown={handleMediaClick}
+        title={
+          isExpanded
+            ? "Click to collapse, middle-click to open in new tab"
+            : "Click to expand, middle-click to open in new tab"
+        }
         loading="lazy"
       />
     </div>

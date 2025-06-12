@@ -11,7 +11,9 @@ import MediaViewer from "./MediaViewer";
 const API_BASE_URL = "https://conniption.onrender.com";
 const SOCKET_URL = "https://conniption.onrender.com";
 
-// Component for post link preview
+// PostLinkPreview component in ThreadPage
+// This snippet shows the updated PostLinkPreview component with middle-click support
+
 const PostLinkPreview = ({ postId, posts, x, y }) => {
   const post = posts.find((p) => p.id === parseInt(postId));
 
@@ -46,7 +48,20 @@ const PostLinkPreview = ({ postId, posts, x, y }) => {
           src={post.image_url}
           alt="Preview"
           className="img-fluid mb-2"
-          style={{ maxHeight: "100px", maxWidth: "100px", objectFit: "cover" }}
+          style={{
+            maxHeight: "100px",
+            maxWidth: "100px",
+            objectFit: "cover",
+            cursor: "pointer",
+            pointerEvents: "auto", // Enable pointer events for this image
+          }}
+          onMouseDown={(e) => {
+            if (e.button === 1) {
+              e.preventDefault();
+              e.stopPropagation();
+              window.open(post.image_url, "_blank");
+            }
+          }}
         />
       )}
       <p className="text-light mb-0 small" style={{ whiteSpace: "pre-wrap" }}>

@@ -10,7 +10,7 @@ const API_BASE_URL = "https://conniption.onrender.com";
 const SOCKET_URL = "https://conniption.onrender.com";
 
 // Component for rendering media thumbnails
-const MediaThumbnail = ({ src, alt, fileType, size = "150px" }) => {
+const MediaThumbnail = ({ src, alt, fileType, size = "150px", linkTo }) => {
   // Determine if this is a video based on extension or fileType
   const isVideo =
     fileType === "video" ||
@@ -20,54 +20,74 @@ const MediaThumbnail = ({ src, alt, fileType, size = "150px" }) => {
 
   if (!src) return null;
 
+  const handleClick = (e) => {
+    // Prevent default for middle click
+    if (e.button === 1) {
+      e.preventDefault();
+      window.open(src, "_blank");
+    }
+  };
+
   // For videos, show a thumbnail with play icon
   if (isVideo) {
     return (
-      <div className="position-relative d-inline-block">
-        <video
-          src={src}
-          className="img-fluid rounded"
-          style={{
-            maxWidth: size,
-            maxHeight: size,
-            objectFit: "cover",
-          }}
-          muted
-          playsInline
-          preload="metadata"
-        />
-        <div
-          className="position-absolute top-50 start-50 translate-middle"
-          style={{
-            width: "40px",
-            height: "40px",
-            backgroundColor: "rgba(0, 0, 0, 0.7)",
-            borderRadius: "50%",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            pointerEvents: "none",
-          }}
-        >
-          <i className="bi bi-play-fill text-white fs-4"></i>
+      <Link
+        to={linkTo}
+        onMouseDown={handleClick}
+        style={{ textDecoration: "none" }}
+      >
+        <div className="position-relative d-inline-block">
+          <video
+            src={src}
+            className="img-fluid rounded"
+            style={{
+              maxWidth: size,
+              maxHeight: size,
+              objectFit: "cover",
+            }}
+            muted
+            playsInline
+            preload="metadata"
+          />
+          <div
+            className="position-absolute top-50 start-50 translate-middle"
+            style={{
+              width: "40px",
+              height: "40px",
+              backgroundColor: "rgba(0, 0, 0, 0.7)",
+              borderRadius: "50%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              pointerEvents: "none",
+            }}
+          >
+            <i className="bi bi-play-fill text-white fs-4"></i>
+          </div>
         </div>
-      </div>
+      </Link>
     );
   }
 
   // For images
   return (
-    <img
-      src={src}
-      alt={alt}
-      className="img-fluid rounded"
-      style={{
-        maxWidth: size,
-        maxHeight: size,
-        objectFit: "cover",
-      }}
-      loading="lazy"
-    />
+    <Link
+      to={linkTo}
+      onMouseDown={handleClick}
+      style={{ textDecoration: "none" }}
+    >
+      <img
+        src={src}
+        alt={alt}
+        className="img-fluid rounded"
+        style={{
+          maxWidth: size,
+          maxHeight: size,
+          objectFit: "cover",
+        }}
+        loading="lazy"
+      />
+    </Link>
   );
 };
 
@@ -573,14 +593,13 @@ export default function BoardPage() {
                       <div className="row">
                         {thread.image_url && (
                           <div className="col-auto">
-                            <Link to={`/board/${boardId}/thread/${thread.id}`}>
-                              <MediaThumbnail
-                                src={thread.image_url}
-                                alt="Thread"
-                                fileType={thread.file_type}
-                                size="150px"
-                              />
-                            </Link>
+                            <MediaThumbnail
+                              src={thread.image_url}
+                              alt="Thread"
+                              fileType={thread.file_type}
+                              size="150px"
+                              linkTo={`/board/${boardId}/thread/${thread.id}`}
+                            />
                           </div>
                         )}
                         <div className="col">
@@ -640,16 +659,13 @@ export default function BoardPage() {
                                 <div className="row">
                                   {reply.image_url && (
                                     <div className="col-auto">
-                                      <Link
-                                        to={`/board/${boardId}/thread/${thread.id}`}
-                                      >
-                                        <MediaThumbnail
-                                          src={reply.image_url}
-                                          alt="Reply"
-                                          fileType={reply.file_type}
-                                          size="80px"
-                                        />
-                                      </Link>
+                                      <MediaThumbnail
+                                        src={reply.image_url}
+                                        alt="Reply"
+                                        fileType={reply.file_type}
+                                        size="80px"
+                                        linkTo={`/board/${boardId}/thread/${thread.id}`}
+                                      />
                                     </div>
                                   )}
                                   <div className="col">
