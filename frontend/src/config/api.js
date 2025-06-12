@@ -1,5 +1,3 @@
-// frontend/src/config/api.js
-
 /**
  * API configuration for the Conniption frontend
  * Uses environment variables with fallbacks
@@ -37,8 +35,11 @@ const validateUrl = (url, name) => {
 validateUrl(API_BASE_URL, "API_BASE_URL");
 validateUrl(SOCKET_URL, "SOCKET_URL");
 
-// Export as default for convenience
-export default {
+// Create a named configuration object
+const apiConfig = {
   API_BASE_URL,
   SOCKET_URL,
 };
+
+// Export as default
+export default apiConfig;
