@@ -1,9 +1,7 @@
 // frontend/src/components/admin/AdminLayout.js
 import { useState, useEffect } from "react";
 import { Link, Outlet, useNavigate, useLocation } from "react-router-dom";
-
-// API constants
-const API_BASE_URL = "https://conniption.onrender.com";
+import { API_BASE_URL, SOCKET_URL } from "../../config/api";
 
 export default function AdminLayout() {
   const [adminUser, setAdminUser] = useState(null);

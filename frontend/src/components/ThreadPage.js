@@ -6,10 +6,7 @@ import { io } from "socket.io-client";
 import PostModMenu from "./admin/PostModMenu";
 import BanNotification from "./BanNotification";
 import MediaViewer from "./MediaViewer";
-
-// API constants
-const API_BASE_URL = "https://conniption.onrender.com";
-const SOCKET_URL = "https://conniption.onrender.com";
+import { API_BASE_URL, SOCKET_URL } from "../config/api";
 
 // PostLinkPreview component in ThreadPage
 // This snippet shows the updated PostLinkPreview component with middle-click support

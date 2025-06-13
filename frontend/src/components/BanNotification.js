@@ -1,9 +1,7 @@
 // frontend/src/components/BanNotification.js
 import { useState } from "react";
 import { Link } from "react-router-dom";
-
-// API constants
-const API_BASE_URL = "https://conniption.onrender.com";
+import { API_BASE_URL, SOCKET_URL } from "../config/api";
 
 export default function BanNotification({ ban, boardId, onClose }) {
   const [appealText, setAppealText] = useState("");

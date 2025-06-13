@@ -1,9 +1,7 @@
 // frontend/src/components/admin/AdminUserManagement.js
 import { useState, useEffect } from "react";
 import { useOutletContext, Link } from "react-router-dom";
-
-// API constants
-const API_BASE_URL = "https://conniption.onrender.com";
+import { API_BASE_URL, SOCKET_URL } from "../../config/api";
 
 export default function AdminUserManagement() {
   const { adminUser } = useOutletContext();

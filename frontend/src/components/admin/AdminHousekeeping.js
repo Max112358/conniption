@@ -1,8 +1,6 @@
 // frontend/src/components/admin/AdminHousekeeping.js
 import { useState, useEffect } from "react";
-
-// API constants
-const API_BASE_URL = "https://conniption.onrender.com";
+import { API_BASE_URL, SOCKET_URL } from "../../config/api";
 
 export default function AdminHousekeeping({ adminUser }) {
   const [status, setStatus] = useState(null);

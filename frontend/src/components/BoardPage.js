@@ -4,10 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { io } from "socket.io-client";
 import BanNotification from "./BanNotification";
-
-// API constants
-const API_BASE_URL = "https://conniption.onrender.com";
-const SOCKET_URL = "https://conniption.onrender.com";
+import { API_BASE_URL, SOCKET_URL } from "../config/api";
 
 // Component for rendering media thumbnails
 const MediaThumbnail = ({ src, alt, fileType, size = "150px", linkTo }) => {
