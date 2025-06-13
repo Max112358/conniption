@@ -1,7 +1,7 @@
 // frontend/src/components/admin/AdminDashboard.js
 import { useState, useEffect } from "react";
 import { useOutletContext, Link } from "react-router-dom";
-import { API_BASE_URL, SOCKET_URL } from "../../config/api";
+import { API_BASE_URL } from "../../config/api";
 
 export default function AdminDashboard() {
   const { adminUser } = useOutletContext();

@@ -1,6 +1,6 @@
 // frontend/src/components/admin/AdminHousekeeping.js
 import { useState, useEffect } from "react";
-import { API_BASE_URL, SOCKET_URL } from "../../config/api";
+import { API_BASE_URL } from "../../config/api";
 
 export default function AdminHousekeeping({ adminUser }) {
   const [status, setStatus] = useState(null);

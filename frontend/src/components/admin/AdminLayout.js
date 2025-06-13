@@ -1,7 +1,7 @@
 // frontend/src/components/admin/AdminLayout.js
 import { useState, useEffect } from "react";
 import { Link, Outlet, useNavigate, useLocation } from "react-router-dom";
-import { API_BASE_URL, SOCKET_URL } from "../../config/api";
+import { API_BASE_URL } from "../../config/api";
 
 export default function AdminLayout() {
   const [adminUser, setAdminUser] = useState(null);

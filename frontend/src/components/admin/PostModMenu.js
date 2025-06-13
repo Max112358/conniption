@@ -1,7 +1,7 @@
 // frontend/src/components/admin/PostModMenu.js
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { API_BASE_URL, SOCKET_URL } from "../../config/api";
+import { API_BASE_URL } from "../../config/api";
 
 export default function PostModMenu({ post, thread, board, isAdmin, isMod }) {
   const [showMenu, setShowMenu] = useState(false);

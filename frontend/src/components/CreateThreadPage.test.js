@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { API_BASE_URL, SOCKET_URL } from "../config/api";
+import { API_BASE_URL } from "../config/api";
 
 export default function CreateThreadPage() {
   const { boardId } = useParams();

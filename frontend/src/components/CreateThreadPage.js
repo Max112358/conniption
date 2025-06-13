@@ -2,9 +2,7 @@
 
 import { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-
-// API constants
-const API_BASE_URL = "https://conniption.onrender.com";
+import { API_BASE_URL } from "../config/api";
 
 export default function CreateThreadPage() {
   const { boardId } = useParams();

@@ -1,7 +1,7 @@
 // frontend/src/components/BanNotification.js
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { API_BASE_URL, SOCKET_URL } from "../config/api";
+import { API_BASE_URL } from "../config/api";
 
 export default function BanNotification({ ban, boardId, onClose }) {
   const [appealText, setAppealText] = useState("");

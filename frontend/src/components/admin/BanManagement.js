@@ -1,7 +1,7 @@
 // frontend/src/components/admin/BanManagement.js
 import { useState, useEffect } from "react";
 import { useOutletContext, useSearchParams, Link } from "react-router-dom";
-import { API_BASE_URL, SOCKET_URL } from "../../config/api";
+import { API_BASE_URL } from "../../config/api";
 
 export default function BanManagement() {
   const { adminUser } = useOutletContext();
