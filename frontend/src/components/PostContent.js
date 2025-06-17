@@ -150,7 +150,7 @@ export default function PostContent({
         return (
           <span
             key={`${lineIndex}-${partIndex}`}
-            style={isGreentext ? { color: "#00ff00" } : {}}
+            className={isGreentext ? "greentext" : ""}
           >
             {part}
           </span>
