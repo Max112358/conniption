@@ -6,136 +6,8 @@ import { io } from "socket.io-client";
 import PostModMenu from "./admin/PostModMenu";
 import BanNotification from "./BanNotification";
 import MediaViewer from "./MediaViewer";
+import PostContent from "./PostContent";
 import { API_BASE_URL, SOCKET_URL } from "../config/api";
-
-// PostLinkPreview component in ThreadPage
-// This snippet shows the updated PostLinkPreview component with middle-click support
-
-const PostLinkPreview = ({ postId, posts, x, y }) => {
-  const post = posts.find((p) => p.id === parseInt(postId));
-
-  if (!post) return null;
-
-  return (
-    <div
-      style={{
-        position: "fixed",
-        left: `${x}px`,
-        top: `${y}px`,
-        maxWidth: "400px",
-        zIndex: 9999,
-        pointerEvents: "none",
-        backgroundColor: "#1a1d20",
-        border: "2px solid #495057",
-        borderRadius: "0.375rem",
-        padding: "1rem",
-        boxShadow: "0 4px 12px rgba(0, 0, 0, 0.8)",
-      }}
-    >
-      <div className="d-flex justify-content-between align-items-center mb-2">
-        <span className="text-secondary" style={{ marginRight: "10px" }}>
-          Post #{post.id}
-        </span>
-        <small className="text-secondary">
-          {new Date(post.created_at).toLocaleString()}
-        </small>
-      </div>
-      {post.image_url && (
-        <img
-          src={post.image_url}
-          alt="Preview"
-          className="img-fluid mb-2"
-          style={{
-            maxHeight: "100px",
-            maxWidth: "100px",
-            objectFit: "cover",
-            cursor: "pointer",
-            pointerEvents: "auto", // Enable pointer events for this image
-          }}
-          onMouseDown={(e) => {
-            if (e.button === 1) {
-              e.preventDefault();
-              e.stopPropagation();
-              window.open(post.image_url, "_blank");
-            }
-          }}
-        />
-      )}
-      <p className="text-light mb-0 small" style={{ whiteSpace: "pre-wrap" }}>
-        {post.content.length > 200
-          ? post.content.substring(0, 200) + "..."
-          : post.content}
-      </p>
-    </div>
-  );
-};
-
-// Component for rendering post content with links
-const PostContent = ({ content, posts, onPostLinkClick }) => {
-  const [hoveredPostId, setHoveredPostId] = useState(null);
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
-
-  // Parse content and convert >>postId to links
-  const parseContent = (text) => {
-    const parts = text.split(/(>>\d+)/g);
-
-    return parts.map((part, index) => {
-      const match = part.match(/^>>(\d+)$/);
-      if (match) {
-        const postId = match[1];
-        const targetPost = posts.find((p) => p.id === parseInt(postId));
-
-        if (targetPost) {
-          // Check if this is the OP (first post)
-          const isOP = posts[0] && posts[0].id === parseInt(postId);
-
-          return (
-            <span
-              key={index}
-              className="text-primary"
-              style={{ cursor: "pointer", textDecoration: "underline" }}
-              onClick={() => {
-                onPostLinkClick(postId);
-              }}
-              onMouseEnter={(e) => {
-                setHoveredPostId(postId);
-                const rect = e.target.getBoundingClientRect();
-                const pos = {
-                  x: rect.left,
-                  y: rect.bottom + 5,
-                };
-                setMousePos(pos);
-              }}
-              onMouseLeave={() => {
-                setHoveredPostId(null);
-              }}
-            >
-              {part}
-              {isOP ? "(OP)" : ""}
-            </span>
-          );
-        }
-      }
-      return part;
-    });
-  };
-
-  return (
-    <>
-      <p className="text-light mb-0" style={{ whiteSpace: "pre-wrap" }}>
-        {parseContent(content)}
-      </p>
-      {hoveredPostId && (
-        <PostLinkPreview
-          postId={hoveredPostId}
-          posts={posts}
-          x={mousePos.x}
-          y={mousePos.y}
-        />
-      )}
-    </>
-  );
-};
 
 export default function ThreadPage() {
   const { boardId, threadId } = useParams();
@@ -592,6 +464,7 @@ export default function ThreadPage() {
                         content={post.content}
                         posts={posts}
                         onPostLinkClick={handlePostLinkClick}
+                        isThreadPage={true}
                       />
                     </div>
                   </div>
