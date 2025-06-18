@@ -89,6 +89,8 @@ export default function PostContent({
     return lines.map((line, lineIndex) => {
       // Check if this line starts with > (but not >>)
       const isGreentext = line.startsWith(">") && !line.startsWith(">>");
+      // Check if this line starts with <
+      const isRedtext = line.startsWith("<");
 
       // Split line by >>postId pattern for post links
       const parts = line.split(/(>>\d+)/g);
@@ -146,11 +148,11 @@ export default function PostContent({
           }
         }
 
-        // Return the part, applying green color if this is a greentext line
+        // Return the part, applying green or red color if applicable
         return (
           <span
             key={`${lineIndex}-${partIndex}`}
-            className={isGreentext ? "greentext" : ""}
+            className={isGreentext ? "greentext" : isRedtext ? "redtext" : ""}
           >
             {part}
           </span>

@@ -10,6 +10,10 @@
   color: #b5bd68 !important;
 }
 
+.redtext {
+  color: #740808 !important;
+}
+
 /* Placeholder text styling for dark mode */
 .form-control::placeholder {
   color: rgba(255, 255, 255, 0.5) !important;
