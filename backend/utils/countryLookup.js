@@ -7,7 +7,10 @@ const geoip = require("geoip-lite");
  * @returns {string|null} Two-letter country code or null if not found
  */
 const getCountryCode = (ipAddress) => {
+  console.log(`Country lookup for IP: ${ipAddress}`);
+
   if (!ipAddress || ipAddress === "unknown") {
+    console.log("Country lookup: No IP address provided");
     return null;
   }
 
@@ -17,16 +20,63 @@ const getCountryCode = (ipAddress) => {
     ipAddress === "127.0.0.1" ||
     ipAddress.startsWith("192.168.") ||
     ipAddress.startsWith("10.") ||
-    ipAddress.startsWith("172.")
+    ipAddress.startsWith("172.") ||
+    ipAddress.startsWith("fc00:") || // IPv6 private
+    ipAddress.startsWith("fd00:") || // IPv6 private
+    ipAddress.startsWith("fe80:") // IPv6 link-local
   ) {
+    console.log(`Country lookup: Private/local IP detected: ${ipAddress}`);
     return "LO"; // Local network
+  }
+
+  // Handle Cloudflare IPs (these should not reach here if headers are properly set)
+  const cloudflareIpv4Ranges = [
+    "173.245.48.0/20",
+    "103.21.244.0/22",
+    "103.22.200.0/22",
+    "103.31.4.0/22",
+    "141.101.64.0/18",
+    "108.162.192.0/18",
+    "190.93.240.0/20",
+    "188.114.96.0/20",
+    "197.234.240.0/22",
+    "198.41.128.0/17",
+    "162.158.0.0/15",
+    "104.16.0.0/13",
+    "104.24.0.0/14",
+    "172.64.0.0/13",
+    "131.0.72.0/22",
+  ];
+
+  // Simple check if IP starts with Cloudflare ranges (not comprehensive)
+  const isCloudflareIp = cloudflareIpv4Ranges.some((range) => {
+    const rangeStart = range.split("/")[0];
+    const ipParts = ipAddress.split(".");
+    const rangeParts = rangeStart.split(".");
+    return ipParts[0] === rangeParts[0] && ipParts[1] === rangeParts[1];
+  });
+
+  if (isCloudflareIp) {
+    console.log(
+      `Country lookup: Cloudflare IP detected: ${ipAddress} - headers may be misconfigured`
+    );
+    return "CF"; // Cloudflare
   }
 
   try {
     const geo = geoip.lookup(ipAddress);
-    return geo ? geo.country : null;
+
+    if (geo) {
+      console.log(
+        `Country lookup: Found country ${geo.country} for IP ${ipAddress}`
+      );
+      return geo.country;
+    } else {
+      console.log(`Country lookup: No country data found for IP ${ipAddress}`);
+      return null;
+    }
   } catch (err) {
-    console.error("Error looking up country for IP:", ipAddress, err);
+    console.error("Country lookup error:", err);
     return null;
   }
 };
@@ -79,6 +129,7 @@ const getCountryName = (countryCode) => {
     CC: "Cocos Islands",
     CD: "Democratic Republic of the Congo",
     CF: "Central African Republic",
+    CF: "Cloudflare (Proxy)", // Added for Cloudflare detection
     CG: "Republic of the Congo",
     CH: "Switzerland",
     CI: "Ivory Coast",

@@ -6,6 +6,7 @@ const threadModel = require("../models/thread");
 const boardModel = require("../models/board");
 const { uploadWithUrlTransform } = require("../middleware/upload");
 const io = require("../utils/socketHandler").getIo;
+const getClientIp = require("../utils/getClientIp"); // Import the new utility
 
 /**
  * @route   GET /api/boards/:boardId/threads/:threadId/posts
@@ -44,10 +45,16 @@ router.get("/", async (req, res, next) => {
 router.post("/", uploadWithUrlTransform("image"), async (req, res, next) => {
   const { boardId, threadId } = req.params;
   const { content } = req.body;
-  const ipAddress = req.ip || req.headers["x-forwarded-for"] || "unknown";
+  const ipAddress = getClientIp(req); // Use the new utility
 
   console.log(`Route: POST /api/boards/${boardId}/threads/${threadId}/posts`);
   console.log(`IP Address: ${ipAddress}`);
+  console.log(`Request headers:`, {
+    "cf-connecting-ip": req.headers["cf-connecting-ip"],
+    "x-forwarded-for": req.headers["x-forwarded-for"],
+    "x-real-ip": req.headers["x-real-ip"],
+    "true-client-ip": req.headers["true-client-ip"],
+  });
 
   try {
     // Validate request - allow either content OR image

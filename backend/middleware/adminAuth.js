@@ -1,4 +1,5 @@
 // backend/middleware/adminAuth.js
+const getClientIp = require("../utils/getClientIp");
 
 /**
  * Admin authentication middleware
@@ -113,8 +114,8 @@ const canModerateBoard = (req, res, next) => {
 // This middleware doesn't block the request but adds ban info to req object
 const checkBanned = async (req, res, next) => {
   try {
-    // Extract IP address from request
-    const ipAddress = req.ip || req.headers["x-forwarded-for"] || "unknown";
+    // Extract IP address from request using the new utility
+    const ipAddress = getClientIp(req);
 
     // Get board ID from request
     const boardId = req.params.boardId;
@@ -152,8 +153,8 @@ const checkBanned = async (req, res, next) => {
 // Middleware to enforce ban (block request if banned)
 const enforceBan = async (req, res, next) => {
   try {
-    // Extract IP address from request
-    const ipAddress = req.ip || req.headers["x-forwarded-for"] || "unknown";
+    // Extract IP address from request using the new utility
+    const ipAddress = getClientIp(req);
 
     // Get board ID from request
     const boardId = req.params.boardId;

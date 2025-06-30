@@ -6,6 +6,7 @@ const boardModel = require("../models/board");
 const { uploadWithUrlTransform } = require("../middleware/upload"); // Changed to use the URL transform
 const postRoutes = require("./posts");
 const io = require("../utils/socketHandler").getIo;
+const getClientIp = require("../utils/getClientIp"); // Import the new utility
 
 // Use post routes
 router.use("/:threadId/posts", postRoutes);
@@ -47,11 +48,17 @@ router.get("/", async (req, res, next) => {
 router.post("/", uploadWithUrlTransform("image"), async (req, res, next) => {
   const { boardId } = req.params;
   const { topic, content } = req.body;
-  const ipAddress = req.ip || req.headers["x-forwarded-for"] || "unknown";
+  const ipAddress = getClientIp(req); // Use the new utility
 
   console.log(`Route: POST /api/boards/${boardId}/threads`);
   console.log(`Thread topic: "${topic}"`);
   console.log(`IP Address: ${ipAddress}`);
+  console.log(`Request headers:`, {
+    "cf-connecting-ip": req.headers["cf-connecting-ip"],
+    "x-forwarded-for": req.headers["x-forwarded-for"],
+    "x-real-ip": req.headers["x-real-ip"],
+    "true-client-ip": req.headers["true-client-ip"],
+  });
 
   try {
     // Validate request

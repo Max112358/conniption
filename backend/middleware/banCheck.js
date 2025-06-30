@@ -1,5 +1,6 @@
 // backend/middleware/banCheck.js
 const banModel = require("../models/ban");
+const getClientIp = require("../utils/getClientIp");
 
 /**
  * Middleware to check if user's IP is banned
@@ -10,7 +11,7 @@ const checkBannedIP = async (req, res, next) => {
     return next();
   }
 
-  const ipAddress = req.ip || req.headers["x-forwarded-for"] || "unknown";
+  const ipAddress = getClientIp(req); // Use the new utility
   const boardId = req.params.boardId;
 
   try {
