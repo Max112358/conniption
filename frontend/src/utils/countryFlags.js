@@ -24,7 +24,7 @@ export const getFlagUrl = (countryCode) => {
   const code = countryCode.toLowerCase();
 
   // Use flagcdn.com for flag images (16x12 size for small display)
-  return `https://flagcdn.com/16x12/${code}.png`;
+  return `https://flagcdn.com/w20/${code}.png`;
 };
 
 /**
@@ -37,7 +37,7 @@ export const getFlagUrlLarge = (countryCode) => {
 
   const code = countryCode.toLowerCase();
   // 32x24 for hover preview
-  return `https://flagcdn.com/32x24/${code}.png`;
+  return `https://flagcdn.com/w40/${code}.png`;
 };
 
 /**
