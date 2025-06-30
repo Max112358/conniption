@@ -1,6 +1,8 @@
 // backend/models/post.js
 const { pool } = require("../config/database");
 const transformImageUrl = require("../utils/transformImageUrl");
+const { generateThreadUserId } = require("../utils/threadIdGenerator");
+const { getCountryCode } = require("../utils/countryLookup");
 
 /**
  * Post model functions
@@ -19,7 +21,7 @@ const postModel = {
     try {
       const result = await pool.query(
         `
-        SELECT id, content, image_url, file_type, created_at
+        SELECT id, content, image_url, file_type, created_at, thread_user_id, country_code
         FROM posts
         WHERE thread_id = $1 AND board_id = $2
         ORDER BY created_at ASC
@@ -53,15 +55,38 @@ const postModel = {
    * @param {string} boardId - The board ID
    * @param {string} content - The post content
    * @param {string|null} imagePath - Path to the uploaded image (optional)
+   * @param {string} ipAddress - IP address of the poster
+   * @param {Object} boardSettings - Board settings for thread IDs and country flags
+   * @param {string} threadSalt - The thread's salt for generating thread IDs
    * @returns {Promise<Object>} Object with postId, threadId, and boardId
    */
-  createPost: async (threadId, boardId, content, imagePath = null) => {
+  createPost: async (
+    threadId,
+    boardId,
+    content,
+    imagePath,
+    ipAddress,
+    boardSettings,
+    threadSalt
+  ) => {
     console.log(`Model: Creating post in thread ${threadId}, board ${boardId}`);
     const client = await pool.connect();
 
     try {
       // Start transaction
       await client.query("BEGIN");
+
+      // Generate thread user ID if enabled
+      let threadUserId = null;
+      if (boardSettings.thread_ids_enabled && threadSalt) {
+        threadUserId = generateThreadUserId(ipAddress, threadId, threadSalt);
+      }
+
+      // Get country code if enabled
+      let countryCode = null;
+      if (boardSettings.country_flags_enabled) {
+        countryCode = getCountryCode(ipAddress);
+      }
 
       // Create post
       let postQuery, postParams;
@@ -73,20 +98,36 @@ const postModel = {
         // Post with media
         console.log(`Model: Creating post with ${fileType}: ${imagePath}`);
         postQuery = `
-          INSERT INTO posts (thread_id, board_id, content, image_url, file_type, created_at)
-          VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
+          INSERT INTO posts (thread_id, board_id, content, image_url, file_type, created_at, ip_address, thread_user_id, country_code)
+          VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP, $6, $7, $8)
           RETURNING id
         `;
-        postParams = [threadId, boardId, content, imagePath, fileType];
+        postParams = [
+          threadId,
+          boardId,
+          content,
+          imagePath,
+          fileType,
+          ipAddress,
+          threadUserId,
+          countryCode,
+        ];
       } else {
         // Post without media
         console.log(`Model: Creating post without media`);
         postQuery = `
-          INSERT INTO posts (thread_id, board_id, content, created_at)
-          VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
+          INSERT INTO posts (thread_id, board_id, content, created_at, ip_address, thread_user_id, country_code)
+          VALUES ($1, $2, $3, CURRENT_TIMESTAMP, $4, $5, $6)
           RETURNING id
         `;
-        postParams = [threadId, boardId, content];
+        postParams = [
+          threadId,
+          boardId,
+          content,
+          ipAddress,
+          threadUserId,
+          countryCode,
+        ];
       }
 
       const postResult = await client.query(postQuery, postParams);

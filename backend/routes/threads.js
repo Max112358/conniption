@@ -47,8 +47,11 @@ router.get("/", async (req, res, next) => {
 router.post("/", uploadWithUrlTransform("image"), async (req, res, next) => {
   const { boardId } = req.params;
   const { topic, content } = req.body;
+  const ipAddress = req.ip || req.headers["x-forwarded-for"] || "unknown";
+
   console.log(`Route: POST /api/boards/${boardId}/threads`);
   console.log(`Thread topic: "${topic}"`);
+  console.log(`IP Address: ${ipAddress}`);
 
   try {
     // Validate request
@@ -62,12 +65,18 @@ router.post("/", uploadWithUrlTransform("image"), async (req, res, next) => {
       return res.status(400).json({ error: "Image or video is required" });
     }
 
-    // Check if board exists
+    // Check if board exists and get board settings
     const board = await boardModel.getBoardById(boardId);
     if (!board) {
       console.log(`Route: Board not found - ${boardId}`);
       return res.status(404).json({ error: "Board not found" });
     }
+
+    // Extract board settings
+    const boardSettings = {
+      thread_ids_enabled: board.thread_ids_enabled,
+      country_flags_enabled: board.country_flags_enabled,
+    };
 
     // Log file info
     console.log(
@@ -80,7 +89,9 @@ router.post("/", uploadWithUrlTransform("image"), async (req, res, next) => {
       boardId,
       topic,
       content,
-      req.file.location
+      req.file.location,
+      ipAddress,
+      boardSettings
     );
 
     // Notify connected clients about the new thread

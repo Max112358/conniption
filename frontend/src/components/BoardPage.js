@@ -5,6 +5,7 @@ import { useParams, Link, useNavigate } from "react-router-dom";
 import { io } from "socket.io-client";
 import BanNotification from "./BanNotification";
 import PostContent from "./PostContent";
+import PostHeader from "./PostHeader";
 import { API_BASE_URL, SOCKET_URL } from "../config/api";
 
 // Component for rendering media thumbnails
@@ -496,14 +497,14 @@ export default function BoardPage() {
                                 className="mb-2 p-2 bg-dark rounded border border-secondary"
                               >
                                 <div className="d-flex justify-content-between align-items-start mb-1">
-                                  <small className="text-secondary">
-                                    Post #{reply.id}
-                                  </small>
-                                  <small className="text-secondary">
-                                    {new Date(
-                                      reply.created_at
-                                    ).toLocaleString()}
-                                  </small>
+                                  <PostHeader
+                                    post={reply}
+                                    onPostNumberClick={() => {}} // No direct reply from board page
+                                    showThreadId={board?.thread_ids_enabled}
+                                    showCountryFlag={
+                                      board?.country_flags_enabled
+                                    }
+                                  />
                                 </div>
 
                                 <div className="row">

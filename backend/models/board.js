@@ -13,7 +13,7 @@ const boardModel = {
     console.log("Model: Getting all boards");
     try {
       const result = await pool.query(
-        "SELECT id, name, description, nsfw FROM boards"
+        "SELECT id, name, description, nsfw, thread_ids_enabled, country_flags_enabled FROM boards"
       );
       console.log(`Model: Found ${result.rows.length} boards`);
       return result.rows;
@@ -32,7 +32,7 @@ const boardModel = {
     console.log(`Model: Getting board with ID: ${boardId}`);
     try {
       const result = await pool.query(
-        "SELECT id, name, description, nsfw FROM boards WHERE id = $1",
+        "SELECT id, name, description, nsfw, thread_ids_enabled, country_flags_enabled FROM boards WHERE id = $1",
         [boardId]
       );
 
@@ -58,14 +58,16 @@ const boardModel = {
     console.log(`Model: Creating new board: ${boardData.id}`);
     try {
       const result = await pool.query(
-        `INSERT INTO boards (id, name, description, nsfw)
-         VALUES ($1, $2, $3, $4)
-         RETURNING id, name, description, nsfw`,
+        `INSERT INTO boards (id, name, description, nsfw, thread_ids_enabled, country_flags_enabled)
+         VALUES ($1, $2, $3, $4, $5, $6)
+         RETURNING id, name, description, nsfw, thread_ids_enabled, country_flags_enabled`,
         [
           boardData.id,
           boardData.name,
           boardData.description,
           boardData.nsfw || false,
+          boardData.thread_ids_enabled || false,
+          boardData.country_flags_enabled || false,
         ]
       );
 

@@ -3,6 +3,7 @@ const express = require("express");
 const router = express.Router({ mergeParams: true }); // mergeParams to access boardId and threadId
 const postModel = require("../models/post");
 const threadModel = require("../models/thread");
+const boardModel = require("../models/board");
 const { uploadWithUrlTransform } = require("../middleware/upload");
 const io = require("../utils/socketHandler").getIo;
 
@@ -43,7 +44,10 @@ router.get("/", async (req, res, next) => {
 router.post("/", uploadWithUrlTransform("image"), async (req, res, next) => {
   const { boardId, threadId } = req.params;
   const { content } = req.body;
+  const ipAddress = req.ip || req.headers["x-forwarded-for"] || "unknown";
+
   console.log(`Route: POST /api/boards/${boardId}/threads/${threadId}/posts`);
+  console.log(`IP Address: ${ipAddress}`);
 
   try {
     // Validate request - allow either content OR image
@@ -54,12 +58,25 @@ router.post("/", uploadWithUrlTransform("image"), async (req, res, next) => {
         .json({ error: "Either content or an image/video is required" });
     }
 
-    // Check if thread exists
+    // Check if thread exists and get thread salt
     const thread = await threadModel.getThreadById(threadId, boardId);
     if (!thread) {
       console.log(`Route: Thread not found - ${threadId}`);
       return res.status(404).json({ error: "Thread not found" });
     }
+
+    // Get board settings
+    const board = await boardModel.getBoardById(boardId);
+    if (!board) {
+      console.log(`Route: Board not found - ${boardId}`);
+      return res.status(404).json({ error: "Board not found" });
+    }
+
+    // Extract board settings
+    const boardSettings = {
+      thread_ids_enabled: board.thread_ids_enabled,
+      country_flags_enabled: board.country_flags_enabled,
+    };
 
     // Create post
     // req.file.location now contains the R2.dev public URL
@@ -79,7 +96,10 @@ router.post("/", uploadWithUrlTransform("image"), async (req, res, next) => {
       threadId,
       boardId,
       postContent,
-      imageUrl
+      imageUrl,
+      ipAddress,
+      boardSettings,
+      thread.thread_salt
     );
 
     // Notify connected clients about the new post

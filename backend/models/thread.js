@@ -2,6 +2,7 @@
 const { pool } = require("../config/database");
 const transformImageUrl = require("../utils/transformImageUrl");
 const fileUtils = require("../utils/fileUtils");
+const { generateThreadSalt } = require("../utils/threadIdGenerator");
 
 /**
  * Thread model functions
@@ -22,6 +23,7 @@ const threadModel = {
           t.topic, 
           t.created_at,
           t.updated_at,
+          t.thread_salt,
           p.content,
           p.image_url,
           p.file_type,
@@ -67,7 +69,7 @@ const threadModel = {
     try {
       const result = await pool.query(
         `
-        SELECT id, board_id, topic, created_at, updated_at
+        SELECT id, board_id, topic, created_at, updated_at, thread_salt
         FROM threads
         WHERE id = $1 AND board_id = $2
         `,
@@ -96,9 +98,18 @@ const threadModel = {
    * @param {string} topic - The thread topic
    * @param {string} content - The initial post content
    * @param {string} imagePath - Path to the uploaded image
+   * @param {string} ipAddress - IP address of the poster
+   * @param {Object} boardSettings - Board settings for thread IDs and country flags
    * @returns {Promise<Object>} Object with threadId and boardId
    */
-  createThread: async (boardId, topic, content, imagePath) => {
+  createThread: async (
+    boardId,
+    topic,
+    content,
+    imagePath,
+    ipAddress,
+    boardSettings
+  ) => {
     console.log(`Model: Creating thread in board ${boardId}: "${topic}"`);
     const client = await pool.connect();
 
@@ -171,14 +182,17 @@ const threadModel = {
         }
       }
 
+      // Generate thread salt for thread IDs
+      const threadSalt = generateThreadSalt();
+
       // Create new thread
       const threadResult = await client.query(
         `
-        INSERT INTO threads (board_id, topic, created_at, updated_at)
-        VALUES ($1, $2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        INSERT INTO threads (board_id, topic, created_at, updated_at, thread_salt)
+        VALUES ($1, $2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, $3)
         RETURNING id
         `,
-        [boardId, topic]
+        [boardId, topic, threadSalt]
       );
 
       const threadId = threadResult.rows[0].id;
@@ -187,13 +201,38 @@ const threadModel = {
       // Determine file type
       const fileType = imagePath.match(/\.(mp4|webm)$/i) ? "video" : "image";
 
+      // Import required utilities for the first post
+      const { generateThreadUserId } = require("../utils/threadIdGenerator");
+      const { getCountryCode } = require("../utils/countryLookup");
+
+      // Generate thread user ID if enabled
+      let threadUserId = null;
+      if (boardSettings.thread_ids_enabled) {
+        threadUserId = generateThreadUserId(ipAddress, threadId, threadSalt);
+      }
+
+      // Get country code if enabled
+      let countryCode = null;
+      if (boardSettings.country_flags_enabled) {
+        countryCode = getCountryCode(ipAddress);
+      }
+
       // Create initial post with media
       await client.query(
         `
-        INSERT INTO posts (thread_id, board_id, content, image_url, file_type, created_at)
-        VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
+        INSERT INTO posts (thread_id, board_id, content, image_url, file_type, created_at, ip_address, thread_user_id, country_code)
+        VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP, $6, $7, $8)
         `,
-        [threadId, boardId, content, imagePath, fileType]
+        [
+          threadId,
+          boardId,
+          content,
+          imagePath,
+          fileType,
+          ipAddress,
+          threadUserId,
+          countryCode,
+        ]
       );
       console.log(
         `Model: Created initial post with ${fileType} for thread ${threadId}`

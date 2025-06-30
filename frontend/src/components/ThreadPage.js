@@ -7,6 +7,7 @@ import PostModMenu from "./admin/PostModMenu";
 import BanNotification from "./BanNotification";
 import MediaViewer from "./MediaViewer";
 import PostContent from "./PostContent";
+import PostHeader from "./PostHeader";
 import { API_BASE_URL, SOCKET_URL } from "../config/api";
 
 export default function ThreadPage() {
@@ -23,6 +24,7 @@ export default function ThreadPage() {
   const [adminUser, setAdminUser] = useState(null);
   const [banned, setBanned] = useState(false);
   const [banInfo, setBanInfo] = useState(null);
+  const [board, setBoard] = useState(null);
 
   const contentTextareaRef = useRef(null);
 
@@ -137,6 +139,18 @@ export default function ThreadPage() {
     // Fetch thread and its posts
     const fetchThreadData = async () => {
       try {
+        // Fetch board details to get settings
+        const boardResponse = await fetch(
+          `${API_BASE_URL}/api/boards/${boardId}`
+        );
+
+        if (!boardResponse.ok) {
+          throw new Error("Board not found");
+        }
+
+        const boardData = await boardResponse.json();
+        setBoard(boardData.board);
+
         // Fetch thread details
         const threadResponse = await fetch(
           `${API_BASE_URL}/api/boards/${boardId}/threads/${threadId}`
@@ -421,23 +435,12 @@ export default function ThreadPage() {
                     style={{ transition: "background-color 0.3s ease" }}
                   >
                     <div className="card-header border-secondary d-flex justify-content-between align-items-center">
-                      {/* FIXED SPACING HERE */}
-                      <div className="d-flex align-items-center gap-2">
-                        <div>
-                          <span className="text-secondary">Post #</span>
-                          <span
-                            className="text-primary"
-                            style={{ cursor: "pointer" }}
-                            onClick={() => handlePostNumberClick(post.id)}
-                            title="Click to reply to this post"
-                          >
-                            {post.id}
-                          </span>
-                        </div>
-                        <small className="text-secondary">
-                          {new Date(post.created_at).toLocaleString()}
-                        </small>
-                      </div>
+                      <PostHeader
+                        post={post}
+                        onPostNumberClick={handlePostNumberClick}
+                        showThreadId={board?.thread_ids_enabled}
+                        showCountryFlag={board?.country_flags_enabled}
+                      />
 
                       {/* Moderation menu */}
                       {isModerator && (

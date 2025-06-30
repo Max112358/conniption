@@ -1,4 +1,4 @@
-// backend/utils/dbInit.js (updated section)
+// backend/utils/dbInit.js
 const { pool } = require("../config/database");
 const boards = require("../config/boards");
 
@@ -35,7 +35,9 @@ const createTables = async () => {
         id TEXT PRIMARY KEY,
         name TEXT NOT NULL,
         description TEXT NOT NULL,
-        nsfw BOOLEAN DEFAULT FALSE
+        nsfw BOOLEAN DEFAULT FALSE,
+        thread_ids_enabled BOOLEAN DEFAULT FALSE,
+        country_flags_enabled BOOLEAN DEFAULT FALSE
       )
     `);
 
@@ -51,6 +53,21 @@ const createTables = async () => {
       // Continue with initialization even if this fails
     }
 
+    // Add new columns to boards table if they don't exist
+    try {
+      await pool.query(`
+        ALTER TABLE boards
+        ADD COLUMN IF NOT EXISTS thread_ids_enabled BOOLEAN DEFAULT FALSE,
+        ADD COLUMN IF NOT EXISTS country_flags_enabled BOOLEAN DEFAULT FALSE
+      `);
+      console.log(
+        "Added thread_ids_enabled and country_flags_enabled columns to boards table"
+      );
+    } catch (err) {
+      console.error("Error adding new columns to boards:", err);
+      // Continue with initialization even if this fails
+    }
+
     // Create threads table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS threads (
@@ -59,9 +76,21 @@ const createTables = async () => {
         topic TEXT NOT NULL,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        thread_salt TEXT,
         CONSTRAINT unique_thread_per_board UNIQUE (id, board_id)
       )
     `);
+
+    // Add thread_salt column to threads if it doesn't exist
+    try {
+      await pool.query(`
+        ALTER TABLE threads
+        ADD COLUMN IF NOT EXISTS thread_salt TEXT
+      `);
+      console.log("Added thread_salt column to threads table");
+    } catch (err) {
+      console.error("Error adding thread_salt column:", err);
+    }
 
     // Create posts table
     await pool.query(`
@@ -73,7 +102,9 @@ const createTables = async () => {
         image_url TEXT,
         file_type TEXT,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-        ip_address TEXT, 
+        ip_address TEXT,
+        thread_user_id TEXT,
+        country_code VARCHAR(2),
         FOREIGN KEY (thread_id, board_id) REFERENCES threads(id, board_id) ON DELETE CASCADE
       )
     `);
@@ -116,6 +147,20 @@ const createTables = async () => {
       // Continue with initialization even if this fails
     }
 
+    // Add new columns to posts if they don't exist
+    try {
+      await pool.query(`
+        ALTER TABLE posts
+        ADD COLUMN IF NOT EXISTS thread_user_id TEXT,
+        ADD COLUMN IF NOT EXISTS country_code VARCHAR(2)
+      `);
+      console.log(
+        "Added thread_user_id and country_code columns to posts table"
+      );
+    } catch (err) {
+      console.error("Error adding new columns to posts:", err);
+    }
+
     // Create index for file_type
     try {
       await pool.query(`
@@ -123,6 +168,16 @@ const createTables = async () => {
       `);
     } catch (err) {
       console.error("Error creating file_type index:", err);
+    }
+
+    // Create indexes for new columns
+    try {
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS idx_posts_thread_user_id ON posts(thread_user_id);
+        CREATE INDEX IF NOT EXISTS idx_posts_country_code ON posts(country_code);
+      `);
+    } catch (err) {
+      console.error("Error creating indexes:", err);
     }
 
     // ==================== ADMIN SYSTEM TABLES ====================
@@ -217,12 +272,20 @@ const seedBoards = async () => {
     for (const board of boards) {
       await pool.query(
         `
-        INSERT INTO boards (id, name, description, nsfw)
-        VALUES ($1, $2, $3, $4)
+        INSERT INTO boards (id, name, description, nsfw, thread_ids_enabled, country_flags_enabled)
+        VALUES ($1, $2, $3, $4, $5, $6)
         ON CONFLICT (id) DO UPDATE 
-        SET name = $2, description = $3, nsfw = $4
+        SET name = $2, description = $3, nsfw = $4, 
+            thread_ids_enabled = $5, country_flags_enabled = $6
       `,
-        [board.id, board.name, board.description, board.nsfw || false]
+        [
+          board.id,
+          board.name,
+          board.description,
+          board.nsfw || false,
+          board.thread_ids_enabled || false,
+          board.country_flags_enabled || false,
+        ]
       );
     }
 
