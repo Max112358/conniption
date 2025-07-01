@@ -106,10 +106,6 @@ export default function BoardPage() {
   // Use ref to store socket instance
   const socketRef = useRef(null);
 
-  // Store callbacks in refs to avoid recreating them
-  const fetchThreadsRef = useRef();
-  const fetchThreadsWithPostsRef = useRef();
-
   // Fetch threads function
   const fetchThreads = useCallback(async () => {
     try {
@@ -190,12 +186,6 @@ export default function BoardPage() {
     [boardId]
   );
 
-  // Update refs when functions change
-  useEffect(() => {
-    fetchThreadsRef.current = fetchThreads;
-    fetchThreadsWithPostsRef.current = fetchThreadsWithPosts;
-  }, [fetchThreads, fetchThreadsWithPosts]);
-
   // Handle clicking on a post link - navigate to the thread with the post
   const handlePostLinkClick = (postId, threadId) => {
     // Navigate to the thread page with a hash to scroll to the specific post
@@ -239,27 +229,65 @@ export default function BoardPage() {
     });
 
     // Listen for new threads
-    socket.on("thread_created", (data) => {
+    socket.on("thread_created", async (data) => {
       console.log("New thread created:", data);
-      if (data.boardId === boardId && fetchThreadsRef.current) {
-        fetchThreadsRef.current();
+      if (data.boardId === boardId) {
+        // Fetch all threads again to get the new thread
+        const threadsResponse = await fetch(
+          `${API_BASE_URL}/api/boards/${boardId}/threads`
+        );
+
+        if (threadsResponse.ok) {
+          const threadsData = await threadsResponse.json();
+          const newThreads = threadsData.threads || [];
+          setThreads(newThreads);
+
+          // Then fetch posts for all threads including the new one
+          fetchThreadsWithPosts(newThreads);
+        }
       }
     });
 
     // Listen for new posts
-    socket.on("post_created", (data) => {
+    socket.on("post_created", async (data) => {
       console.log("New post created:", data);
-      if (data.boardId === boardId && fetchThreadsRef.current) {
-        // First fetch threads, then fetch posts
-        fetchThreadsRef.current().then(() => {
-          // Get the latest threads from state
-          setThreads((currentThreads) => {
-            if (fetchThreadsWithPostsRef.current) {
-              fetchThreadsWithPostsRef.current(currentThreads);
+      if (data.boardId === boardId) {
+        // Re-fetch the specific thread's posts to update the latest replies
+        setThreadsWithPosts((currentThreadsWithPosts) => {
+          return currentThreadsWithPosts.map(async (thread) => {
+            if (thread.id === data.threadId) {
+              // Fetch updated posts for this thread
+              try {
+                const postsResponse = await fetch(
+                  `${API_BASE_URL}/api/boards/${boardId}/threads/${thread.id}/posts`
+                );
+
+                if (postsResponse.ok) {
+                  const postsData = await postsResponse.json();
+                  const posts = postsData.posts || [];
+                  const replies = posts.slice(1);
+                  const latestReplies = replies.slice(-5);
+
+                  return {
+                    ...thread,
+                    posts: posts,
+                    latestReplies: latestReplies,
+                    totalReplies: replies.length,
+                  };
+                }
+              } catch (err) {
+                console.error(
+                  `Error updating posts for thread ${thread.id}:`,
+                  err
+                );
+              }
             }
-            return currentThreads;
+            return thread;
           });
         });
+
+        // Also re-fetch all threads to update the order (bumping)
+        fetchThreads();
       }
     });
 
@@ -272,7 +300,7 @@ export default function BoardPage() {
       socket.disconnect();
       socketRef.current = null;
     };
-  }, [boardId]); // Only re-run when boardId changes
+  }, [boardId, fetchThreads, fetchThreadsWithPosts]);
 
   // Initial data fetch - separate effect
   useEffect(() => {
