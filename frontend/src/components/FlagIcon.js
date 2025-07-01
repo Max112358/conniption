@@ -67,8 +67,8 @@ export default function FlagIcon({
         <span
           className="d-inline-flex align-items-center justify-content-center bg-secondary text-white"
           style={{
-            width: size === "large" ? "24px" : "16px",
-            height: size === "large" ? "18px" : "12px",
+            width: size === "large" ? "24px" : "32px",
+            height: size === "large" ? "18px" : "24px",
             fontSize: "0.625rem",
             fontWeight: "bold",
             borderRadius: "2px",
@@ -92,8 +92,8 @@ export default function FlagIcon({
       <img
         src={flagUrl}
         alt={countryCode}
-        width={size === "large" ? "24" : "16"}
-        height={size === "large" ? "18" : "12"}
+        width={size === "large" ? "24" : "32"}
+        height={size === "large" ? "18" : "24"}
         style={{
           objectFit: "contain",
           border: "1px solid rgba(255, 255, 255, 0.2)",
