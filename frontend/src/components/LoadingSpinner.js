@@ -32,9 +32,9 @@ export default function LoadingSpinner({ message = "Loading..." }) {
               </h6>
               <p className="mb-0">
                 <small>
-                  The free server hibernates after periods of inactivity. If
-                  this is taking longer than usual, please wait up to 50 seconds
-                  for the server to fully wake up. Thank you for your patience!
+                  The server hibernates after periods of inactivity. Please wait
+                  up to 50 seconds for the server to wake up. Thank you for your
+                  patience!
                 </small>
               </p>
             </div>
