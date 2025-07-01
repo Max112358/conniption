@@ -26,8 +26,17 @@ export default function ThreadPage() {
   const [banned, setBanned] = useState(false);
   const [banInfo, setBanInfo] = useState(null);
   const [board, setBoard] = useState(null);
+  const [socketConnected, setSocketConnected] = useState(false);
+  const [newPostsAvailable, setNewPostsAvailable] = useState(false);
 
   const contentTextareaRef = useRef(null);
+  const socketRef = useRef(null);
+  const postsRef = useRef(posts); // Keep track of current posts for socket handler
+
+  // Update postsRef when posts change
+  useEffect(() => {
+    postsRef.current = posts;
+  }, [posts]);
 
   // Add custom CSS for highlight animation
   useEffect(() => {
@@ -39,6 +48,19 @@ export default function ThreadPage() {
       }
       .post-highlight {
         animation: postHighlight 2s ease-in-out;
+      }
+      @keyframes newPostAnimation {
+        0% { 
+          opacity: 0;
+          transform: translateY(-20px);
+        }
+        100% { 
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      .new-post {
+        animation: newPostAnimation 0.5s ease-out;
       }
     `;
     document.head.appendChild(style);
@@ -62,82 +84,136 @@ export default function ThreadPage() {
   }, []);
 
   // Use useCallback to memoize fetchPosts function to avoid dependency issues
-  const fetchPosts = useCallback(async () => {
-    try {
-      const postsResponse = await fetch(
-        `${API_BASE_URL}/api/boards/${boardId}/threads/${threadId}/posts`
-      );
+  const fetchPosts = useCallback(
+    async (isSocketUpdate = false) => {
+      try {
+        const postsResponse = await fetch(
+          `${API_BASE_URL}/api/boards/${boardId}/threads/${threadId}/posts`
+        );
 
-      // Check if response indicates the user is banned
-      if (postsResponse.status === 403) {
-        const errorData = await postsResponse.json();
-        if (errorData.error === "Banned") {
-          setBanned(true);
-          setBanInfo(errorData.ban);
-          return false;
+        // Check if response indicates the user is banned
+        if (postsResponse.status === 403) {
+          const errorData = await postsResponse.json();
+          if (errorData.error === "Banned") {
+            setBanned(true);
+            setBanInfo(errorData.ban);
+            return false;
+          }
         }
+
+        if (!postsResponse.ok) {
+          throw new Error("Failed to load posts");
+        }
+
+        const postsData = await postsResponse.json();
+        const newPosts = postsData.posts || [];
+
+        // If this is a socket update and we have existing posts, mark new ones
+        if (isSocketUpdate && postsRef.current.length > 0) {
+          const existingPostIds = new Set(postsRef.current.map((p) => p.id));
+          const actualNewPosts = newPosts.filter(
+            (p) => !existingPostIds.has(p.id)
+          );
+
+          if (actualNewPosts.length > 0) {
+            // Mark the new posts for animation
+            const markedPosts = newPosts.map((post) => ({
+              ...post,
+              isNew: !existingPostIds.has(post.id),
+            }));
+            setPosts(markedPosts);
+
+            // Remove the "new" flag after animation completes
+            setTimeout(() => {
+              setPosts((current) =>
+                current.map((post) => ({
+                  ...post,
+                  isNew: false,
+                }))
+              );
+            }, 500);
+
+            // Show notification if user is scrolled up
+            const scrollPosition = window.scrollY + window.innerHeight;
+            const documentHeight = document.documentElement.scrollHeight;
+            if (scrollPosition < documentHeight - 100) {
+              setNewPostsAvailable(true);
+            }
+          } else {
+            setPosts(newPosts);
+          }
+        } else {
+          setPosts(newPosts);
+        }
+
+        return true;
+      } catch (err) {
+        console.error("Error fetching posts:", err);
+        return false;
       }
+    },
+    [boardId, threadId]
+  );
 
-      if (!postsResponse.ok) {
-        throw new Error("Failed to load posts");
-      }
-
-      const postsData = await postsResponse.json();
-      setPosts(postsData.posts || []);
-      return true;
-    } catch (err) {
-      console.error("Error fetching posts:", err);
-      return false;
-    }
-  }, [boardId, threadId]);
-
+  // Socket setup effect
   useEffect(() => {
-    // Socket.io setup with better error handling
-    console.log("Connecting to Socket.io server at:", SOCKET_URL);
+    console.log("Setting up Socket.io connection for thread:", threadId);
 
     const socket = io(SOCKET_URL, {
-      // Start with polling, allow upgrade to websocket
       transports: ["polling", "websocket"],
-      // Reconnection settings
       reconnection: true,
       reconnectionAttempts: 5,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
-      // Timeout settings
       timeout: 20000,
-      // Path must match server
       path: "/socket.io/",
-      // Force new connection
       forceNew: true,
-      // Additional options for stability
       rejectUnauthorized: false,
     });
+
+    socketRef.current = socket;
 
     // Socket event handlers
     socket.on("connect", () => {
       console.log("Socket.io connected successfully");
+      setSocketConnected(true);
       // Join the thread room after connection
       socket.emit("join_thread", { boardId, threadId });
     });
 
     socket.on("disconnect", (reason) => {
       console.log("Socket.io disconnected:", reason);
+      setSocketConnected(false);
     });
 
     socket.on("connect_error", (error) => {
       console.error("Socket.io connection error:", error.message);
+      setSocketConnected(false);
     });
 
     // Listen for new posts
     socket.on("post_created", (data) => {
-      console.log("New post created:", data);
+      console.log("New post created event received:", data);
       if (data.threadId === parseInt(threadId) && data.boardId === boardId) {
-        // Refresh posts when a new post is created
-        fetchPosts();
+        console.log("Post is for this thread, fetching updates...");
+        // Fetch posts with socket update flag
+        fetchPosts(true);
       }
     });
 
-    // Fetch thread and its posts
+    // Cleanup function
+    return () => {
+      console.log("Cleaning up Socket.io connection for thread:", threadId);
+      if (socket.connected) {
+        socket.emit("leave_thread", { boardId, threadId });
+      }
+      socket.disconnect();
+      socketRef.current = null;
+    };
+  }, [boardId, threadId, fetchPosts]);
+
+  // Initial data fetch
+  useEffect(() => {
     const fetchThreadData = async () => {
       try {
         // Fetch board details to get settings
@@ -165,7 +241,7 @@ export default function ThreadPage() {
         setThread(threadData.thread);
 
         // Fetch posts
-        await fetchPosts();
+        await fetchPosts(false);
 
         setLoading(false);
       } catch (err) {
@@ -178,15 +254,22 @@ export default function ThreadPage() {
     };
 
     fetchThreadData();
-
-    // Cleanup function to leave the thread room
-    return () => {
-      if (socket.connected) {
-        socket.emit("leave_thread", { boardId, threadId });
-      }
-      socket.disconnect();
-    };
   }, [boardId, threadId, fetchPosts]);
+
+  // Handle scroll to dismiss new posts notification
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollPosition = window.scrollY + window.innerHeight;
+      const documentHeight = document.documentElement.scrollHeight;
+
+      if (scrollPosition >= documentHeight - 100) {
+        setNewPostsAvailable(false);
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   // Handle image selection
   const handleImageChange = (e) => {
@@ -258,8 +341,16 @@ export default function ThreadPage() {
         fileInput.value = "";
       }
 
-      // Fetch updated posts
-      await fetchPosts();
+      // Fetch updated posts - the socket event will also trigger this
+      await fetchPosts(false);
+
+      // Scroll to bottom to see new post
+      setTimeout(() => {
+        window.scrollTo({
+          top: document.documentElement.scrollHeight,
+          behavior: "smooth",
+        });
+      }, 100);
 
       setPostLoading(false);
     } catch (err) {
@@ -320,6 +411,15 @@ export default function ThreadPage() {
     }
   };
 
+  // Scroll to new posts when notification is clicked
+  const scrollToNewPosts = () => {
+    window.scrollTo({
+      top: document.documentElement.scrollHeight,
+      behavior: "smooth",
+    });
+    setNewPostsAvailable(false);
+  };
+
   // Check if user is admin or moderator
   const isAdmin = adminUser && adminUser.role === "admin";
   const isModerator =
@@ -366,7 +466,7 @@ export default function ThreadPage() {
           </Link>
         </div>
 
-        {/* Thread Header - FIXED COLORS HERE */}
+        {/* Thread Header */}
         <div className="card bg-dark border-secondary shadow mb-4">
           <div className="card-header border-secondary d-flex justify-content-between align-items-center">
             <h1 className="h3 mb-0 text-light">
@@ -390,24 +490,49 @@ export default function ThreadPage() {
                 Thread created: {new Date(thread.created_at).toLocaleString()}
               </p>
 
-              {/* Admin badge */}
-              {adminUser && (
-                <span
-                  className={`badge bg-${
-                    adminUser.role === "admin"
-                      ? "danger"
-                      : adminUser.role === "moderator"
-                      ? "warning"
-                      : "info"
-                  }`}
+              <div className="d-flex align-items-center gap-2">
+                {/* Socket connection indicator */}
+                <small
+                  className={`text-${socketConnected ? "success" : "warning"}`}
                 >
-                  {adminUser.role.charAt(0).toUpperCase() +
-                    adminUser.role.slice(1)}
-                </span>
-              )}
+                  {socketConnected ? "● Live" : "○ Connecting..."}
+                </small>
+
+                {/* Admin badge */}
+                {adminUser && (
+                  <span
+                    className={`badge bg-${
+                      adminUser.role === "admin"
+                        ? "danger"
+                        : adminUser.role === "moderator"
+                        ? "warning"
+                        : "info"
+                    }`}
+                  >
+                    {adminUser.role.charAt(0).toUpperCase() +
+                      adminUser.role.slice(1)}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         </div>
+
+        {/* New posts notification */}
+        {newPostsAvailable && (
+          <div
+            className="position-fixed bottom-0 start-50 translate-middle-x mb-3"
+            style={{ zIndex: 1000 }}
+          >
+            <button
+              className="btn btn-primary shadow-lg"
+              onClick={scrollToNewPosts}
+            >
+              <i className="bi bi-arrow-down-circle me-2"></i>
+              New posts available
+            </button>
+          </div>
+        )}
 
         {/* Posts Section */}
         <div className="card bg-mid-dark border-secondary shadow mb-4">
@@ -421,7 +546,9 @@ export default function ThreadPage() {
                   <div
                     key={post.id}
                     id={`post-${post.id}`}
-                    className="card bg-dark border-secondary mb-3"
+                    className={`card bg-dark border-secondary mb-3 ${
+                      post.isNew ? "new-post" : ""
+                    }`}
                     style={{ transition: "background-color 0.3s ease" }}
                   >
                     <div className="card-header border-secondary d-flex justify-content-between align-items-center">

@@ -114,9 +114,17 @@ router.post("/", uploadWithUrlTransform("image"), async (req, res, next) => {
     if (socketIo) {
       const roomId = `${boardId}-${threadId}`;
       console.log(`Emitting post_created event to room ${roomId}`);
+      // Emit to the thread room
       socketIo.to(roomId).emit("post_created", {
         postId: result.postId,
-        threadId,
+        threadId: parseInt(threadId), // Ensure threadId is a number
+        boardId,
+      });
+
+      // Also emit to the board room for board page updates
+      socketIo.to(boardId).emit("post_created", {
+        postId: result.postId,
+        threadId: parseInt(threadId),
         boardId,
       });
     } else {
