@@ -1,43 +1,41 @@
 // frontend/src/utils/countryFlags.js
 
 /**
- * Get flag image URL for a country code
- * Using the flagcdn.com service for reliable flag images
+ * Get the local URL for a country flag (small size)
  * @param {string} countryCode - Two-letter country code
- * @returns {string} URL to flag image
+ * @returns {string|null} Local flag URL or null if invalid
  */
 export const getFlagUrl = (countryCode) => {
-  if (!countryCode) return null;
+  if (!countryCode || countryCode.length !== 2) {
+    return null;
+  }
 
   // Special cases
-  if (countryCode === "LO") {
-    // Local network - return a house icon from Bootstrap Icons
-    return null; // We'll handle this specially in the component
+  if (countryCode === "LO" || countryCode === "CF") {
+    return null; // These use icons instead
   }
 
-  if (countryCode === "CF") {
-    // Cloudflare - return a cloud icon
-    return null; // We'll handle this specially in the component
-  }
-
-  // Convert to lowercase for the flag service
-  const code = countryCode.toLowerCase();
-
-  // Use flagcdn.com for flag images (16x12 size for small display)
-  return `https://flagcdn.com/w20/${code}.png`;
+  // Use local flag from public folder
+  return `/flags/1x1/${countryCode.toLowerCase()}.svg`;
 };
 
 /**
- * Get higher resolution flag URL for hover preview
+ * Get the local URL for a country flag (large size)
  * @param {string} countryCode - Two-letter country code
- * @returns {string} URL to larger flag image
+ * @returns {string|null} Local flag URL or null if invalid
  */
 export const getFlagUrlLarge = (countryCode) => {
-  if (!countryCode || countryCode === "LO" || countryCode === "CF") return null;
+  if (!countryCode || countryCode.length !== 2) {
+    return null;
+  }
 
-  const code = countryCode.toLowerCase();
-  // 32x24 for hover preview
-  return `https://flagcdn.com/w40/${code}.png`;
+  // Special cases
+  if (countryCode === "LO" || countryCode === "CF") {
+    return null; // These use icons instead
+  }
+
+  // Use local flag from public folder
+  return `/flags/4x3/${countryCode.toLowerCase()}.svg`;
 };
 
 /**
@@ -299,270 +297,5 @@ export const getCountryName = (countryCode) => {
     ZW: "Zimbabwe",
   };
 
-  return countries[countryCode] || "Unknown";
-};
-
-/**
- * Check if country code is valid
- * @param {string} countryCode - Two-letter country code
- * @returns {boolean} Whether the country code is valid
- */
-export const isValidCountryCode = (countryCode) => {
-  if (!countryCode || countryCode.length !== 2) return false;
-
-  // List of all valid ISO 3166-1 alpha-2 codes plus our custom codes
-  const validCodes = [
-    "AD",
-    "AE",
-    "AF",
-    "AG",
-    "AI",
-    "AL",
-    "AM",
-    "AO",
-    "AQ",
-    "AR",
-    "AS",
-    "AT",
-    "AU",
-    "AW",
-    "AX",
-    "AZ",
-    "BA",
-    "BB",
-    "BD",
-    "BE",
-    "BF",
-    "BG",
-    "BH",
-    "BI",
-    "BJ",
-    "BL",
-    "BM",
-    "BN",
-    "BO",
-    "BQ",
-    "BR",
-    "BS",
-    "BT",
-    "BV",
-    "BW",
-    "BY",
-    "BZ",
-    "CA",
-    "CC",
-    "CD",
-    "CF",
-    "CG",
-    "CH",
-    "CI",
-    "CK",
-    "CL",
-    "CM",
-    "CN",
-    "CO",
-    "CR",
-    "CU",
-    "CV",
-    "CW",
-    "CX",
-    "CY",
-    "CZ",
-    "DE",
-    "DJ",
-    "DK",
-    "DM",
-    "DO",
-    "DZ",
-    "EC",
-    "EE",
-    "EG",
-    "EH",
-    "ER",
-    "ES",
-    "ET",
-    "FI",
-    "FJ",
-    "FK",
-    "FM",
-    "FO",
-    "FR",
-    "GA",
-    "GB",
-    "GD",
-    "GE",
-    "GF",
-    "GG",
-    "GH",
-    "GI",
-    "GL",
-    "GM",
-    "GN",
-    "GP",
-    "GQ",
-    "GR",
-    "GS",
-    "GT",
-    "GU",
-    "GW",
-    "GY",
-    "HK",
-    "HM",
-    "HN",
-    "HR",
-    "HT",
-    "HU",
-    "ID",
-    "IE",
-    "IL",
-    "IM",
-    "IN",
-    "IO",
-    "IQ",
-    "IR",
-    "IS",
-    "IT",
-    "JE",
-    "JM",
-    "JO",
-    "JP",
-    "KE",
-    "KG",
-    "KH",
-    "KI",
-    "KM",
-    "KN",
-    "KP",
-    "KR",
-    "KW",
-    "KY",
-    "KZ",
-    "LA",
-    "LB",
-    "LC",
-    "LI",
-    "LK",
-    "LO",
-    "LR",
-    "LS",
-    "LT",
-    "LU",
-    "LV",
-    "LY",
-    "MA",
-    "MC",
-    "MD",
-    "ME",
-    "MF",
-    "MG",
-    "MH",
-    "MK",
-    "ML",
-    "MM",
-    "MN",
-    "MO",
-    "MP",
-    "MQ",
-    "MR",
-    "MS",
-    "MT",
-    "MU",
-    "MV",
-    "MW",
-    "MX",
-    "MY",
-    "MZ",
-    "NA",
-    "NC",
-    "NE",
-    "NF",
-    "NG",
-    "NI",
-    "NL",
-    "NO",
-    "NP",
-    "NR",
-    "NU",
-    "NZ",
-    "OM",
-    "PA",
-    "PE",
-    "PF",
-    "PG",
-    "PH",
-    "PK",
-    "PL",
-    "PM",
-    "PN",
-    "PR",
-    "PS",
-    "PT",
-    "PW",
-    "PY",
-    "QA",
-    "RE",
-    "RO",
-    "RS",
-    "RU",
-    "RW",
-    "SA",
-    "SB",
-    "SC",
-    "SD",
-    "SE",
-    "SG",
-    "SH",
-    "SI",
-    "SJ",
-    "SK",
-    "SL",
-    "SM",
-    "SN",
-    "SO",
-    "SR",
-    "SS",
-    "ST",
-    "SV",
-    "SX",
-    "SY",
-    "SZ",
-    "TC",
-    "TD",
-    "TF",
-    "TG",
-    "TH",
-    "TJ",
-    "TK",
-    "TL",
-    "TM",
-    "TN",
-    "TO",
-    "TR",
-    "TT",
-    "TV",
-    "TW",
-    "TZ",
-    "UA",
-    "UG",
-    "UM",
-    "US",
-    "UY",
-    "UZ",
-    "VA",
-    "VC",
-    "VE",
-    "VG",
-    "VI",
-    "VN",
-    "VU",
-    "WF",
-    "WS",
-    "YE",
-    "YT",
-    "ZA",
-    "ZM",
-    "ZW",
-  ];
-
-  return validCodes.includes(countryCode.toUpperCase());
+  return countries[countryCode?.toUpperCase()] || "Unknown";
 };
