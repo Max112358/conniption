@@ -6,6 +6,7 @@ import { io } from "socket.io-client";
 import BanNotification from "./BanNotification";
 import PostContent from "./PostContent";
 import PostHeader from "./PostHeader";
+import LoadingSpinner from "./LoadingSpinner";
 import { API_BASE_URL, SOCKET_URL } from "../config/api";
 
 // Component for rendering media thumbnails
@@ -340,18 +341,7 @@ export default function BoardPage() {
   }
 
   if (loading) {
-    return (
-      <div className="container-fluid min-vh-100 d-flex align-items-center justify-content-center bg-dark text-light">
-        <div className="card bg-dark text-light border-secondary p-4 shadow">
-          <div className="card-body text-center">
-            <div className="spinner-border text-light" role="status">
-              <span className="visually-hidden">Loading...</span>
-            </div>
-            <p className="mt-3">Loading board...</p>
-          </div>
-        </div>
-      </div>
-    );
+    return <LoadingSpinner message="Loading board..." />;
   }
 
   if (error) {

@@ -1,9 +1,10 @@
-// components/LandingPage.js
+// frontend/src/components/LandingPage.js
 
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { API_BASE_URL } from "../config/api"; // Import from config
+import { API_BASE_URL } from "../config/api";
 import logoSvg from "../assets/conniption_logo6.svg";
+import LoadingSpinner from "./LoadingSpinner";
 
 export default function LandingPage() {
   const [sfw_boards, setSfwBoards] = useState([]);
@@ -45,25 +46,7 @@ export default function LandingPage() {
   }, []);
 
   if (loading) {
-    return (
-      <div className="container-fluid min-vh-100 d-flex align-items-center justify-content-center bg-dark text-light">
-        <div className="card bg-dark text-light border-secondary p-4 shadow">
-          <div className="card-body text-center">
-            <div className="d-flex justify-content-center mb-4">
-              <img
-                src={logoSvg}
-                alt="Conniption Logo"
-                style={{ maxHeight: "80px" }}
-              />
-            </div>
-            <div className="spinner-border text-light" role="status">
-              <span className="visually-hidden">Loading...</span>
-            </div>
-            <p className="mt-3">Loading boards...</p>
-          </div>
-        </div>
-      </div>
-    );
+    return <LoadingSpinner message="Loading boards..." />;
   }
 
   if (error) {

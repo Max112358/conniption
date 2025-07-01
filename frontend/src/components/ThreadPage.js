@@ -8,6 +8,7 @@ import BanNotification from "./BanNotification";
 import MediaViewer from "./MediaViewer";
 import PostContent from "./PostContent";
 import PostHeader from "./PostHeader";
+import LoadingSpinner from "./LoadingSpinner";
 import { API_BASE_URL, SOCKET_URL } from "../config/api";
 
 export default function ThreadPage() {
@@ -330,18 +331,7 @@ export default function ThreadPage() {
   }
 
   if (loading) {
-    return (
-      <div className="container-fluid min-vh-100 d-flex align-items-center justify-content-center bg-dark text-light">
-        <div className="card bg-dark text-light border-secondary p-4 shadow">
-          <div className="card-body text-center">
-            <div className="spinner-border text-light" role="status">
-              <span className="visually-hidden">Loading...</span>
-            </div>
-            <p className="mt-3">Loading thread...</p>
-          </div>
-        </div>
-      </div>
-    );
+    return <LoadingSpinner message="Loading thread..." />;
   }
 
   if (error) {
