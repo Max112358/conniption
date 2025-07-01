@@ -71,8 +71,6 @@ export default function FlagIcon({
             height: size === "large" ? "18px" : "24px",
             fontSize: "0.625rem",
             fontWeight: "bold",
-            borderRadius: "2px",
-            border: "1px solid rgba(255, 255, 255, 0.2)",
           }}
         >
           {countryCode.toUpperCase()}
@@ -96,8 +94,6 @@ export default function FlagIcon({
         height={size === "large" ? "18" : "24"}
         style={{
           objectFit: "contain",
-          border: "1px solid rgba(255, 255, 255, 0.2)",
-          borderRadius: "2px",
         }}
         onError={() => {
           setFlagError(true);
@@ -115,7 +111,7 @@ export default function FlagIcon({
 
       {showTooltip && showCountryTooltip && (
         <span
-          className="position-absolute bg-dark text-light px-2 py-1 rounded d-flex align-items-center gap-2"
+          className="position-absolute bg-dark text-light px-2 py-1 rounded"
           style={{
             top: "100%",
             left: "50%",
@@ -125,23 +121,9 @@ export default function FlagIcon({
             whiteSpace: "nowrap",
             zIndex: 1000,
             border: "1px solid #495057",
-            minWidth: "120px",
           }}
         >
-          {size === "small" && getFlagUrlLarge(countryCode) && !flagError && (
-            <img
-              src={getFlagUrlLarge(countryCode)}
-              alt={countryCode}
-              width="24"
-              height="18"
-              style={{
-                objectFit: "contain",
-                border: "1px solid rgba(255, 255, 255, 0.3)",
-                borderRadius: "2px",
-              }}
-            />
-          )}
-          <span>{countryName}</span>
+          {countryName}
         </span>
       )}
     </span>
