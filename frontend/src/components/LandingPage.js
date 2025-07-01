@@ -75,24 +75,30 @@ export default function LandingPage() {
     <Link
       key={board.id}
       to={`/board/${board.id}`}
-      className="list-group-item list-group-item-action bg-dark text-light border-secondary p-2"
+      className="list-group-item list-group-item-action bg-dark text-light border-secondary p-3"
     >
-      <div className="d-flex justify-content-between align-items-center">
-        <strong className="small">/{board.id}/</strong>
+      <div className="d-flex justify-content-between align-items-start mb-2">
+        <strong className="h6 mb-0">/{board.id}/</strong>
         <span
           className={`badge rounded-pill bg-${
             board.nsfw ? "danger" : "primary"
-          } small`}
+          }`}
         >
           {board.name}
         </span>
       </div>
-      <small
-        className="text-secondary d-block text-truncate"
-        style={{ fontSize: "0.75rem" }}
+      <p
+        className="text-secondary mb-0 small"
+        style={{
+          lineHeight: "1.4",
+          display: "-webkit-box",
+          WebkitLineClamp: "3",
+          WebkitBoxOrient: "vertical",
+          overflow: "hidden",
+        }}
       >
         {board.description}
-      </small>
+      </p>
     </Link>
   );
 
@@ -118,12 +124,12 @@ export default function LandingPage() {
               <div className="card-body">
                 <div className="row">
                   {/* Create multiple columns for SFW boards */}
-                  {[0, 1, 2].map((colIndex) => {
+                  {[0, 1].map((colIndex) => {
                     const colBoards = sfw_boards.filter(
-                      (_, index) => index % 3 === colIndex
+                      (_, index) => index % 2 === colIndex
                     );
                     return (
-                      <div key={colIndex} className="col-md-4 mb-3">
+                      <div key={colIndex} className="col-md-6 mb-3">
                         <div className="list-group">
                           {colBoards.map((board) => renderBoardItem(board))}
                         </div>

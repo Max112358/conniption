@@ -65,15 +65,31 @@ const boards = [
     thread_ids_enabled: false,
     country_flags_enabled: true,
   },
-  /*
+  {
+    id: "fitness",
+    name: "Fitness",
+    description: "Fitness, Health, and Supplements",
+    nsfw: false,
+    thread_ids_enabled: false,
+    country_flags_enabled: false,
+  },
+  {
+    id: "food",
+    name: "Food",
+    description: "Cooking and Culinary Discussion",
+    nsfw: false,
+    thread_ids_enabled: false,
+    country_flags_enabled: false,
+  },
   {
     id: "tech",
     name: "Technology",
     description: "Technology Discussion",
     nsfw: false,
-    thread_ids_enabled: true,
+    thread_ids_enabled: false,
     country_flags_enabled: false,
   },
+  /*
   { 
     id: "music", 
     name: "Music", 
@@ -96,22 +112,6 @@ const boards = [
     description: "Book and Writing Discussion",
     nsfw: false,
     thread_ids_enabled: true,
-    country_flags_enabled: false,
-  },
-  {
-    id: "fitness",
-    name: "Fitness",
-    description: "Fitness and Health Discussion",
-    nsfw: false,
-    thread_ids_enabled: false,
-    country_flags_enabled: false,
-  },
-  {
-    id: "food",
-    name: "Food",
-    description: "Cooking and Culinary Discussion",
-    nsfw: false,
-    thread_ids_enabled: false,
     country_flags_enabled: false,
   },
   {
