@@ -75,7 +75,8 @@ export default function LandingPage() {
     <Link
       key={board.id}
       to={`/board/${board.id}`}
-      className="list-group-item list-group-item-action bg-dark text-light border-secondary p-3"
+      className="list-group-item list-group-item-action bg-dark text-light border-secondary p-3 d-flex flex-column"
+      style={{ minHeight: "120px" }}
     >
       <div className="d-flex justify-content-between align-items-start mb-2">
         <strong className="h6 mb-0">/{board.id}/</strong>
@@ -87,18 +88,21 @@ export default function LandingPage() {
           {board.name}
         </span>
       </div>
-      <p
-        className="text-secondary mb-0 small"
-        style={{
-          lineHeight: "1.4",
-          display: "-webkit-box",
-          WebkitLineClamp: "3",
-          WebkitBoxOrient: "vertical",
-          overflow: "hidden",
-        }}
-      >
-        {board.description}
-      </p>
+      <div className="flex-grow-1 d-flex align-items-start">
+        <p
+          className="text-secondary mb-0 small"
+          style={{
+            lineHeight: "1.4",
+            display: "-webkit-box",
+            WebkitLineClamp: "3",
+            WebkitBoxOrient: "vertical",
+            overflow: "hidden",
+            height: "calc(1.4em * 3)",
+          }}
+        >
+          {board.description}
+        </p>
+      </div>
     </Link>
   );
 

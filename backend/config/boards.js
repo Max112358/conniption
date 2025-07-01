@@ -44,7 +44,7 @@ const boards = [
   {
     id: "business",
     name: "Business",
-    description: "Business, Finance, Cryptocurrency, Economics, and Investing",
+    description: "Business, Finance, Economics, and Investments",
     nsfw: false,
     thread_ids_enabled: true,
     country_flags_enabled: true,
@@ -60,7 +60,7 @@ const boards = [
   {
     id: "sports",
     name: "Sports",
-    description: "Football, Basketball, Baseball, and More",
+    description: "Sports, Players, and Teams",
     nsfw: false,
     thread_ids_enabled: false,
     country_flags_enabled: true,
@@ -68,7 +68,7 @@ const boards = [
   {
     id: "fitness",
     name: "Fitness",
-    description: "Fitness, Health, and Supplements",
+    description: "Fitness and Health",
     nsfw: false,
     thread_ids_enabled: false,
     country_flags_enabled: false,
@@ -76,7 +76,7 @@ const boards = [
   {
     id: "food",
     name: "Food",
-    description: "Cooking and Culinary Discussion",
+    description: "Cooking and Culinary Arts",
     nsfw: false,
     thread_ids_enabled: false,
     country_flags_enabled: false,
@@ -84,10 +84,18 @@ const boards = [
   {
     id: "tech",
     name: "Technology",
-    description: "Technology Discussion",
+    description: "Technology, Computers, and Programming",
     nsfw: false,
     thread_ids_enabled: false,
     country_flags_enabled: false,
+  },
+  {
+    id: "science",
+    name: "Science",
+    description: "Science and Math",
+    nsfw: false,
+    thread_ids_enabled: true,
+    country_flags_enabled: true,
   },
   /*
   { 
@@ -121,14 +129,6 @@ const boards = [
     nsfw: false,
     thread_ids_enabled: false,
     country_flags_enabled: true,
-  },
-  {
-    id: "science",
-    name: "Science",
-    description: "Science Discussion",
-    nsfw: false,
-    thread_ids_enabled: true,
-    country_flags_enabled: false,
   },
   {
     id: "philosophy",

@@ -1,6 +1,6 @@
 // frontend/src/components/CreateThreadPage.js
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { API_BASE_URL } from "../config/api";
 
@@ -16,6 +16,25 @@ export default function CreateThreadPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
+  const [board, setBoard] = useState(null);
+
+  // Fetch board details on component mount
+  useEffect(() => {
+    const fetchBoardData = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/boards/${boardId}`);
+        if (response.ok) {
+          const data = await response.json();
+          setBoard(data.board);
+        }
+      } catch (err) {
+        console.error("Error fetching board data:", err);
+        // Don't set error state here as it's not critical for thread creation
+      }
+    };
+
+    fetchBoardData();
+  }, [boardId]);
 
   // Handle image selection
   const handleImageChange = (e) => {
@@ -140,7 +159,21 @@ export default function CreateThreadPage() {
 
         <div className="card bg-mid-dark border-secondary shadow mb-4">
           <div className="card-header border-secondary">
-            <h1 className="h3 mb-0 text-light">Create New Thread</h1>
+            <div className="d-flex align-items-center justify-content-between">
+              <h1 className="h3 mb-0 text-light">Create New Thread</h1>
+              {board && (
+                <div className="text-end">
+                  <span className="badge bg-secondary me-2">/{board.id}/</span>
+                  <span className="text-secondary">{board.name}</span>
+                  {board.nsfw && (
+                    <span className="badge bg-danger ms-2">NSFW</span>
+                  )}
+                </div>
+              )}
+            </div>
+            {board && (
+              <p className="text-secondary mb-0 mt-2">{board.description}</p>
+            )}
           </div>
           <div className="card-body">
             {error && (
