@@ -1,261 +1,108 @@
-// frontend/src/components/CreateThreadPage.js
+// frontend/src/components/CreateThreadPage.test.js
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { BrowserRouter } from "react-router-dom";
+import CreateThreadPage from "./CreateThreadPage";
 
-import { useState } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
-import { API_BASE_URL } from "../config/api";
+// Mock the react-router-dom hooks
+jest.mock("react-router-dom", () => ({
+  ...jest.requireActual("react-router-dom"),
+  useParams: () => ({ boardId: "tech" }),
+  useNavigate: () => jest.fn(),
+}));
 
-export default function CreateThreadPage() {
-  const { boardId } = useParams();
-  console.log("CreateThreadPage mounting, boardId:", boardId);
-  const navigate = useNavigate();
+// Mock fetch API
+global.fetch = jest.fn();
 
-  const [topic, setTopic] = useState("");
-  const [content, setContent] = useState("");
-  const [image, setImage] = useState(null);
-  const [imagePreview, setImagePreview] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [successMessage, setSuccessMessage] = useState(null);
+describe("CreateThreadPage Component", () => {
+  beforeEach(() => {
+    fetch.mockReset();
+  });
 
-  // Handle image selection
-  const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      // Check file size (4MB limit)
-      if (file.size > 4 * 1024 * 1024) {
-        setError("File size must be less than 4MB");
-        e.target.value = null; // Clear the input
-        setImage(null);
-        setImagePreview(null);
-        return;
-      }
+  test("renders create thread form", async () => {
+    // Mock board data fetch
+    fetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        board: {
+          id: "tech",
+          name: "Technology",
+          description: "Tech discussion",
+          nsfw: false,
+        },
+      }),
+    });
 
-      // Check file type
-      const allowedTypes = [
-        "image/png",
-        "image/jpeg",
-        "image/webp",
-        "image/gif",
-        "video/mp4",
-        "video/webm",
-      ];
-      if (!allowedTypes.includes(file.type)) {
-        setError(
-          "Invalid file type. Only PNG, JPG, WebP, GIF, MP4, and WebM files are allowed."
-        );
-        e.target.value = null; // Clear the input
-        setImage(null);
-        setImagePreview(null);
-        return;
-      }
+    render(
+      <BrowserRouter>
+        <CreateThreadPage />
+      </BrowserRouter>
+    );
 
-      setImage(file);
-      setError(null);
+    expect(screen.getByText("Create New Thread")).toBeInTheDocument();
+    expect(screen.getByLabelText("Thread Topic")).toBeInTheDocument();
+    expect(screen.getByLabelText("Content")).toBeInTheDocument();
+    expect(
+      screen.getByLabelText("Image or Video (Required)")
+    ).toBeInTheDocument();
+  });
 
-      // Create preview
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
+  test("displays error when form is submitted without required fields", async () => {
+    fetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        board: {
+          id: "tech",
+          name: "Technology",
+          description: "Tech discussion",
+          nsfw: false,
+        },
+      }),
+    });
 
-  // Handle form submission
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+    render(
+      <BrowserRouter>
+        <CreateThreadPage />
+      </BrowserRouter>
+    );
 
-    // Validate form
-    if (!topic.trim()) {
-      setError("Topic is required");
-      return;
-    }
+    const submitButton = screen.getByText("Create Thread");
+    fireEvent.click(submitButton);
 
-    if (!content.trim()) {
-      setError("Content is required");
-      return;
-    }
+    await waitFor(() => {
+      expect(screen.getByText("Topic is required")).toBeInTheDocument();
+    });
+  });
 
-    if (!image) {
-      setError("Image or video is required");
-      return;
-    }
+  test("displays file size error for large files", async () => {
+    fetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        board: {
+          id: "tech",
+          name: "Technology",
+          description: "Tech discussion",
+          nsfw: false,
+        },
+      }),
+    });
 
-    setLoading(true);
-    setError(null);
+    render(
+      <BrowserRouter>
+        <CreateThreadPage />
+      </BrowserRouter>
+    );
 
-    // Create FormData for file upload
-    const formData = new FormData();
-    formData.append("topic", topic);
-    formData.append("content", content);
-    formData.append("image", image);
+    const fileInput = screen.getByLabelText("Image or Video (Required)");
+    const largeFile = new File(["x".repeat(5 * 1024 * 1024)], "large.png", {
+      type: "image/png",
+    });
 
-    try {
-      const response = await fetch(
-        `${API_BASE_URL}/api/boards/${boardId}/threads`,
-        {
-          method: "POST",
-          body: formData,
-          // Note: Don't set Content-Type header when using FormData
-        }
-      );
+    fireEvent.change(fileInput, { target: { files: [largeFile] } });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to create thread");
-      }
-
-      const data = await response.json();
-
-      // Show success message before redirecting
-      setError(null);
-      setSuccessMessage(
-        "Thread created successfully! Redirecting to thread..."
-      );
-
-      // Redirect to the new thread after a short delay
-      setTimeout(() => {
-        navigate(`/board/${boardId}/thread/${data.threadId}`);
-      }, 1500);
-    } catch (err) {
-      console.error("Error creating thread:", err);
-      setError(
-        err.message || "Failed to create thread. Please try again later."
-      );
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className="container-fluid min-vh-100 bg-dark text-light py-4">
-      <div className="container">
-        <div className="mb-4">
-          <Link
-            to={`/board/${boardId}`}
-            className="btn btn-outline-light btn-sm"
-          >
-            ← Back to Board
-          </Link>
-        </div>
-
-        <div className="card bg-mid-dark border-secondary shadow mb-4">
-          <div className="card-header border-secondary">
-            <h1 className="h3 mb-0 text-light">Create New Thread</h1>
-          </div>
-          <div className="card-body">
-            {error && (
-              <div className="alert alert-danger" role="alert">
-                {error}
-              </div>
-            )}
-
-            {successMessage && (
-              <div className="alert alert-success" role="alert">
-                {successMessage}
-              </div>
-            )}
-
-            <form onSubmit={handleSubmit}>
-              <div className="mb-3">
-                <label htmlFor="topic" className="form-label text-secondary">
-                  Thread Topic
-                </label>
-                <input
-                  type="text"
-                  className="form-control bg-dark text-light border-secondary text-light"
-                  id="topic"
-                  value={topic}
-                  onChange={(e) => setTopic(e.target.value)}
-                  placeholder="Enter thread topic"
-                  required
-                  maxLength="100"
-                />
-              </div>
-
-              <div className="mb-3">
-                <label htmlFor="content" className="form-label text-secondary">
-                  Content
-                </label>
-                <textarea
-                  className="form-control bg-dark text-light border-secondary text-light"
-                  id="content"
-                  rows="5"
-                  value={content}
-                  onChange={(e) => setContent(e.target.value)}
-                  placeholder="Enter your post content"
-                  required
-                  maxLength="2000"
-                ></textarea>
-              </div>
-
-              <div className="mb-3">
-                <label htmlFor="image" className="form-label text-secondary">
-                  Image or Video (Required)
-                </label>
-                <input
-                  type="file"
-                  className="form-control bg-dark text-light border-secondary text-light"
-                  id="image"
-                  accept="image/png,image/jpeg,image/webp,image/gif,video/mp4,video/webm"
-                  onChange={handleImageChange}
-                  required
-                />
-                <div className="text-secondary mt-1 small">
-                  Supported formats: PNG, JPG, WebP, GIF, MP4, WebM (Max size:
-                  4MB)
-                </div>
-              </div>
-
-              {imagePreview && (
-                <div className="mb-3">
-                  <label className="form-label text-secondary">
-                    File Preview
-                  </label>
-                  <div className="border border-secondary p-2 rounded">
-                    {image && image.type.startsWith("video/") ? (
-                      <video
-                        src={imagePreview}
-                        className="img-fluid"
-                        style={{ maxHeight: "200px" }}
-                        controls
-                        muted
-                      />
-                    ) : (
-                      <img
-                        src={imagePreview}
-                        alt="Preview"
-                        className="img-fluid"
-                        style={{ maxHeight: "200px" }}
-                      />
-                    )}
-                  </div>
-                </div>
-              )}
-
-              <div className="d-grid gap-2">
-                <button
-                  type="submit"
-                  className="btn btn-primary"
-                  disabled={loading}
-                >
-                  {loading ? (
-                    <>
-                      <span
-                        className="spinner-border spinner-border-sm me-2"
-                        role="status"
-                        aria-hidden="true"
-                      ></span>
-                      Creating Thread...
-                    </>
-                  ) : (
-                    "Create Thread"
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
+    await waitFor(() => {
+      expect(
+        screen.getByText("File size must be less than 4MB")
+      ).toBeInTheDocument();
+    });
+  });
+});
