@@ -9,7 +9,6 @@ import MediaViewer from "./MediaViewer";
 import PostContent from "./PostContent";
 import PostHeader from "./PostHeader";
 import LoadingSpinner from "./LoadingSpinner";
-import HideButton from "./HideButton";
 import hideManager from "../utils/hideManager";
 import { API_BASE_URL, SOCKET_URL } from "../config/api";
 
