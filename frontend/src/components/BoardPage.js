@@ -574,7 +574,7 @@ export default function BoardPage() {
                               thread.latestReplies.length > 0 && (
                                 <div className="mt-3 border-top border-secondary pt-3">
                                   <div className="d-flex justify-content-between align-items-center mb-2">
-                                    <small className="text-muted">
+                                    <small className="text-secondary">
                                       Latest {thread.latestReplies.length}{" "}
                                       replies:
                                     </small>
