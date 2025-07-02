@@ -686,7 +686,7 @@ export default function BoardPage() {
                               )}
                           </>
                         ) : (
-                          <p className="text-muted mb-0 text-center">
+                          <p className="text-secondary mb-0">
                             <em>Thread hidden</em>
                           </p>
                         )}
