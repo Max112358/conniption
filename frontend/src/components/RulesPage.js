@@ -157,7 +157,7 @@ export default function RulesPage() {
         {/* Global Rules Section */}
         <div className="card bg-mid-dark border-secondary shadow mb-4">
           <div className="card-header border-secondary">
-            <h2 className="h4 mb-0">Global Rules</h2>
+            <h2 className="h4 mb-0 text-light">Global Rules</h2>
           </div>
           <div className="card-body">
             <p className="text-secondary mb-4">
@@ -180,7 +180,7 @@ export default function RulesPage() {
         {/* Board-Specific Rules Section */}
         <div className="card bg-mid-dark border-secondary shadow mb-4">
           <div className="card-header border-secondary">
-            <h2 className="h4 mb-0">Board-Specific Rules</h2>
+            <h2 className="h4 mb-0 text-light">Board-Specific Rules</h2>
           </div>
           <div className="card-body">
             <p className="text-secondary mb-4">
@@ -221,7 +221,7 @@ export default function RulesPage() {
         {/* General Guidelines Section */}
         <div className="card bg-mid-dark border-secondary shadow mb-4">
           <div className="card-header border-secondary">
-            <h2 className="h4 mb-0">General Guidelines</h2>
+            <h2 className="h4 mb-0 text-light">General Guidelines</h2>
           </div>
           <div className="card-body">
             <h5 className="text-info mb-3">Quality of Posts</h5>
