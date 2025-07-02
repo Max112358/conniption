@@ -603,47 +603,25 @@ export default function BoardPage() {
                                         key={reply.id}
                                         className="mb-2 p-2 bg-dark rounded border border-secondary"
                                       >
-                                        <div className="d-flex justify-content-between align-items-start mb-1">
-                                          <div className="d-flex align-items-center gap-2">
-                                            <PostHeader
-                                              post={reply}
-                                              onPostNumberClick={() => {}} // No direct reply from board page
-                                              showThreadId={
-                                                board?.thread_ids_enabled
-                                              }
-                                              showCountryFlag={
-                                                board?.country_flags_enabled
-                                              }
-                                            />
-                                            <div className="d-flex gap-1">
-                                              <HideButton
-                                                isHidden={isPostHidden}
-                                                onToggle={() =>
-                                                  togglePostHidden(reply.id)
-                                                }
-                                                title={
-                                                  isPostHidden
-                                                    ? "Unhide this post"
-                                                    : "Hide this post"
-                                                }
-                                              />
-                                              {reply.thread_user_id && (
-                                                <HideButton
-                                                  isHidden={isUserHidden}
-                                                  onToggle={() =>
-                                                    toggleUserHidden(
-                                                      reply.thread_user_id
-                                                    )
-                                                  }
-                                                  title={
-                                                    isUserHidden
-                                                      ? "Unhide this user"
-                                                      : "Hide this user"
-                                                  }
-                                                />
-                                              )}
-                                            </div>
-                                          </div>
+                                        <div className="mb-1">
+                                          <PostHeader
+                                            post={reply}
+                                            onPostNumberClick={() => {}} // No direct reply from board page
+                                            showThreadId={
+                                              board?.thread_ids_enabled
+                                            }
+                                            showCountryFlag={
+                                              board?.country_flags_enabled
+                                            }
+                                            isPostHidden={isPostHidden}
+                                            isUserHidden={isUserHidden}
+                                            onTogglePostHidden={
+                                              togglePostHidden
+                                            }
+                                            onToggleUserHidden={
+                                              toggleUserHidden
+                                            }
+                                          />
                                         </div>
 
                                         {!isHidden ? (

@@ -600,40 +600,16 @@ export default function ThreadPage() {
                       style={{ transition: "background-color 0.3s ease" }}
                     >
                       <div className="card-header border-secondary d-flex justify-content-between align-items-center">
-                        <div className="d-flex align-items-center gap-2">
-                          <PostHeader
-                            post={post}
-                            onPostNumberClick={handlePostNumberClick}
-                            showThreadId={board?.thread_ids_enabled}
-                            showCountryFlag={board?.country_flags_enabled}
-                          />
-
-                          {/* Hide buttons */}
-                          <div className="d-flex gap-1">
-                            <HideButton
-                              isHidden={isPostHidden}
-                              onToggle={() => togglePostHidden(post.id)}
-                              title={
-                                isPostHidden
-                                  ? "Unhide this post"
-                                  : "Hide this post"
-                              }
-                            />
-                            {post.thread_user_id && (
-                              <HideButton
-                                isHidden={isUserHidden}
-                                onToggle={() =>
-                                  toggleUserHidden(post.thread_user_id)
-                                }
-                                title={
-                                  isUserHidden
-                                    ? "Unhide this user"
-                                    : "Hide this user"
-                                }
-                              />
-                            )}
-                          </div>
-                        </div>
+                        <PostHeader
+                          post={post}
+                          onPostNumberClick={handlePostNumberClick}
+                          showThreadId={board?.thread_ids_enabled}
+                          showCountryFlag={board?.country_flags_enabled}
+                          isPostHidden={isPostHidden}
+                          isUserHidden={isUserHidden}
+                          onTogglePostHidden={togglePostHidden}
+                          onToggleUserHidden={toggleUserHidden}
+                        />
 
                         {/* Moderation menu */}
                         {isModerator && !isHidden && (

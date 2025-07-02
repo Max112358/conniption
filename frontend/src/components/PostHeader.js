@@ -1,5 +1,6 @@
 // frontend/src/components/PostHeader.js
 import FlagIcon from "./FlagIcon";
+import HideButton from "./HideButton";
 import { getThreadIdColor } from "../utils/threadIdColors";
 
 export default function PostHeader({
@@ -7,6 +8,10 @@ export default function PostHeader({
   onPostNumberClick,
   showThreadId = false,
   showCountryFlag = false,
+  isPostHidden = false,
+  isUserHidden = false,
+  onTogglePostHidden,
+  onToggleUserHidden,
 }) {
   // Get thread ID color if applicable
   const threadIdColor = post.thread_user_id
@@ -15,6 +20,15 @@ export default function PostHeader({
 
   return (
     <div className="d-flex align-items-center gap-2">
+      {/* Post hide button - to the left of post number */}
+      {onTogglePostHidden && (
+        <HideButton
+          isHidden={isPostHidden}
+          onToggle={() => onTogglePostHidden(post.id)}
+          title={isPostHidden ? "Unhide this post" : "Hide this post"}
+        />
+      )}
+
       <div>
         <span className="text-secondary">Post #</span>
         <span
@@ -26,6 +40,15 @@ export default function PostHeader({
           {post.id}
         </span>
       </div>
+
+      {/* User hide button - to the left of thread ID */}
+      {showThreadId && post.thread_user_id && onToggleUserHidden && (
+        <HideButton
+          isHidden={isUserHidden}
+          onToggle={() => onToggleUserHidden(post.thread_user_id)}
+          title={isUserHidden ? "Unhide this user" : "Hide this user"}
+        />
+      )}
 
       {/* Thread ID */}
       {showThreadId && post.thread_user_id && (
