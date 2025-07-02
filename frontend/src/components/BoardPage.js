@@ -500,14 +500,6 @@ export default function BoardPage() {
                       <div className="card-body">
                         <div className="d-flex justify-content-between align-items-start mb-3">
                           <div className="d-flex align-items-center gap-2">
-                            <Link
-                              to={`/board/${boardId}/thread/${thread.id}`}
-                              className="text-decoration-none"
-                            >
-                              <h5 className="mb-1 text-light text-break">
-                                {thread.topic}
-                              </h5>
-                            </Link>
                             <HideButton
                               isHidden={isThreadHidden}
                               onToggle={() => toggleThreadHidden(thread.id)}
@@ -517,6 +509,14 @@ export default function BoardPage() {
                                   : "Hide this thread"
                               }
                             />
+                            <Link
+                              to={`/board/${boardId}/thread/${thread.id}`}
+                              className="text-decoration-none"
+                            >
+                              <h5 className="mb-1 text-light text-break">
+                                {thread.topic}
+                              </h5>
+                            </Link>
                           </div>
                           <div className="d-flex flex-column align-items-end text-nowrap ms-2">
                             <small className="text-secondary">
