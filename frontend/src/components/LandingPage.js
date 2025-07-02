@@ -161,7 +161,10 @@ export default function LandingPage() {
         </div>
 
         <div className="text-center text-secondary small mt-3 pb-3">
-          Select a board to view threads and posts
+          <p className="mb-2">Select a board to view threads and posts</p>
+          <Link to="/rules" className="btn btn-outline-secondary btn-sm">
+            <i className="bi bi-book me-1"></i> Rules
+          </Link>
         </div>
       </div>
     </div>
