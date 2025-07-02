@@ -666,7 +666,7 @@ export default function BoardPage() {
                                             </div>
                                           </div>
                                         ) : (
-                                          <p className="text-muted mb-0 text-center small">
+                                          <p className="text-secondary mb-0 small">
                                             <em>Post hidden</em>
                                           </p>
                                         )}
