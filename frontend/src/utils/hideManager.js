@@ -110,5 +110,8 @@ class HideManager {
   }
 }
 
+// Create singleton instance
+const hideManager = new HideManager();
+
 // Export singleton instance
-export default new HideManager();
+export default hideManager;
