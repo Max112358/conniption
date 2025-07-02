@@ -686,7 +686,7 @@ export default function ThreadPage() {
                   placeholder="Enter your reply"
                   maxLength="2000"
                 ></textarea>
-                <div className="form-text text-muted">
+                <div className="form-text text-secondary">
                   Click on any post number above to quote it
                 </div>
               </div>
@@ -702,7 +702,7 @@ export default function ThreadPage() {
                   accept="image/png,image/jpeg,image/webp,image/gif,video/mp4,video/webm"
                   onChange={handleImageChange}
                 />
-                <div className="form-text text-muted">
+                <div className="form-text text-secondary">
                   Supported formats: PNG, JPG, WebP, GIF, MP4, WebM (Max size:
                   4MB)
                 </div>
