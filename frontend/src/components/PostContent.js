@@ -1,5 +1,6 @@
 // frontend/src/components/PostContent.js
 import { useState } from "react";
+import hideManager from "../utils/hideManager";
 
 // Component for post link preview
 const PostLinkPreview = ({
@@ -30,6 +31,11 @@ const PostLinkPreview = ({
 
   if (!post) return null;
 
+  // Check if the post is hidden
+  const isHidden =
+    hideManager.isPostHidden(post.id) ||
+    (post.thread_user_id && hideManager.isUserHidden(post.thread_user_id));
+
   return (
     <div
       style={{
@@ -52,19 +58,32 @@ const PostLinkPreview = ({
           {new Date(post.created_at).toLocaleString()}
         </small>
       </div>
-      {post.image_url && (
-        <img
-          src={post.image_url}
-          alt="Preview"
-          className="img-fluid mb-2"
-          style={{ maxHeight: "100px", maxWidth: "100px", objectFit: "cover" }}
-        />
+      {isHidden ? (
+        <p className="text-warning mb-0 text-center fw-bold">HIDDEN</p>
+      ) : (
+        <>
+          {post.image_url && (
+            <img
+              src={post.image_url}
+              alt="Preview"
+              className="img-fluid mb-2"
+              style={{
+                maxHeight: "100px",
+                maxWidth: "100px",
+                objectFit: "cover",
+              }}
+            />
+          )}
+          <p
+            className="text-light mb-0 small"
+            style={{ whiteSpace: "pre-wrap" }}
+          >
+            {post.content.length > 200
+              ? post.content.substring(0, 200) + "..."
+              : post.content}
+          </p>
+        </>
       )}
-      <p className="text-light mb-0 small" style={{ whiteSpace: "pre-wrap" }}>
-        {post.content.length > 200
-          ? post.content.substring(0, 200) + "..."
-          : post.content}
-      </p>
     </div>
   );
 };

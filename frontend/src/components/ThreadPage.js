@@ -9,6 +9,8 @@ import MediaViewer from "./MediaViewer";
 import PostContent from "./PostContent";
 import PostHeader from "./PostHeader";
 import LoadingSpinner from "./LoadingSpinner";
+import HideButton from "./HideButton";
+import hideManager from "../utils/hideManager";
 import { API_BASE_URL, SOCKET_URL } from "../config/api";
 
 export default function ThreadPage() {
@@ -28,6 +30,8 @@ export default function ThreadPage() {
   const [board, setBoard] = useState(null);
   const [socketConnected, setSocketConnected] = useState(false);
   const [newPostsAvailable, setNewPostsAvailable] = useState(false);
+  const [hiddenPosts, setHiddenPosts] = useState(new Set());
+  const [hiddenUsers, setHiddenUsers] = useState(new Set());
 
   const contentTextareaRef = useRef(null);
   const socketRef = useRef(null);
@@ -68,6 +72,13 @@ export default function ThreadPage() {
     return () => {
       document.head.removeChild(style);
     };
+  }, []);
+
+  // Initialize hidden state from localStorage
+  useEffect(() => {
+    const hidden = hideManager.getAllHidden();
+    setHiddenPosts(new Set(hidden.posts));
+    setHiddenUsers(new Set(hidden.users));
   }, []);
 
   // Check for admin user
@@ -420,6 +431,37 @@ export default function ThreadPage() {
     setNewPostsAvailable(false);
   };
 
+  // Hide/unhide functions
+  const togglePostHidden = (postId) => {
+    if (hiddenPosts.has(postId)) {
+      hideManager.unhidePost(postId);
+      setHiddenPosts((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(postId);
+        return newSet;
+      });
+    } else {
+      hideManager.hidePost(postId);
+      setHiddenPosts((prev) => new Set(prev).add(postId));
+    }
+  };
+
+  const toggleUserHidden = (threadUserId) => {
+    if (!threadUserId) return;
+
+    if (hiddenUsers.has(threadUserId)) {
+      hideManager.unhideUser(threadUserId);
+      setHiddenUsers((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(threadUserId);
+        return newSet;
+      });
+    } else {
+      hideManager.hideUser(threadUserId);
+      setHiddenUsers((prev) => new Set(prev).add(threadUserId));
+    }
+  };
+
   // Check if user is admin or moderator
   const isAdmin = adminUser && adminUser.role === "admin";
   const isModerator =
@@ -542,53 +584,97 @@ export default function ThreadPage() {
           <div className="card-body">
             {posts.length > 0 ? (
               <div className="post-list">
-                {posts.map((post, index) => (
-                  <div
-                    key={post.id}
-                    id={`post-${post.id}`}
-                    className={`card bg-dark border-secondary mb-3 ${
-                      post.isNew ? "new-post" : ""
-                    }`}
-                    style={{ transition: "background-color 0.3s ease" }}
-                  >
-                    <div className="card-header border-secondary d-flex justify-content-between align-items-center">
-                      <PostHeader
-                        post={post}
-                        onPostNumberClick={handlePostNumberClick}
-                        showThreadId={board?.thread_ids_enabled}
-                        showCountryFlag={board?.country_flags_enabled}
-                      />
+                {posts.map((post, index) => {
+                  const isPostHidden = hiddenPosts.has(post.id);
+                  const isUserHidden =
+                    post.thread_user_id && hiddenUsers.has(post.thread_user_id);
+                  const isHidden = isPostHidden || isUserHidden;
 
-                      {/* Moderation menu */}
-                      {isModerator && (
-                        <PostModMenu
-                          post={post}
-                          thread={thread}
-                          board={{ id: boardId }}
-                          isAdmin={isAdmin}
-                          isMod={isModerator}
-                        />
+                  return (
+                    <div
+                      key={post.id}
+                      id={`post-${post.id}`}
+                      className={`card bg-dark border-secondary mb-3 ${
+                        post.isNew ? "new-post" : ""
+                      }`}
+                      style={{ transition: "background-color 0.3s ease" }}
+                    >
+                      <div className="card-header border-secondary d-flex justify-content-between align-items-center">
+                        <div className="d-flex align-items-center gap-2">
+                          <PostHeader
+                            post={post}
+                            onPostNumberClick={handlePostNumberClick}
+                            showThreadId={board?.thread_ids_enabled}
+                            showCountryFlag={board?.country_flags_enabled}
+                          />
+
+                          {/* Hide buttons */}
+                          <div className="d-flex gap-1">
+                            <HideButton
+                              isHidden={isPostHidden}
+                              onToggle={() => togglePostHidden(post.id)}
+                              title={
+                                isPostHidden
+                                  ? "Unhide this post"
+                                  : "Hide this post"
+                              }
+                            />
+                            {post.thread_user_id && (
+                              <HideButton
+                                isHidden={isUserHidden}
+                                onToggle={() =>
+                                  toggleUserHidden(post.thread_user_id)
+                                }
+                                title={
+                                  isUserHidden
+                                    ? "Unhide this user"
+                                    : "Hide this user"
+                                }
+                              />
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Moderation menu */}
+                        {isModerator && !isHidden && (
+                          <PostModMenu
+                            post={post}
+                            thread={thread}
+                            board={{ id: boardId }}
+                            isAdmin={isAdmin}
+                            isMod={isModerator}
+                          />
+                        )}
+                      </div>
+
+                      {!isHidden ? (
+                        <div className="card-body">
+                          {/* Use MediaViewer for images and videos */}
+                          {post.image_url && (
+                            <MediaViewer
+                              src={post.image_url}
+                              alt="Post content"
+                              postId={post.id}
+                              fileType={post.file_type}
+                            />
+                          )}
+                          <PostContent
+                            content={post.content}
+                            posts={posts}
+                            onPostLinkClick={handlePostLinkClick}
+                            isThreadPage={true}
+                          />
+                        </div>
+                      ) : (
+                        <div className="card-body py-2">
+                          <p className="text-muted mb-0 text-center small">
+                            <em>Post hidden</em>
+                          </p>
+                        </div>
                       )}
                     </div>
-                    <div className="card-body">
-                      {/* Use MediaViewer for images and videos */}
-                      {post.image_url && (
-                        <MediaViewer
-                          src={post.image_url}
-                          alt="Post content"
-                          postId={post.id}
-                          fileType={post.file_type}
-                        />
-                      )}
-                      <PostContent
-                        content={post.content}
-                        posts={posts}
-                        onPostLinkClick={handlePostLinkClick}
-                        isThreadPage={true}
-                      />
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div className="text-center py-3">

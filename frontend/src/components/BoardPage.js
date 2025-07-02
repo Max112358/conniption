@@ -7,6 +7,8 @@ import BanNotification from "./BanNotification";
 import PostContent from "./PostContent";
 import PostHeader from "./PostHeader";
 import LoadingSpinner from "./LoadingSpinner";
+import HideButton from "./HideButton";
+import hideManager from "../utils/hideManager";
 import { API_BASE_URL, SOCKET_URL } from "../config/api";
 
 // Component for rendering media thumbnails
@@ -102,9 +104,20 @@ export default function BoardPage() {
   const [banned, setBanned] = useState(false);
   const [banInfo, setBanInfo] = useState(null);
   const [socketConnected, setSocketConnected] = useState(false);
+  const [hiddenThreads, setHiddenThreads] = useState(new Set());
+  const [hiddenPosts, setHiddenPosts] = useState(new Set());
+  const [hiddenUsers, setHiddenUsers] = useState(new Set());
 
   // Use ref to store socket instance
   const socketRef = useRef(null);
+
+  // Initialize hidden state from localStorage
+  useEffect(() => {
+    const hidden = hideManager.getAllHidden();
+    setHiddenThreads(new Set(hidden.threads));
+    setHiddenPosts(new Set(hidden.posts));
+    setHiddenUsers(new Set(hidden.users));
+  }, []);
 
   // Fetch threads function
   const fetchThreads = useCallback(async () => {
@@ -190,6 +203,68 @@ export default function BoardPage() {
   const handlePostLinkClick = (postId, threadId) => {
     // Navigate to the thread page with a hash to scroll to the specific post
     navigate(`/board/${boardId}/thread/${threadId}#post-${postId}`);
+  };
+
+  // Helper function to truncate text
+  const truncateText = (text, maxLines = 20, maxChars = 2000) => {
+    if (!text) return "";
+
+    // First truncate by character count
+    let truncated =
+      text.length > maxChars ? text.substring(0, maxChars) + "..." : text;
+
+    // Then truncate by lines
+    const lines = truncated.split("\n");
+    if (lines.length > maxLines) {
+      truncated = lines.slice(0, maxLines).join("\n") + "\n...";
+    }
+
+    return truncated;
+  };
+
+  // Hide/unhide functions
+  const toggleThreadHidden = (threadId) => {
+    if (hiddenThreads.has(threadId)) {
+      hideManager.unhideThread(threadId);
+      setHiddenThreads((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(threadId);
+        return newSet;
+      });
+    } else {
+      hideManager.hideThread(threadId);
+      setHiddenThreads((prev) => new Set(prev).add(threadId));
+    }
+  };
+
+  const togglePostHidden = (postId) => {
+    if (hiddenPosts.has(postId)) {
+      hideManager.unhidePost(postId);
+      setHiddenPosts((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(postId);
+        return newSet;
+      });
+    } else {
+      hideManager.hidePost(postId);
+      setHiddenPosts((prev) => new Set(prev).add(postId));
+    }
+  };
+
+  const toggleUserHidden = (threadUserId) => {
+    if (!threadUserId) return;
+
+    if (hiddenUsers.has(threadUserId)) {
+      hideManager.unhideUser(threadUserId);
+      setHiddenUsers((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(threadUserId);
+        return newSet;
+      });
+    } else {
+      hideManager.hideUser(threadUserId);
+      setHiddenUsers((prev) => new Set(prev).add(threadUserId));
+    }
   };
 
   // Socket setup - separate effect that only runs once per boardId
@@ -346,23 +421,6 @@ export default function BoardPage() {
     }
   }, [threads, fetchThreadsWithPosts]);
 
-  // Helper function to truncate text
-  const truncateText = (text, maxLines = 20, maxChars = 2000) => {
-    if (!text) return "";
-
-    // First truncate by character count
-    let truncated =
-      text.length > maxChars ? text.substring(0, maxChars) + "..." : text;
-
-    // Then truncate by lines
-    const lines = truncated.split("\n");
-    if (lines.length > maxLines) {
-      truncated = lines.slice(0, maxLines).join("\n") + "\n...";
-    }
-
-    return truncated;
-  };
-
   // If user is banned, show the ban notification
   if (banned && banInfo) {
     return <BanNotification ban={banInfo} boardId={boardId} />;
@@ -430,153 +488,234 @@ export default function BoardPage() {
           <div className="card-body">
             {threadsWithPosts.length > 0 ? (
               <div className="thread-list">
-                {threadsWithPosts.map((thread) => (
-                  <div
-                    key={thread.id}
-                    className="card bg-high-dark border-secondary mb-4"
-                  >
-                    {/* Original Post (OP) */}
-                    <div className="card-body">
-                      <div className="d-flex justify-content-between align-items-start mb-3">
-                        <Link
-                          to={`/board/${boardId}/thread/${thread.id}`}
-                          className="text-decoration-none"
-                        >
-                          <h5 className="mb-1 text-light text-break">
-                            {thread.topic}
-                          </h5>
-                        </Link>
-                        <div className="d-flex flex-column align-items-end text-nowrap ms-2">
-                          <small className="text-secondary">
-                            {new Date(thread.created_at).toLocaleString()}
-                          </small>
-                          <small className="text-secondary">
-                            {thread.post_count}{" "}
-                            {thread.post_count === 1 ? "post" : "posts"}
-                          </small>
-                        </div>
-                      </div>
+                {threadsWithPosts.map((thread) => {
+                  const isThreadHidden = hiddenThreads.has(thread.id);
 
-                      {/* OP Content with larger thumbnail */}
-                      <div className="row">
-                        {thread.image_url && (
-                          <div className="col-auto">
-                            <MediaThumbnail
-                              src={thread.image_url}
-                              alt="Thread"
-                              fileType={thread.file_type}
-                              size="150px"
-                              linkTo={`/board/${boardId}/thread/${thread.id}`}
+                  return (
+                    <div
+                      key={thread.id}
+                      className="card bg-high-dark border-secondary mb-4"
+                    >
+                      {/* Original Post (OP) */}
+                      <div className="card-body">
+                        <div className="d-flex justify-content-between align-items-start mb-3">
+                          <div className="d-flex align-items-center gap-2">
+                            <Link
+                              to={`/board/${boardId}/thread/${thread.id}`}
+                              className="text-decoration-none"
+                            >
+                              <h5 className="mb-1 text-light text-break">
+                                {thread.topic}
+                              </h5>
+                            </Link>
+                            <HideButton
+                              isHidden={isThreadHidden}
+                              onToggle={() => toggleThreadHidden(thread.id)}
+                              title={
+                                isThreadHidden
+                                  ? "Unhide this thread"
+                                  : "Hide this thread"
+                              }
                             />
                           </div>
-                        )}
-                        <div className="col">
-                          <div
-                            className="text-light text-break"
-                            style={{
-                              whiteSpace: "pre-wrap",
-                              wordWrap: "break-word",
-                              wordBreak: "break-word",
-                              overflowWrap: "break-word",
-                            }}
-                          >
-                            <PostContent
-                              content={truncateText(thread.content, 20, 2000)}
-                              allThreadsWithPosts={threadsWithPosts}
-                              boardId={boardId}
-                              onPostLinkClick={handlePostLinkClick}
-                              isThreadPage={false}
-                            />
+                          <div className="d-flex flex-column align-items-end text-nowrap ms-2">
+                            <small className="text-secondary">
+                              {new Date(thread.created_at).toLocaleString()}
+                            </small>
+                            <small className="text-secondary">
+                              {thread.post_count}{" "}
+                              {thread.post_count === 1 ? "post" : "posts"}
+                            </small>
                           </div>
                         </div>
-                      </div>
 
-                      {/* Latest Replies */}
-                      {thread.latestReplies &&
-                        thread.latestReplies.length > 0 && (
-                          <div className="mt-3 border-top border-secondary pt-3">
-                            <div className="d-flex justify-content-between align-items-center mb-2">
-                              <small className="text-muted">
-                                Latest {thread.latestReplies.length} replies:
-                              </small>
-                              {thread.totalReplies > 5 && (
-                                <Link
-                                  to={`/board/${boardId}/thread/${thread.id}`}
-                                  className="btn btn-outline-secondary btn-sm"
-                                >
-                                  View all {thread.totalReplies} replies
-                                </Link>
-                              )}
-                            </div>
-
-                            {thread.latestReplies.map((reply) => (
-                              <div
-                                key={reply.id}
-                                className="mb-2 p-2 bg-dark rounded border border-secondary"
-                              >
-                                <div className="d-flex justify-content-between align-items-start mb-1">
-                                  <PostHeader
-                                    post={reply}
-                                    onPostNumberClick={() => {}} // No direct reply from board page
-                                    showThreadId={board?.thread_ids_enabled}
-                                    showCountryFlag={
-                                      board?.country_flags_enabled
-                                    }
+                        {!isThreadHidden ? (
+                          <>
+                            {/* OP Content with larger thumbnail */}
+                            <div className="row">
+                              {thread.image_url && (
+                                <div className="col-auto">
+                                  <MediaThumbnail
+                                    src={thread.image_url}
+                                    alt="Thread"
+                                    fileType={thread.file_type}
+                                    size="150px"
+                                    linkTo={`/board/${boardId}/thread/${thread.id}`}
                                   />
                                 </div>
-
-                                <div className="row">
-                                  {reply.image_url && (
-                                    <div className="col-auto">
-                                      <MediaThumbnail
-                                        src={reply.image_url}
-                                        alt="Reply"
-                                        fileType={reply.file_type}
-                                        size="80px"
-                                        linkTo={`/board/${boardId}/thread/${thread.id}`}
-                                      />
-                                    </div>
-                                  )}
-                                  <div className="col">
-                                    <div
-                                      className="small text-light text-break"
-                                      style={{
-                                        whiteSpace: "pre-wrap",
-                                        wordWrap: "break-word",
-                                        wordBreak: "break-word",
-                                        overflowWrap: "break-word",
-                                      }}
-                                    >
-                                      <PostContent
-                                        content={truncateText(
-                                          reply.content,
-                                          20,
-                                          2000
-                                        )}
-                                        allThreadsWithPosts={threadsWithPosts}
-                                        boardId={boardId}
-                                        onPostLinkClick={handlePostLinkClick}
-                                        isThreadPage={false}
-                                      />
-                                    </div>
-                                  </div>
+                              )}
+                              <div className="col">
+                                <div
+                                  className="text-light text-break"
+                                  style={{
+                                    whiteSpace: "pre-wrap",
+                                    wordWrap: "break-word",
+                                    wordBreak: "break-word",
+                                    overflowWrap: "break-word",
+                                  }}
+                                >
+                                  <PostContent
+                                    content={truncateText(
+                                      thread.content,
+                                      20,
+                                      2000
+                                    )}
+                                    allThreadsWithPosts={threadsWithPosts}
+                                    boardId={boardId}
+                                    onPostLinkClick={handlePostLinkClick}
+                                    isThreadPage={false}
+                                  />
                                 </div>
                               </div>
-                            ))}
-
-                            <div className="text-center mt-2">
-                              <Link
-                                to={`/board/${boardId}/thread/${thread.id}`}
-                                className="btn btn-outline-primary btn-sm"
-                              >
-                                View Thread →
-                              </Link>
                             </div>
-                          </div>
+
+                            {/* Latest Replies */}
+                            {thread.latestReplies &&
+                              thread.latestReplies.length > 0 && (
+                                <div className="mt-3 border-top border-secondary pt-3">
+                                  <div className="d-flex justify-content-between align-items-center mb-2">
+                                    <small className="text-muted">
+                                      Latest {thread.latestReplies.length}{" "}
+                                      replies:
+                                    </small>
+                                    {thread.totalReplies > 5 && (
+                                      <Link
+                                        to={`/board/${boardId}/thread/${thread.id}`}
+                                        className="btn btn-outline-secondary btn-sm"
+                                      >
+                                        View all {thread.totalReplies} replies
+                                      </Link>
+                                    )}
+                                  </div>
+
+                                  {thread.latestReplies.map((reply) => {
+                                    const isPostHidden = hiddenPosts.has(
+                                      reply.id
+                                    );
+                                    const isUserHidden =
+                                      reply.thread_user_id &&
+                                      hiddenUsers.has(reply.thread_user_id);
+                                    const isHidden =
+                                      isPostHidden || isUserHidden;
+
+                                    return (
+                                      <div
+                                        key={reply.id}
+                                        className="mb-2 p-2 bg-dark rounded border border-secondary"
+                                      >
+                                        <div className="d-flex justify-content-between align-items-start mb-1">
+                                          <div className="d-flex align-items-center gap-2">
+                                            <PostHeader
+                                              post={reply}
+                                              onPostNumberClick={() => {}} // No direct reply from board page
+                                              showThreadId={
+                                                board?.thread_ids_enabled
+                                              }
+                                              showCountryFlag={
+                                                board?.country_flags_enabled
+                                              }
+                                            />
+                                            <div className="d-flex gap-1">
+                                              <HideButton
+                                                isHidden={isPostHidden}
+                                                onToggle={() =>
+                                                  togglePostHidden(reply.id)
+                                                }
+                                                title={
+                                                  isPostHidden
+                                                    ? "Unhide this post"
+                                                    : "Hide this post"
+                                                }
+                                              />
+                                              {reply.thread_user_id && (
+                                                <HideButton
+                                                  isHidden={isUserHidden}
+                                                  onToggle={() =>
+                                                    toggleUserHidden(
+                                                      reply.thread_user_id
+                                                    )
+                                                  }
+                                                  title={
+                                                    isUserHidden
+                                                      ? "Unhide this user"
+                                                      : "Hide this user"
+                                                  }
+                                                />
+                                              )}
+                                            </div>
+                                          </div>
+                                        </div>
+
+                                        {!isHidden ? (
+                                          <div className="row">
+                                            {reply.image_url && (
+                                              <div className="col-auto">
+                                                <MediaThumbnail
+                                                  src={reply.image_url}
+                                                  alt="Reply"
+                                                  fileType={reply.file_type}
+                                                  size="80px"
+                                                  linkTo={`/board/${boardId}/thread/${thread.id}`}
+                                                />
+                                              </div>
+                                            )}
+                                            <div className="col">
+                                              <div
+                                                className="small text-light text-break"
+                                                style={{
+                                                  whiteSpace: "pre-wrap",
+                                                  wordWrap: "break-word",
+                                                  wordBreak: "break-word",
+                                                  overflowWrap: "break-word",
+                                                }}
+                                              >
+                                                <PostContent
+                                                  content={truncateText(
+                                                    reply.content,
+                                                    20,
+                                                    2000
+                                                  )}
+                                                  allThreadsWithPosts={
+                                                    threadsWithPosts
+                                                  }
+                                                  boardId={boardId}
+                                                  onPostLinkClick={
+                                                    handlePostLinkClick
+                                                  }
+                                                  isThreadPage={false}
+                                                />
+                                              </div>
+                                            </div>
+                                          </div>
+                                        ) : (
+                                          <p className="text-muted mb-0 text-center small">
+                                            <em>Post hidden</em>
+                                          </p>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+
+                                  <div className="text-center mt-2">
+                                    <Link
+                                      to={`/board/${boardId}/thread/${thread.id}`}
+                                      className="btn btn-outline-primary btn-sm"
+                                    >
+                                      View Thread →
+                                    </Link>
+                                  </div>
+                                </div>
+                              )}
+                          </>
+                        ) : (
+                          <p className="text-muted mb-0 text-center">
+                            <em>Thread hidden</em>
+                          </p>
                         )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div className="text-center py-5">
