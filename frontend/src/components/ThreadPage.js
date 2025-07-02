@@ -642,7 +642,7 @@ export default function ThreadPage() {
                         </div>
                       ) : (
                         <div className="card-body py-2">
-                          <p className="text-muted mb-0 text-center small">
+                          <p className="text-secondary mb-0 small">
                             <em>Post hidden</em>
                           </p>
                         </div>
