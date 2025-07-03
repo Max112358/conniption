@@ -25,9 +25,7 @@ export default function BoardPage() {
   const { banned, banInfo } = useBanCheck();
   const { socket, connected } = useSocket("board", boardId);
   const {
-    hiddenThreads,
     hiddenPosts,
-    hiddenUsers,
     toggleThreadHidden,
     togglePostHidden,
     toggleUserHidden,

@@ -36,14 +36,8 @@ export default function ThreadPage() {
   // Custom hooks
   const { socket, connected } = useSocket("thread", { boardId, threadId });
   const { adminUser, isModerator } = useAdminStatus();
-  const {
-    hiddenPosts,
-    hiddenUsers,
-    togglePostHidden,
-    toggleUserHidden,
-    isPostHidden,
-    isUserHidden,
-  } = useHideManager();
+  const { togglePostHidden, toggleUserHidden, isPostHidden, isUserHidden } =
+    useHideManager();
 
   // Update postsRef when posts change
   useEffect(() => {
