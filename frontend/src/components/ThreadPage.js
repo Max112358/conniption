@@ -639,7 +639,7 @@ export default function ThreadPage() {
               </div>
             )}
 
-            <form onSubmit={handleSubmitPost}>
+            <form onSubmit={handleSubmit}>
               <div className="mb-3">
                 <label htmlFor="content" className="form-label text-secondary">
                   Content
