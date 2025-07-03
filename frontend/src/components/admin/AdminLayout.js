@@ -92,6 +92,11 @@ export default function AdminLayout() {
     if (adminUser.role === "admin") {
       links.push({ to: "/admin/users", label: "Users", roles: ["admin"] });
       links.push({
+        to: "/admin/rangebans",
+        label: "Rangebans",
+        roles: ["admin"],
+      });
+      links.push({
         to: "/admin/housekeeping",
         label: "Housekeeping",
         roles: ["admin"],

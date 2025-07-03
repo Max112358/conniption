@@ -14,6 +14,7 @@ import BanManagement from "./components/admin/BanManagement";
 import CreateBan from "./components/admin/CreateBan";
 import AdminUserManagement from "./components/admin/AdminUserManagement";
 import AdminHousekeeping from "./components/admin/AdminHousekeeping";
+import RangebanManagement from "./components/admin/RangebanManagement";
 
 import "./colors.css";
 
@@ -52,6 +53,7 @@ export default function App() {
           <Route path="bans/create" element={<CreateBan />} />
           <Route path="users" element={<AdminUserManagement />} />
           <Route path="housekeeping" element={<AdminHousekeeping />} />
+          <Route path="rangebans" element={<RangebanManagement />} />
           {/* Add more admin routes as needed */}
 
           {/* Default redirect for /admin to dashboard */}

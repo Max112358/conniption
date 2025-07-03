@@ -55,7 +55,7 @@ export default function RulesPage() {
       rules: [
         "Political and current events discussion only",
         "Respect opposing viewpoints",
-        "Sources encouraged for claims",
+        "Posting blatant misinformation will result in a ban",
       ],
     },
     {

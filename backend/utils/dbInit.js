@@ -197,6 +197,22 @@ const createTables = async () => {
       )
     `);
 
+    // Create rangebans table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS rangebans (
+        id SERIAL PRIMARY KEY,
+        ban_type TEXT NOT NULL CHECK (ban_type IN ('country', 'ip_range', 'asn')),
+        ban_value TEXT NOT NULL,
+        board_id TEXT REFERENCES boards(id) ON DELETE CASCADE,
+        reason TEXT NOT NULL,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        expires_at TIMESTAMP WITH TIME ZONE,
+        admin_user_id INTEGER REFERENCES admin_users(id) ON DELETE SET NULL,
+        is_active BOOLEAN DEFAULT TRUE,
+        UNIQUE(ban_type, ban_value, board_id)
+      )
+    `);
+
     // Create bans table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS bans (
@@ -213,7 +229,8 @@ const createTables = async () => {
         post_content TEXT,
         post_image_url TEXT,
         thread_id INTEGER,
-        post_id INTEGER
+        post_id INTEGER,
+        rangeban_id INTEGER REFERENCES rangebans(id) ON DELETE SET NULL
       )
     `);
 
@@ -222,11 +239,12 @@ const createTables = async () => {
       CREATE TABLE IF NOT EXISTS moderation_actions (
         id SERIAL PRIMARY KEY,
         admin_user_id INTEGER REFERENCES admin_users(id) ON DELETE SET NULL,
-        action_type TEXT NOT NULL CHECK (action_type IN ('ban', 'unban', 'delete_post', 'delete_thread', 'edit_post', 'appeal_response')),
+        action_type TEXT NOT NULL CHECK (action_type IN ('ban', 'unban', 'delete_post', 'delete_thread', 'edit_post', 'appeal_response', 'rangeban', 'remove_rangeban')),
         board_id TEXT REFERENCES boards(id) ON DELETE CASCADE,
         thread_id INTEGER,
         post_id INTEGER,
         ban_id INTEGER REFERENCES bans(id) ON DELETE CASCADE,
+        rangeban_id INTEGER REFERENCES rangebans(id) ON DELETE CASCADE,
         reason TEXT NOT NULL,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
         ip_address TEXT -- IP address that was moderated (for reference)
@@ -247,6 +265,11 @@ const createTables = async () => {
     await pool.query(`
       CREATE INDEX IF NOT EXISTS idx_admin_users_role ON admin_users(role);
       CREATE INDEX IF NOT EXISTS idx_admin_users_boards ON admin_users USING GIN(boards);
+      CREATE INDEX IF NOT EXISTS idx_rangebans_ban_type ON rangebans(ban_type);
+      CREATE INDEX IF NOT EXISTS idx_rangebans_ban_value ON rangebans(ban_value);
+      CREATE INDEX IF NOT EXISTS idx_rangebans_board_id ON rangebans(board_id);
+      CREATE INDEX IF NOT EXISTS idx_rangebans_is_active ON rangebans(is_active);
+      CREATE INDEX IF NOT EXISTS idx_rangebans_expires_at ON rangebans(expires_at);
       CREATE INDEX IF NOT EXISTS idx_bans_ip_address ON bans(ip_address);
       CREATE INDEX IF NOT EXISTS idx_bans_board_id ON bans(board_id);
       CREATE INDEX IF NOT EXISTS idx_bans_is_active ON bans(is_active);
