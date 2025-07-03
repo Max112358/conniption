@@ -9,6 +9,7 @@ import PostHeader from "./PostHeader";
 import LoadingSpinner from "./LoadingSpinner";
 import HideButton from "./HideButton";
 import hideManager from "../utils/hideManager";
+import useBanCheck from "../hooks/useBanCheck";
 import { API_BASE_URL, SOCKET_URL } from "../config/api";
 
 // Component for rendering media thumbnails
@@ -101,12 +102,13 @@ export default function BoardPage() {
   const [threadsWithPosts, setThreadsWithPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [banned, setBanned] = useState(false);
-  const [banInfo, setBanInfo] = useState(null);
   const [socketConnected, setSocketConnected] = useState(false);
   const [hiddenThreads, setHiddenThreads] = useState(new Set());
   const [hiddenPosts, setHiddenPosts] = useState(new Set());
   const [hiddenUsers, setHiddenUsers] = useState(new Set());
+
+  // Use the ban check hook
+  const { banned, banInfo, checkBanStatus } = useBanCheck();
 
   // Use ref to store socket instance
   const socketRef = useRef(null);
@@ -127,13 +129,9 @@ export default function BoardPage() {
       );
 
       // Check if response indicates the user is banned
-      if (threadsResponse.status === 403) {
-        const errorData = await threadsResponse.json();
-        if (errorData.error === "Banned") {
-          setBanned(true);
-          setBanInfo(errorData.ban);
-          return false;
-        }
+      const isBanned = await checkBanStatus(threadsResponse);
+      if (isBanned) {
+        return false;
       }
 
       if (!threadsResponse.ok) {
@@ -147,7 +145,7 @@ export default function BoardPage() {
       console.error("Error fetching threads:", err);
       return false;
     }
-  }, [boardId]);
+  }, [boardId, checkBanStatus]);
 
   // Fetch latest posts for each thread
   const fetchThreadsWithPosts = useCallback(

@@ -10,6 +10,7 @@ import PostContent from "./PostContent";
 import PostHeader from "./PostHeader";
 import LoadingSpinner from "./LoadingSpinner";
 import hideManager from "../utils/hideManager";
+import useBanCheck from "../hooks/useBanCheck";
 import { API_BASE_URL, SOCKET_URL } from "../config/api";
 
 export default function ThreadPage() {
@@ -24,13 +25,14 @@ export default function ThreadPage() {
   const [postLoading, setPostLoading] = useState(false);
   const [postError, setPostError] = useState(null);
   const [adminUser, setAdminUser] = useState(null);
-  const [banned, setBanned] = useState(false);
-  const [banInfo, setBanInfo] = useState(null);
   const [board, setBoard] = useState(null);
   const [socketConnected, setSocketConnected] = useState(false);
   const [newPostsAvailable, setNewPostsAvailable] = useState(false);
   const [hiddenPosts, setHiddenPosts] = useState(new Set());
   const [hiddenUsers, setHiddenUsers] = useState(new Set());
+
+  // Use the ban check hook
+  const { banned, banInfo, checkBanStatus } = useBanCheck();
 
   const contentTextareaRef = useRef(null);
   const socketRef = useRef(null);
@@ -50,27 +52,49 @@ export default function ThreadPage() {
         100% { background-color: transparent; }
       }
       .post-highlight {
-        animation: postHighlight 2s ease-in-out;
+        animation: postHighlight 2s ease-out;
       }
-      @keyframes newPostAnimation {
-        0% { 
+      @keyframes newPostSlide {
+        from { 
           opacity: 0;
-          transform: translateY(-20px);
+          transform: translateY(20px);
         }
-        100% { 
+        to { 
           opacity: 1;
           transform: translateY(0);
         }
       }
-      .new-post {
-        animation: newPostAnimation 0.5s ease-out;
+      .new-post-animation {
+        animation: newPostSlide 0.3s ease-out;
       }
     `;
     document.head.appendChild(style);
+    return () => document.head.removeChild(style);
+  }, []);
 
-    return () => {
-      document.head.removeChild(style);
+  // Check if user is logged in as admin/mod
+  useEffect(() => {
+    const checkAdminStatus = async () => {
+      const token = localStorage.getItem("adminToken");
+      if (token) {
+        try {
+          const response = await fetch(`${API_BASE_URL}/api/admin/verify`, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            setAdminUser(data.user);
+          }
+        } catch (err) {
+          console.error("Error verifying admin status:", err);
+        }
+      }
     };
+
+    checkAdminStatus();
   }, []);
 
   // Initialize hidden state from localStorage
@@ -80,36 +104,13 @@ export default function ThreadPage() {
     setHiddenUsers(new Set(hidden.users));
   }, []);
 
-  // Check for admin user
-  useEffect(() => {
-    const storedUser = localStorage.getItem("adminUser");
-    if (storedUser) {
-      try {
-        const userData = JSON.parse(storedUser);
-        setAdminUser(userData);
-      } catch (err) {
-        console.error("Error parsing admin user data:", err);
-      }
-    }
-  }, []);
-
-  // Use useCallback to memoize fetchPosts function to avoid dependency issues
+  // Fetch posts
   const fetchPosts = useCallback(
     async (isSocketUpdate = false) => {
       try {
         const postsResponse = await fetch(
           `${API_BASE_URL}/api/boards/${boardId}/threads/${threadId}/posts`
         );
-
-        // Check if response indicates the user is banned
-        if (postsResponse.status === 403) {
-          const errorData = await postsResponse.json();
-          if (errorData.error === "Banned") {
-            setBanned(true);
-            setBanInfo(errorData.ban);
-            return false;
-          }
-        }
 
         if (!postsResponse.ok) {
           throw new Error("Failed to load posts");
@@ -118,7 +119,7 @@ export default function ThreadPage() {
         const postsData = await postsResponse.json();
         const newPosts = postsData.posts || [];
 
-        // If this is a socket update and we have existing posts, mark new ones
+        // If this is a socket update and we have existing posts, animate new ones
         if (isSocketUpdate && postsRef.current.length > 0) {
           const existingPostIds = new Set(postsRef.current.map((p) => p.id));
           const actualNewPosts = newPosts.filter(
@@ -164,6 +165,169 @@ export default function ThreadPage() {
     },
     [boardId, threadId]
   );
+
+  // Handle image selection
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setImage(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // Remove selected image
+  const removeImage = () => {
+    setImage(null);
+    setImagePreview(null);
+  };
+
+  // Handle form submission
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    if (!content.trim()) {
+      setPostError("Please enter a message");
+      return;
+    }
+
+    setPostLoading(true);
+    setPostError(null);
+
+    try {
+      const formData = new FormData();
+      formData.append("content", content);
+      if (image) {
+        formData.append("image", image);
+      }
+
+      const response = await fetch(
+        `${API_BASE_URL}/api/boards/${boardId}/threads/${threadId}/posts`,
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+
+      // Check if response indicates the user is banned
+      const isBanned = await checkBanStatus(response);
+      if (isBanned) {
+        setPostLoading(false);
+        return;
+      }
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to post");
+      }
+
+      // Clear form
+      setContent("");
+      setImage(null);
+      setImagePreview(null);
+
+      // Socket will handle updating the posts
+      setPostLoading(false);
+    } catch (err) {
+      console.error("Error submitting post:", err);
+      setPostError(
+        err.message || "Failed to submit post. Please try again later."
+      );
+      setPostLoading(false);
+    }
+  };
+
+  // Handle clicking on a post number to quote it
+  const handlePostNumberClick = (postId) => {
+    const textarea = contentTextareaRef.current;
+    if (!textarea) return;
+
+    const replyLink = `>>${postId}`;
+    const currentContent = content;
+
+    // If content is empty or ends with a newline, just add the link
+    if (!currentContent || currentContent.endsWith("\n")) {
+      setContent(currentContent + replyLink + "\n");
+    } else {
+      // Otherwise add a newline before the link
+      setContent(currentContent + "\n" + replyLink + "\n");
+    }
+
+    // Focus the textarea
+    textarea.focus();
+
+    // Scroll to the textarea
+    textarea.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
+
+  // Handle clicking on a post link to scroll to that post
+  const handlePostLinkClick = (postId) => {
+    const postElement = document.getElementById(`post-${postId}`);
+    if (postElement) {
+      // Get the header height to offset the scroll
+      const headerOffset = 80; // Adjust this based on your header height
+      const elementPosition = postElement.getBoundingClientRect().top;
+      const offsetPosition =
+        elementPosition + window.pageYOffset - headerOffset;
+
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: "smooth",
+      });
+
+      // Add a temporary highlight effect
+      postElement.classList.add("post-highlight");
+
+      // Remove any existing highlight classes after animation
+      setTimeout(() => {
+        const allPosts = document.querySelectorAll(".post-highlight");
+        allPosts.forEach((post) => post.classList.remove("post-highlight"));
+      }, 2000);
+    }
+  };
+
+  // Scroll to new posts when notification is clicked
+  const scrollToNewPosts = () => {
+    window.scrollTo({
+      top: document.documentElement.scrollHeight,
+      behavior: "smooth",
+    });
+    setNewPostsAvailable(false);
+  };
+
+  // Hide/unhide functions
+  const togglePostHidden = (postId) => {
+    if (hiddenPosts.has(postId)) {
+      hideManager.unhidePost(postId);
+      setHiddenPosts((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(postId);
+        return newSet;
+      });
+    } else {
+      hideManager.hidePost(postId);
+      setHiddenPosts((prev) => new Set(prev).add(postId));
+    }
+  };
+
+  const toggleUserHidden = (threadUserId) => {
+    if (!threadUserId) return;
+
+    if (hiddenUsers.has(threadUserId)) {
+      hideManager.unhideUser(threadUserId);
+      setHiddenUsers((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(threadUserId);
+        return newSet;
+      });
+    } else {
+      hideManager.hideUser(threadUserId);
+      setHiddenUsers((prev) => new Set(prev).add(threadUserId));
+    }
+  };
 
   // Socket setup effect
   useEffect(() => {
@@ -266,201 +430,6 @@ export default function ThreadPage() {
     fetchThreadData();
   }, [boardId, threadId, fetchPosts]);
 
-  // Handle scroll to dismiss new posts notification
-  useEffect(() => {
-    const handleScroll = () => {
-      const scrollPosition = window.scrollY + window.innerHeight;
-      const documentHeight = document.documentElement.scrollHeight;
-
-      if (scrollPosition >= documentHeight - 100) {
-        setNewPostsAvailable(false);
-      }
-    };
-
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
-
-  // Handle image selection
-  const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      // Check file size (4MB limit)
-      if (file.size > 4 * 1024 * 1024) {
-        setPostError("File size must be less than 4MB");
-        e.target.value = null;
-        setImage(null);
-        setImagePreview(null);
-        return;
-      }
-
-      setImage(file);
-      setPostError(null);
-
-      // Create image preview
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  // Handle post submission
-  const handleSubmitPost = async (e) => {
-    e.preventDefault();
-
-    // validation (checks for content OR image):
-    if (!content.trim() && !image) {
-      setPostError("Either content or an image/video is required");
-      return;
-    }
-
-    setPostLoading(true);
-    setPostError(null);
-
-    // Create FormData for file upload
-    const formData = new FormData();
-    formData.append("content", content);
-    if (image) {
-      formData.append("image", image);
-    }
-
-    try {
-      const response = await fetch(
-        `${API_BASE_URL}/api/boards/${boardId}/threads/${threadId}/posts`,
-        {
-          method: "POST",
-          body: formData,
-        }
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to create post");
-      }
-
-      // Reset form
-      setContent("");
-      setImage(null);
-      setImagePreview(null);
-
-      // Clear file input
-      const fileInput = document.getElementById("image");
-      if (fileInput) {
-        fileInput.value = "";
-      }
-
-      // Fetch updated posts - the socket event will also trigger this
-      await fetchPosts(false);
-
-      // Scroll to bottom to see new post
-      setTimeout(() => {
-        window.scrollTo({
-          top: document.documentElement.scrollHeight,
-          behavior: "smooth",
-        });
-      }, 100);
-
-      setPostLoading(false);
-    } catch (err) {
-      console.error("Error creating post:", err);
-      setPostError(
-        err.message || "Failed to create post. Please try again later."
-      );
-      setPostLoading(false);
-    }
-  };
-
-  // Handle clicking on a post number to quote it
-  const handlePostNumberClick = (postId) => {
-    const textarea = contentTextareaRef.current;
-    if (!textarea) return;
-
-    const replyLink = `>>${postId}`;
-    const currentContent = content;
-
-    // If content is empty or ends with a newline, just add the link
-    if (!currentContent || currentContent.endsWith("\n")) {
-      setContent(currentContent + replyLink + "\n");
-    } else {
-      // Otherwise add a newline before the link
-      setContent(currentContent + "\n" + replyLink + "\n");
-    }
-
-    // Focus the textarea
-    textarea.focus();
-
-    // Scroll to the textarea
-    textarea.scrollIntoView({ behavior: "smooth", block: "center" });
-  };
-
-  // Handle clicking on a post link to scroll to that post
-  const handlePostLinkClick = (postId) => {
-    const postElement = document.getElementById(`post-${postId}`);
-    if (postElement) {
-      // Get the header height to offset the scroll
-      const headerOffset = 80; // Adjust this based on your header height
-      const elementPosition = postElement.getBoundingClientRect().top;
-      const offsetPosition =
-        elementPosition + window.pageYOffset - headerOffset;
-
-      window.scrollTo({
-        top: offsetPosition,
-        behavior: "smooth",
-      });
-
-      // Add a temporary highlight effect
-      postElement.classList.add("post-highlight");
-
-      // Remove any existing highlight classes after animation
-      setTimeout(() => {
-        const allPosts = document.querySelectorAll(".post-highlight");
-        allPosts.forEach((post) => post.classList.remove("post-highlight"));
-      }, 2000);
-    }
-  };
-
-  // Scroll to new posts when notification is clicked
-  const scrollToNewPosts = () => {
-    window.scrollTo({
-      top: document.documentElement.scrollHeight,
-      behavior: "smooth",
-    });
-    setNewPostsAvailable(false);
-  };
-
-  // Hide/unhide functions
-  const togglePostHidden = (postId) => {
-    if (hiddenPosts.has(postId)) {
-      hideManager.unhidePost(postId);
-      setHiddenPosts((prev) => {
-        const newSet = new Set(prev);
-        newSet.delete(postId);
-        return newSet;
-      });
-    } else {
-      hideManager.hidePost(postId);
-      setHiddenPosts((prev) => new Set(prev).add(postId));
-    }
-  };
-
-  const toggleUserHidden = (threadUserId) => {
-    if (!threadUserId) return;
-
-    if (hiddenUsers.has(threadUserId)) {
-      hideManager.unhideUser(threadUserId);
-      setHiddenUsers((prev) => {
-        const newSet = new Set(prev);
-        newSet.delete(threadUserId);
-        return newSet;
-      });
-    } else {
-      hideManager.hideUser(threadUserId);
-      setHiddenUsers((prev) => new Set(prev).add(threadUserId));
-    }
-  };
-
   // Check if user is admin or moderator
   const isAdmin = adminUser && adminUser.role === "admin";
   const isModerator =
@@ -547,11 +516,10 @@ export default function ThreadPage() {
                         ? "danger"
                         : adminUser.role === "moderator"
                         ? "warning"
-                        : "info"
+                        : "secondary"
                     }`}
                   >
-                    {adminUser.role.charAt(0).toUpperCase() +
-                      adminUser.role.slice(1)}
+                    {adminUser.role}
                   </span>
                 )}
               </div>

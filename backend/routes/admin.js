@@ -5,6 +5,10 @@ const adminModel = require("../models/admin");
 const banModel = require("../models/ban");
 const moderationModel = require("../models/moderation");
 const adminAuth = require("../middleware/adminAuth");
+const rangebanRoutes = require("./admin/rangebans");
+
+// Register sub-routes
+router.use("/rangebans", rangebanRoutes);
 
 /**
  * @route   POST /api/admin/login

@@ -10,6 +10,59 @@ export default function BanNotification({ ban, boardId, onClose }) {
   const [submitted, setSubmitted] = useState(false);
   const [showAppealForm, setShowAppealForm] = useState(false);
 
+  // Handle rangeban display
+  if (ban.isRangeban && ban.rangeban) {
+    return (
+      <div className="container-fluid min-vh-100 bg-dark text-light py-5">
+        <div className="container">
+          <div className="card bg-dark border-danger shadow">
+            <div className="card-header bg-danger text-white">
+              <h1 className="h4 mb-0">
+                <i className="bi bi-geo-alt-fill me-2"></i>
+                Your country is banned from this board
+              </h1>
+            </div>
+            <div className="card-body">
+              <div className="alert alert-dark" role="alert">
+                <p className="mb-1">
+                  <strong>Ban Type:</strong> Country Ban ({ban.rangeban.value})
+                </p>
+                <p className="mb-1">
+                  <strong>Reason:</strong> {ban.rangeban.reason}
+                </p>
+                {ban.rangeban.expires_at && (
+                  <p className="mb-1">
+                    <strong>Expires:</strong>{" "}
+                    {new Date(ban.rangeban.expires_at).toLocaleString()}
+                  </p>
+                )}
+                {!ban.rangeban.expires_at && (
+                  <p className="mb-0">
+                    <strong>Ban type:</strong> Permanent
+                  </p>
+                )}
+              </div>
+
+              <div className="alert alert-info" role="alert">
+                <i className="bi bi-info-circle me-2"></i>
+                Country-wide bans cannot be appealed. If you believe this is an
+                error, please contact the site administrators through other
+                means.
+              </div>
+
+              <div className="mt-4">
+                <Link to="/" className="btn btn-outline-light">
+                  <i className="bi bi-arrow-left me-2"></i>
+                  Return to Home
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // Format expiration date
   const formatExpiration = () => {
     if (!ban.expires_at) {
