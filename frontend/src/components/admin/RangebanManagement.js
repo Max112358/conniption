@@ -5,7 +5,7 @@ import { API_BASE_URL } from "../../config/api";
 import { countryList } from "../../utils/countryList";
 
 export default function RangebanManagement() {
-  const { adminUser } = useOutletContext();
+  const { adminUser } = useOutletContext(); // eslint-disable-line no-unused-vars
   const [rangebans, setRangebans] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -26,12 +26,6 @@ export default function RangebanManagement() {
   const [formError, setFormError] = useState(null);
 
   // Fetch rangebans
-  useEffect(() => {
-    fetchRangebans();
-    fetchBoards();
-    fetchStats();
-  }, [selectedBoard]);
-
   const fetchRangebans = async () => {
     try {
       setLoading(true);
@@ -57,6 +51,12 @@ export default function RangebanManagement() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchRangebans();
+    fetchBoards();
+    fetchStats();
+  }, [selectedBoard]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchBoards = async () => {
     try {
@@ -116,6 +116,8 @@ export default function RangebanManagement() {
             case "y":
               date.setFullYear(date.getFullYear() + numAmount);
               break;
+            default:
+              throw new Error("Invalid time unit");
           }
           expires_at = date.toISOString();
         }
@@ -234,15 +236,12 @@ export default function RangebanManagement() {
                 <h6 className="text-secondary">Top Banned Countries</h6>
                 {stats.topCountries && stats.topCountries.length > 0 ? (
                   <ul className="list-unstyled">
-                    {stats.topCountries.slice(0, 5).map((country) => (
+                    {stats.topCountries.map((country) => (
                       <li key={country.country_code}>
-                        <strong>{country.country_name}:</strong>{" "}
-                        {country.ban_count} bans
-                        {country.global_bans > 0 && (
-                          <span className="text-danger ms-2">
-                            ({country.global_bans} global)
-                          </span>
-                        )}
+                        <strong>
+                          {country.country_code} - {country.country_name}:
+                        </strong>{" "}
+                        {country.count} bans
                       </li>
                     ))}
                   </ul>
@@ -255,69 +254,62 @@ export default function RangebanManagement() {
         </div>
       )}
 
-      {/* Filter Controls */}
-      <div className="card bg-mid-dark border-secondary mb-4">
-        <div className="card-body">
-          <div className="row g-3">
-            <div className="col-md-6">
-              <label
-                htmlFor="boardFilter"
-                className="form-label text-secondary"
-              >
-                Board
-              </label>
-              <select
-                id="boardFilter"
-                className="form-select bg-dark text-light border-secondary"
-                value={selectedBoard}
-                onChange={(e) => setSelectedBoard(e.target.value)}
-              >
-                <option value="">All Boards</option>
-                {boards.map((board) => (
-                  <option key={board.id} value={board.id}>
-                    /{board.id}/ - {board.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-        </div>
+      {/* Filter */}
+      <div className="mb-4">
+        <select
+          className="form-select bg-dark text-light border-secondary"
+          value={selectedBoard}
+          onChange={(e) => setSelectedBoard(e.target.value)}
+        >
+          <option value="">All Boards</option>
+          {boards.map((board) => (
+            <option key={board.short} value={board.short}>
+              /{board.short}/ - {board.name}
+            </option>
+          ))}
+        </select>
       </div>
 
-      {/* Rangebans List */}
+      {/* Rangebans Table */}
       <div className="card bg-mid-dark border-secondary">
         <div className="card-header border-secondary">
           <h2 className="h5 mb-0">Active Rangebans</h2>
         </div>
-        <div className="card-body p-0">
+        <div className="card-body">
           {loading ? (
-            <div className="d-flex justify-content-center my-5">
-              <div className="spinner-border text-light" role="status">
+            <div className="text-center py-5">
+              <div className="spinner-border text-primary" role="status">
                 <span className="visually-hidden">Loading...</span>
               </div>
             </div>
           ) : rangebans.length > 0 ? (
             <div className="table-responsive">
-              <table className="table table-dark table-striped table-hover mb-0">
+              <table className="table table-dark table-striped">
                 <thead>
                   <tr>
-                    <th>ID</th>
                     <th>Type</th>
                     <th>Value</th>
                     <th>Board</th>
                     <th>Reason</th>
                     <th>Created</th>
                     <th>Expires</th>
-                    <th>Created By</th>
+                    <th>Admin</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {rangebans.map((rangeban) => (
                     <tr key={rangeban.id}>
-                      <td>{rangeban.id}</td>
                       <td>
-                        <span className="badge bg-warning">
+                        <span
+                          className={`badge ${
+                            rangeban.ban_type === "country"
+                              ? "bg-danger"
+                              : rangeban.ban_type === "asn"
+                              ? "bg-warning"
+                              : "bg-info"
+                          }`}
+                        >
                           {rangeban.ban_type}
                         </span>
                       </td>
@@ -380,7 +372,6 @@ export default function RangebanManagement() {
                   type="button"
                   className="btn-close btn-close-white"
                   onClick={() => setShowCreateModal(false)}
-                  disabled={formLoading}
                 ></button>
               </div>
               <div className="modal-body">
@@ -389,35 +380,26 @@ export default function RangebanManagement() {
                     {formError}
                   </div>
                 )}
-
                 <form onSubmit={handleCreateRangeban}>
                   <div className="mb-3">
-                    <label className="form-label text-secondary">
-                      Ban Type
-                    </label>
+                    <label className="form-label">Ban Type</label>
                     <select
                       className="form-select bg-dark text-light border-secondary"
                       value={formData.ban_type}
                       onChange={(e) =>
                         setFormData({ ...formData, ban_type: e.target.value })
                       }
-                      disabled={formLoading}
+                      required
                     >
                       <option value="country">Country</option>
-                      <option value="ip_range" disabled>
-                        IP Range (Coming Soon)
-                      </option>
-                      <option value="asn" disabled>
-                        ASN (Coming Soon)
-                      </option>
+                      <option value="asn">ASN</option>
+                      <option value="ip_range">IP Range</option>
                     </select>
                   </div>
 
-                  {formData.ban_type === "country" && (
-                    <div className="mb-3">
-                      <label className="form-label text-secondary">
-                        Country
-                      </label>
+                  <div className="mb-3">
+                    <label className="form-label">Ban Value</label>
+                    {formData.ban_type === "country" ? (
                       <select
                         className="form-select bg-dark text-light border-secondary"
                         value={formData.ban_value}
@@ -428,107 +410,107 @@ export default function RangebanManagement() {
                           })
                         }
                         required
-                        disabled={formLoading}
                       >
-                        <option value="">Select a country...</option>
-                        {Object.entries(countryList).map(([code, name]) => (
-                          <option key={code} value={code}>
-                            {code} - {name}
+                        <option value="">Select a country</option>
+                        {countryList.map((country) => (
+                          <option key={country.code} value={country.code}>
+                            {country.name} ({country.code})
                           </option>
                         ))}
                       </select>
-                    </div>
-                  )}
+                    ) : (
+                      <input
+                        type="text"
+                        className="form-control bg-dark text-light border-secondary"
+                        value={formData.ban_value}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            ban_value: e.target.value,
+                          })
+                        }
+                        placeholder={
+                          formData.ban_type === "asn"
+                            ? "e.g., AS12345"
+                            : "e.g., 192.168.0.0/24"
+                        }
+                        required
+                      />
+                    )}
+                  </div>
 
                   <div className="mb-3">
-                    <label className="form-label text-secondary">Board</label>
+                    <label className="form-label">
+                      Board (leave empty for global)
+                    </label>
                     <select
                       className="form-select bg-dark text-light border-secondary"
                       value={formData.board_id}
                       onChange={(e) =>
                         setFormData({ ...formData, board_id: e.target.value })
                       }
-                      disabled={formLoading}
                     >
                       <option value="">Global (All Boards)</option>
                       {boards.map((board) => (
-                        <option key={board.id} value={board.id}>
-                          /{board.id}/ - {board.name}
+                        <option key={board.short} value={board.short}>
+                          /{board.short}/ - {board.name}
                         </option>
                       ))}
                     </select>
                   </div>
 
                   <div className="mb-3">
-                    <label className="form-label text-secondary">
-                      Reason *
-                    </label>
+                    <label className="form-label">Reason</label>
                     <textarea
                       className="form-control bg-dark text-light border-secondary"
                       value={formData.reason}
                       onChange={(e) =>
                         setFormData({ ...formData, reason: e.target.value })
                       }
-                      rows="3"
-                      placeholder="Reason for rangeban..."
+                      rows={3}
                       required
-                      disabled={formLoading}
-                    ></textarea>
+                    />
                   </div>
 
                   <div className="mb-3">
-                    <label className="form-label text-secondary">
-                      Duration
-                    </label>
+                    <label className="form-label">Duration</label>
                     <select
                       className="form-select bg-dark text-light border-secondary"
                       value={formData.expires_at}
                       onChange={(e) =>
                         setFormData({ ...formData, expires_at: e.target.value })
                       }
-                      disabled={formLoading}
                     >
                       <option value="1h">1 Hour</option>
                       <option value="6h">6 Hours</option>
                       <option value="1d">1 Day</option>
+                      <option value="3d">3 Days</option>
                       <option value="7d">1 Week</option>
-                      <option value="30d">1 Month</option>
-                      <option value="90d">3 Months</option>
-                      <option value="180d">6 Months</option>
-                      <option value="365d">1 Year</option>
+                      <option value="30d">30 Days</option>
+                      <option value="90d">90 Days</option>
+                      <option value="1y">1 Year</option>
                       <option value="permanent">Permanent</option>
                     </select>
                   </div>
+
+                  <div className="d-flex justify-content-end gap-2">
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={() => setShowCreateModal(false)}
+                      disabled={formLoading}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="btn btn-danger"
+                      disabled={formLoading}
+                    >
+                      {formLoading ? "Creating..." : "Create Rangeban"}
+                    </button>
+                  </div>
                 </form>
-              </div>
-              <div className="modal-footer border-secondary">
-                <button
-                  type="button"
-                  className="btn btn-outline-secondary"
-                  onClick={() => setShowCreateModal(false)}
-                  disabled={formLoading}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-danger"
-                  onClick={handleCreateRangeban}
-                  disabled={formLoading}
-                >
-                  {formLoading ? (
-                    <>
-                      <span
-                        className="spinner-border spinner-border-sm me-2"
-                        role="status"
-                        aria-hidden="true"
-                      ></span>
-                      Creating...
-                    </>
-                  ) : (
-                    "Create Rangeban"
-                  )}
-                </button>
               </div>
             </div>
           </div>
