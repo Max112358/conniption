@@ -1,16 +1,18 @@
 // frontend/src/components/ThreadPage.js
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useParams, Link } from "react-router-dom";
-import { io } from "socket.io-client";
-import PostModMenu from "./admin/PostModMenu";
+import { useParams } from "react-router-dom";
 import BanNotification from "./BanNotification";
-import MediaViewer from "./MediaViewer";
-import PostContent from "./PostContent";
-import PostHeader from "./PostHeader";
 import LoadingSpinner from "./LoadingSpinner";
-import hideManager from "../utils/hideManager";
-import { API_BASE_URL, SOCKET_URL } from "../config/api";
+import PageHeader from "./shared/PageHeader";
+import ErrorDisplay from "./shared/ErrorDisplay";
+import ConnectionStatus from "./shared/ConnectionStatus";
+import PostCard from "./shared/PostCard";
+import ReplyForm from "./shared/ReplyForm";
+import useSocket from "../hooks/useSocket";
+import useHideManager from "../hooks/useHideManager";
+import useAdminStatus from "../hooks/useAdminStatus";
+import { API_BASE_URL } from "../config/api";
 
 export default function ThreadPage() {
   const { boardId, threadId } = useParams();
@@ -23,25 +25,32 @@ export default function ThreadPage() {
   const [imagePreview, setImagePreview] = useState(null);
   const [postLoading, setPostLoading] = useState(false);
   const [postError, setPostError] = useState(null);
-  const [adminUser, setAdminUser] = useState(null);
   const [banned, setBanned] = useState(false);
   const [banInfo, setBanInfo] = useState(null);
   const [board, setBoard] = useState(null);
-  const [socketConnected, setSocketConnected] = useState(false);
   const [newPostsAvailable, setNewPostsAvailable] = useState(false);
-  const [hiddenPosts, setHiddenPosts] = useState(new Set());
-  const [hiddenUsers, setHiddenUsers] = useState(new Set());
 
   const contentTextareaRef = useRef(null);
-  const socketRef = useRef(null);
-  const postsRef = useRef(posts); // Keep track of current posts for socket handler
+  const postsRef = useRef(posts);
+
+  // Custom hooks
+  const { socket, connected } = useSocket("thread", { boardId, threadId });
+  const { adminUser, isModerator } = useAdminStatus();
+  const {
+    hiddenPosts,
+    hiddenUsers,
+    togglePostHidden,
+    toggleUserHidden,
+    isPostHidden,
+    isUserHidden,
+  } = useHideManager();
 
   // Update postsRef when posts change
   useEffect(() => {
     postsRef.current = posts;
   }, [posts]);
 
-  // Add custom CSS for highlight animation
+  // Add animation styles
   useEffect(() => {
     const style = document.createElement("style");
     style.textContent = `
@@ -67,43 +76,19 @@ export default function ThreadPage() {
       }
     `;
     document.head.appendChild(style);
-
-    return () => {
-      document.head.removeChild(style);
-    };
+    return () => document.head.removeChild(style);
   }, []);
 
-  // Initialize hidden state from localStorage
-  useEffect(() => {
-    const hidden = hideManager.getAllHidden();
-    setHiddenPosts(new Set(hidden.posts));
-    setHiddenUsers(new Set(hidden.users));
-  }, []);
-
-  // Check for admin user
-  useEffect(() => {
-    const storedUser = localStorage.getItem("adminUser");
-    if (storedUser) {
-      try {
-        const userData = JSON.parse(storedUser);
-        setAdminUser(userData);
-      } catch (err) {
-        console.error("Error parsing admin user data:", err);
-      }
-    }
-  }, []);
-
-  // Use useCallback to memoize fetchPosts function to avoid dependency issues
+  // Fetch posts
   const fetchPosts = useCallback(
     async (isSocketUpdate = false) => {
       try {
-        const postsResponse = await fetch(
+        const response = await fetch(
           `${API_BASE_URL}/api/boards/${boardId}/threads/${threadId}/posts`
         );
 
-        // Check if response indicates the user is banned
-        if (postsResponse.status === 403) {
-          const errorData = await postsResponse.json();
+        if (response.status === 403) {
+          const errorData = await response.json();
           if (errorData.error === "Banned") {
             setBanned(true);
             setBanInfo(errorData.ban);
@@ -111,14 +96,14 @@ export default function ThreadPage() {
           }
         }
 
-        if (!postsResponse.ok) {
+        if (!response.ok) {
           throw new Error("Failed to load posts");
         }
 
-        const postsData = await postsResponse.json();
-        const newPosts = postsData.posts || [];
+        const data = await response.json();
+        const newPosts = data.posts || [];
 
-        // If this is a socket update and we have existing posts, mark new ones
+        // Handle new post animations
         if (isSocketUpdate && postsRef.current.length > 0) {
           const existingPostIds = new Set(postsRef.current.map((p) => p.id));
           const actualNewPosts = newPosts.filter(
@@ -126,24 +111,19 @@ export default function ThreadPage() {
           );
 
           if (actualNewPosts.length > 0) {
-            // Mark the new posts for animation
             const markedPosts = newPosts.map((post) => ({
               ...post,
               isNew: !existingPostIds.has(post.id),
             }));
             setPosts(markedPosts);
 
-            // Remove the "new" flag after animation completes
             setTimeout(() => {
               setPosts((current) =>
-                current.map((post) => ({
-                  ...post,
-                  isNew: false,
-                }))
+                current.map((post) => ({ ...post, isNew: false }))
               );
             }, 500);
 
-            // Show notification if user is scrolled up
+            // Show notification if scrolled up
             const scrollPosition = window.scrollY + window.innerHeight;
             const documentHeight = document.documentElement.scrollHeight;
             if (scrollPosition < documentHeight - 100) {
@@ -165,94 +145,40 @@ export default function ThreadPage() {
     [boardId, threadId]
   );
 
-  // Socket setup effect
+  // Socket event handlers
   useEffect(() => {
-    console.log("Setting up Socket.io connection for thread:", threadId);
+    if (!socket) return;
 
-    const socket = io(SOCKET_URL, {
-      transports: ["polling", "websocket"],
-      reconnection: true,
-      reconnectionAttempts: 5,
-      reconnectionDelay: 1000,
-      reconnectionDelayMax: 5000,
-      timeout: 20000,
-      path: "/socket.io/",
-      forceNew: true,
-      rejectUnauthorized: false,
-    });
-
-    socketRef.current = socket;
-
-    // Socket event handlers
-    socket.on("connect", () => {
-      console.log("Socket.io connected successfully");
-      setSocketConnected(true);
-      // Join the thread room after connection
-      socket.emit("join_thread", { boardId, threadId });
-    });
-
-    socket.on("disconnect", (reason) => {
-      console.log("Socket.io disconnected:", reason);
-      setSocketConnected(false);
-    });
-
-    socket.on("connect_error", (error) => {
-      console.error("Socket.io connection error:", error.message);
-      setSocketConnected(false);
-    });
-
-    // Listen for new posts
-    socket.on("post_created", (data) => {
+    const handlePostCreated = (data) => {
       console.log("New post created event received:", data);
       if (data.threadId === parseInt(threadId) && data.boardId === boardId) {
-        console.log("Post is for this thread, fetching updates...");
-        // Fetch posts with socket update flag
         fetchPosts(true);
       }
-    });
-
-    // Cleanup function
-    return () => {
-      console.log("Cleaning up Socket.io connection for thread:", threadId);
-      if (socket.connected) {
-        socket.emit("leave_thread", { boardId, threadId });
-      }
-      socket.disconnect();
-      socketRef.current = null;
     };
-  }, [boardId, threadId, fetchPosts]);
+
+    socket.on("post_created", handlePostCreated);
+    return () => socket.off("post_created", handlePostCreated);
+  }, [socket, boardId, threadId, fetchPosts]);
 
   // Initial data fetch
   useEffect(() => {
     const fetchThreadData = async () => {
       try {
-        // Fetch board details to get settings
         const boardResponse = await fetch(
           `${API_BASE_URL}/api/boards/${boardId}`
         );
-
-        if (!boardResponse.ok) {
-          throw new Error("Board not found");
-        }
-
+        if (!boardResponse.ok) throw new Error("Board not found");
         const boardData = await boardResponse.json();
         setBoard(boardData.board);
 
-        // Fetch thread details
         const threadResponse = await fetch(
           `${API_BASE_URL}/api/boards/${boardId}/threads/${threadId}`
         );
-
-        if (!threadResponse.ok) {
-          throw new Error("Thread not found");
-        }
-
+        if (!threadResponse.ok) throw new Error("Thread not found");
         const threadData = await threadResponse.json();
         setThread(threadData.thread);
 
-        // Fetch posts
         await fetchPosts(false);
-
         setLoading(false);
       } catch (err) {
         console.error("Error fetching thread data:", err);
@@ -266,78 +192,19 @@ export default function ThreadPage() {
     fetchThreadData();
   }, [boardId, threadId, fetchPosts]);
 
-  // Handle scroll to dismiss new posts notification
-  useEffect(() => {
-    const handleScroll = () => {
-      const scrollPosition = window.scrollY + window.innerHeight;
-      const documentHeight = document.documentElement.scrollHeight;
-
-      if (scrollPosition >= documentHeight - 100) {
-        setNewPostsAvailable(false);
-      }
-    };
-
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
-
-  // Handle image selection
-  const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      // Check file size (4MB limit)
-      if (file.size > 4 * 1024 * 1024) {
-        setPostError("File size must be less than 4MB");
-        e.target.value = null;
-        setImage(null);
-        setImagePreview(null);
-        return;
-      }
-
-      setImage(file);
-      setPostError(null);
-
-      // Create image preview
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  // Remove selected image
-  const removeImage = () => {
-    setImage(null);
-    setImagePreview(null);
-    // Clear the file input
-    const fileInput = document.getElementById("image");
-    if (fileInput) {
-      fileInput.value = "";
-    }
-  };
-
   // Handle post submission
-  const handleSubmitPost = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-
-    // validation (checks for content OR image):
-    if (!content.trim() && !image) {
-      setPostError("Either content or an image/video is required");
-      return;
-    }
+    if (!content.trim() || postLoading) return;
 
     setPostLoading(true);
     setPostError(null);
 
-    // Create FormData for file upload
-    const formData = new FormData();
-    formData.append("content", content);
-    if (image) {
-      formData.append("image", image);
-    }
-
     try {
+      const formData = new FormData();
+      formData.append("content", content);
+      if (image) formData.append("image", image);
+
       const response = await fetch(
         `${API_BASE_URL}/api/boards/${boardId}/threads/${threadId}/posts`,
         {
@@ -358,14 +225,11 @@ export default function ThreadPage() {
 
       // Clear file input
       const fileInput = document.getElementById("image");
-      if (fileInput) {
-        fileInput.value = "";
-      }
+      if (fileInput) fileInput.value = "";
 
-      // Fetch updated posts - the socket event will also trigger this
       await fetchPosts(false);
 
-      // Scroll to bottom to see new post
+      // Scroll to bottom
       setTimeout(() => {
         window.scrollTo({
           top: document.documentElement.scrollHeight,
@@ -383,7 +247,7 @@ export default function ThreadPage() {
     }
   };
 
-  // Handle clicking on a post number to quote it
+  // Handle post number clicks
   const handlePostNumberClick = (postId) => {
     const textarea = contentTextareaRef.current;
     if (!textarea) return;
@@ -391,27 +255,21 @@ export default function ThreadPage() {
     const replyLink = `>>${postId}`;
     const currentContent = content;
 
-    // If content is empty or ends with a newline, just add the link
     if (!currentContent || currentContent.endsWith("\n")) {
       setContent(currentContent + replyLink + "\n");
     } else {
-      // Otherwise add a newline before the link
       setContent(currentContent + "\n" + replyLink + "\n");
     }
 
-    // Focus the textarea
     textarea.focus();
-
-    // Scroll to the textarea
     textarea.scrollIntoView({ behavior: "smooth", block: "center" });
   };
 
-  // Handle clicking on a post link to scroll to that post
+  // Handle post link clicks
   const handlePostLinkClick = (postId) => {
     const postElement = document.getElementById(`post-${postId}`);
     if (postElement) {
-      // Get the header height to offset the scroll
-      const headerOffset = 80; // Adjust this based on your header height
+      const headerOffset = 80;
       const elementPosition = postElement.getBoundingClientRect().top;
       const offsetPosition =
         elementPosition + window.pageYOffset - headerOffset;
@@ -421,18 +279,14 @@ export default function ThreadPage() {
         behavior: "smooth",
       });
 
-      // Add a temporary highlight effect
       postElement.classList.add("post-highlight");
-
-      // Remove any existing highlight classes after animation
       setTimeout(() => {
-        const allPosts = document.querySelectorAll(".post-highlight");
-        allPosts.forEach((post) => post.classList.remove("post-highlight"));
+        postElement.classList.remove("post-highlight");
       }, 2000);
     }
   };
 
-  // Scroll to new posts when notification is clicked
+  // Scroll to new posts
   const scrollToNewPosts = () => {
     window.scrollTo({
       top: document.documentElement.scrollHeight,
@@ -441,43 +295,6 @@ export default function ThreadPage() {
     setNewPostsAvailable(false);
   };
 
-  // Hide/unhide functions
-  const togglePostHidden = (postId) => {
-    if (hiddenPosts.has(postId)) {
-      hideManager.unhidePost(postId);
-      setHiddenPosts((prev) => {
-        const newSet = new Set(prev);
-        newSet.delete(postId);
-        return newSet;
-      });
-    } else {
-      hideManager.hidePost(postId);
-      setHiddenPosts((prev) => new Set(prev).add(postId));
-    }
-  };
-
-  const toggleUserHidden = (threadUserId) => {
-    if (!threadUserId) return;
-
-    if (hiddenUsers.has(threadUserId)) {
-      hideManager.unhideUser(threadUserId);
-      setHiddenUsers((prev) => {
-        const newSet = new Set(prev);
-        newSet.delete(threadUserId);
-        return newSet;
-      });
-    } else {
-      hideManager.hideUser(threadUserId);
-      setHiddenUsers((prev) => new Set(prev).add(threadUserId));
-    }
-  };
-
-  // Check if user is admin or moderator
-  const isAdmin = adminUser && adminUser.role === "admin";
-  const isModerator =
-    adminUser && (adminUser.role === "moderator" || adminUser.role === "admin");
-
-  // If user is banned, show the ban notification
   if (banned && banInfo) {
     return <BanNotification ban={banInfo} boardId={boardId} />;
   }
@@ -488,86 +305,71 @@ export default function ThreadPage() {
 
   if (error) {
     return (
-      <div className="container-fluid min-vh-100 d-flex align-items-center justify-content-center bg-dark text-light">
-        <div className="card bg-dark text-light border-secondary p-4 shadow">
-          <div className="card-body text-center">
-            <div className="alert alert-danger" role="alert">
-              {error}
-            </div>
-            <Link
-              to={`/board/${boardId}`}
-              className="btn btn-outline-light mt-3"
-            >
-              ← Back to Board
-            </Link>
-          </div>
-        </div>
-      </div>
+      <ErrorDisplay
+        error={error}
+        backLink={`/board/${boardId}`}
+        backText="← Back to Board"
+      />
     );
   }
 
   return (
     <div className="container-fluid min-vh-100 bg-dark text-light py-4">
       <div className="container">
-        <div className="mb-4">
-          <Link
-            to={`/board/${boardId}`}
-            className="btn btn-outline-light btn-sm"
-          >
-            ← Back to Board
-          </Link>
-        </div>
-
-        {/* Thread Header */}
-        <div className="card bg-dark border-secondary shadow mb-4">
-          <div className="card-header border-secondary d-flex justify-content-between align-items-center">
-            <h1 className="h3 mb-0 text-light">
-              <span className="badge bg-secondary me-2">/{boardId}/</span>
-              <span className="text-light">{thread.topic}</span>
-            </h1>
-
-            {/* Thread mod options for admins/mods */}
-            {isModerator && (
+        <PageHeader
+          backLink={`/board/${boardId}`}
+          backText="← Back to Board"
+          title={thread.topic}
+          badge={`/${boardId}/`}
+          actions={
+            isModerator && (
               <button
                 className="btn btn-sm btn-outline-danger"
                 onClick={() => console.log("Delete thread")}
               >
                 <i className="bi bi-trash"></i> Delete Thread
               </button>
+            )
+          }
+        />
+
+        <div className="mb-3 text-secondary d-flex justify-content-between align-items-center">
+          <small>
+            Thread created: {new Date(thread.created_at).toLocaleString()}
+          </small>
+          <div className="d-flex align-items-center gap-2">
+            <ConnectionStatus connected={connected} />
+            {adminUser && (
+              <span
+                className={`badge bg-${
+                  adminUser.role === "admin" ? "danger" : "warning"
+                }`}
+              >
+                {adminUser.role}
+              </span>
             )}
           </div>
-          <div className="card-body">
-            <div className="d-flex justify-content-between align-items-center">
-              <p className="text-secondary mb-0">
-                Thread created: {new Date(thread.created_at).toLocaleString()}
-              </p>
+        </div>
 
-              <div className="d-flex align-items-center gap-2">
-                {/* Socket connection indicator */}
-                <small
-                  className={`text-${socketConnected ? "success" : "warning"}`}
-                >
-                  {socketConnected ? "● Live" : "○ Connecting..."}
-                </small>
-
-                {/* Admin badge */}
-                {adminUser && (
-                  <span
-                    className={`badge bg-${
-                      adminUser.role === "admin"
-                        ? "danger"
-                        : adminUser.role === "moderator"
-                        ? "warning"
-                        : "info"
-                    }`}
-                  >
-                    {adminUser.role.charAt(0).toUpperCase() +
-                      adminUser.role.slice(1)}
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
+        {/* Posts */}
+        <div className="mb-4">
+          {posts.map((post, index) => (
+            <PostCard
+              key={post.id}
+              post={post}
+              thread={thread}
+              boardId={boardId}
+              isOP={index === 0}
+              isHidden={isPostHidden(post.id)}
+              isUserHidden={isUserHidden(post.thread_user_id)}
+              onToggleHidden={() => togglePostHidden(post.id)}
+              onToggleUserHidden={() => toggleUserHidden(post.thread_user_id)}
+              onPostNumberClick={() => handlePostNumberClick(post.id)}
+              onPostLinkClick={handlePostLinkClick}
+              boardSettings={board}
+              adminUser={adminUser}
+            />
+          ))}
         </div>
 
         {/* New posts notification */}
@@ -576,206 +378,25 @@ export default function ThreadPage() {
             className="position-fixed bottom-0 start-50 translate-middle-x mb-3"
             style={{ zIndex: 1000 }}
           >
-            <button
-              className="btn btn-primary shadow-lg"
-              onClick={scrollToNewPosts}
-            >
-              <i className="bi bi-arrow-down-circle me-2"></i>
-              New posts available
+            <button className="btn btn-warning" onClick={scrollToNewPosts}>
+              New posts available ↓
             </button>
           </div>
         )}
 
-        {/* Posts Section */}
-        <div className="card bg-mid-dark border-secondary shadow mb-4">
-          <div className="card-header border-secondary">
-            <h2 className="h5 mb-0 text-light">Posts</h2>
-          </div>
-          <div className="card-body">
-            {posts.length > 0 ? (
-              <div className="post-list">
-                {posts.map((post, index) => {
-                  const isPostHidden = hiddenPosts.has(post.id);
-                  const isUserHidden =
-                    post.thread_user_id && hiddenUsers.has(post.thread_user_id);
-                  const isHidden = isPostHidden || isUserHidden;
-
-                  return (
-                    <div
-                      key={post.id}
-                      id={`post-${post.id}`}
-                      className={`card bg-dark border-secondary mb-3 ${
-                        post.isNew ? "new-post" : ""
-                      }`}
-                      style={{ transition: "background-color 0.3s ease" }}
-                    >
-                      <div className="card-header border-secondary d-flex justify-content-between align-items-center">
-                        <PostHeader
-                          post={post}
-                          onPostNumberClick={handlePostNumberClick}
-                          showThreadId={board?.thread_ids_enabled}
-                          showCountryFlag={board?.country_flags_enabled}
-                          isPostHidden={isPostHidden}
-                          isUserHidden={isUserHidden}
-                          onTogglePostHidden={togglePostHidden}
-                          onToggleUserHidden={toggleUserHidden}
-                        />
-
-                        {/* Moderation menu */}
-                        {isModerator && !isHidden && (
-                          <PostModMenu
-                            post={post}
-                            thread={thread}
-                            board={{ id: boardId }}
-                            isAdmin={isAdmin}
-                            isMod={isModerator}
-                          />
-                        )}
-                      </div>
-
-                      {!isHidden ? (
-                        <div className="card-body">
-                          {/* Use MediaViewer for images and videos */}
-                          {post.image_url && (
-                            <MediaViewer
-                              src={post.image_url}
-                              alt="Post content"
-                              postId={post.id}
-                              fileType={post.file_type}
-                            />
-                          )}
-                          <PostContent
-                            content={post.content}
-                            posts={posts}
-                            onPostLinkClick={handlePostLinkClick}
-                            isThreadPage={true}
-                          />
-                        </div>
-                      ) : (
-                        <div className="card-body py-2">
-                          <p className="text-secondary mb-0 small">
-                            <em>Post hidden</em>
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="text-center py-3">
-                <p className="text-muted">No posts available.</p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Reply Form */}
-        <div className="card bg-mid-dark border-secondary shadow">
-          <div className="card-header border-secondary">
-            <h2 className="h5 mb-0 text-light">Reply to Thread</h2>
-          </div>
-          <div className="card-body">
-            {postError && (
-              <div className="alert alert-danger" role="alert">
-                {postError}
-              </div>
-            )}
-
-            <form onSubmit={handleSubmitPost}>
-              <div className="mb-3">
-                <label htmlFor="content" className="form-label text-secondary">
-                  Content
-                </label>
-                <textarea
-                  ref={contentTextareaRef}
-                  className="form-control bg-dark text-light border-secondary"
-                  id="content"
-                  rows="4"
-                  value={content}
-                  onChange={(e) => setContent(e.target.value)}
-                  placeholder="Enter your reply"
-                  maxLength="2000"
-                ></textarea>
-                <div className="form-text text-secondary">
-                  Click on any post number above to quote it
-                </div>
-              </div>
-
-              <div className="mb-3">
-                <label htmlFor="image" className="form-label text-secondary">
-                  Image or Video (Optional)
-                </label>
-                <input
-                  type="file"
-                  className="form-control bg-dark text-light border-secondary"
-                  id="image"
-                  accept="image/png,image/jpeg,image/webp,image/gif,video/mp4,video/webm"
-                  onChange={handleImageChange}
-                />
-                <div className="form-text text-secondary">
-                  Supported formats: PNG, JPG, WebP, GIF, MP4, WebM (Max size:
-                  4MB)
-                </div>
-              </div>
-
-              {imagePreview && (
-                <div className="mb-3">
-                  <label className="form-label text-secondary">
-                    File Preview
-                  </label>
-                  <div className="border border-secondary p-2 rounded position-relative">
-                    {image && image.type.startsWith("video/") ? (
-                      <video
-                        src={imagePreview}
-                        className="img-fluid"
-                        style={{ maxHeight: "200px" }}
-                        controls
-                        muted
-                      />
-                    ) : (
-                      <img
-                        src={imagePreview}
-                        alt="Preview"
-                        className="img-fluid"
-                        style={{ maxHeight: "200px" }}
-                      />
-                    )}
-                    <button
-                      type="button"
-                      className="btn btn-sm btn-danger position-absolute top-0 end-0 m-1"
-                      onClick={removeImage}
-                      aria-label="Remove image"
-                    >
-                      <i className="bi bi-x-lg"></i>
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              <div className="d-grid gap-2">
-                <button
-                  type="submit"
-                  className="btn btn-primary"
-                  disabled={postLoading}
-                >
-                  {postLoading ? (
-                    <>
-                      <span
-                        className="spinner-border spinner-border-sm me-2"
-                        role="status"
-                        aria-hidden="true"
-                      ></span>
-                      Posting...
-                    </>
-                  ) : (
-                    "Post Reply"
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+        {/* Reply form */}
+        <ReplyForm
+          ref={contentTextareaRef}
+          content={content}
+          setContent={setContent}
+          image={image}
+          setImage={setImage}
+          imagePreview={imagePreview}
+          setImagePreview={setImagePreview}
+          onSubmit={handleSubmit}
+          loading={postLoading}
+          error={postError}
+        />
       </div>
     </div>
   );
