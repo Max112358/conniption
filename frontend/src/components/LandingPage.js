@@ -75,7 +75,8 @@ export default function LandingPage() {
     <Link
       key={board.id}
       to={`/board/${board.id}`}
-      className="list-group-item list-group-item-action bg-dark text-light border-secondary p-3 d-flex flex-column"
+      className="list-group-item list-group-item-action bg-dark text-light border-secondary p-3 d-flex flex-column 
+             hover-bg-secondary hover-bg-opacity-10"
       style={{ minHeight: "80px" }}
     >
       <div className="d-flex justify-content-between align-items-start mb-2">
