@@ -1,5 +1,5 @@
 // frontend/src/hooks/useSocket.js
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef } from "react";
 import io from "socket.io-client";
 import { SOCKET_URL } from "../config/api";
 
@@ -15,21 +15,7 @@ function useSocket({ room, enabled = true, events = {} }) {
   const [isConnected, setIsConnected] = useState(false);
   const socketRef = useRef(null);
   const isConnecting = useRef(false);
-
-  // Clean up function to remove all event listeners
-  const cleanupEvents = useCallback(() => {
-    if (socketRef.current) {
-      // Remove all event listeners
-      Object.keys(events).forEach((event) => {
-        socketRef.current.off(event);
-      });
-
-      // Remove connection event listeners
-      socketRef.current.off("connect");
-      socketRef.current.off("disconnect");
-      socketRef.current.off("connect_error");
-    }
-  }, [events]);
+  const currentRoom = useRef(null);
 
   useEffect(() => {
     // Skip if not enabled or already connecting
@@ -37,12 +23,14 @@ function useSocket({ room, enabled = true, events = {} }) {
       return;
     }
 
-    // If we already have a connected socket for this room, reuse it
-    if (socketRef.current?.connected && socketRef.current?.room === room) {
-      // Just update event handlers
-      cleanupEvents();
+    // If we already have a connected socket for this room, just update handlers
+    if (socketRef.current?.connected && currentRoom.current === room) {
+      // Remove old event handlers
+      Object.keys(events).forEach((event) => {
+        socketRef.current.off(event);
+      });
 
-      // Re-attach event handlers
+      // Add new event handlers
       Object.entries(events).forEach(([event, handler]) => {
         if (handler && typeof handler === "function") {
           socketRef.current.on(event, handler);
@@ -62,7 +50,7 @@ function useSocket({ room, enabled = true, events = {} }) {
     });
 
     socketRef.current = socket;
-    socketRef.current.room = room;
+    currentRoom.current = room;
 
     // Connection event handlers
     socket.on("connect", () => {
@@ -104,8 +92,15 @@ function useSocket({ room, enabled = true, events = {} }) {
         socket.emit("leave_board", room);
       }
 
-      // Clean up all event listeners
-      cleanupEvents();
+      // Remove all event listeners
+      socket.off("connect");
+      socket.off("disconnect");
+      socket.off("connect_error");
+
+      // Remove custom event handlers
+      Object.keys(events).forEach((event) => {
+        socket.off(event);
+      });
 
       // Disconnect socket
       if (socket.connected) {
@@ -115,25 +110,11 @@ function useSocket({ room, enabled = true, events = {} }) {
       // Clear refs
       if (socketRef.current === socket) {
         socketRef.current = null;
+        currentRoom.current = null;
       }
       isConnecting.current = false;
     };
-  }, [room, enabled]); // Remove 'events' from dependencies to prevent reconnection
-
-  // Update event handlers when they change (without reconnecting)
-  useEffect(() => {
-    if (socketRef.current?.connected) {
-      // Clean up old handlers
-      cleanupEvents();
-
-      // Attach new handlers
-      Object.entries(events).forEach(([event, handler]) => {
-        if (handler && typeof handler === "function") {
-          socketRef.current.on(event, handler);
-        }
-      });
-    }
-  }, [events, cleanupEvents]);
+  }, [room, enabled, events]);
 
   return { isConnected, socket: socketRef.current };
 }
