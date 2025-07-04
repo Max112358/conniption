@@ -9,7 +9,7 @@ import { truncateText } from "../../utils/textHelpers";
 export default function ThreadCard({
   thread,
   boardId,
-  board, // Added board prop
+  board,
   isHidden,
   isUserHidden,
   onToggleHidden,
@@ -21,15 +21,14 @@ export default function ThreadCard({
   const opPost = thread.posts?.[0];
 
   return (
-    <div className="card bg-dark border-secondary mb-3 shadow">
+    <div className="card bg-high-dark border-secondary mb-4">
       <div className="card-body">
         <div className="d-flex justify-content-between align-items-start mb-3">
           <div className="d-flex align-items-center gap-2">
             <HideButton
-              type="thread"
-              id={thread.id}
               isHidden={isHidden}
               onToggle={onToggleHidden}
+              title={isHidden ? "Unhide this thread" : "Hide this thread"}
             />
             <Link
               to={`/board/${boardId}/thread/${thread.id}`}
@@ -51,20 +50,17 @@ export default function ThreadCard({
         {!isHidden ? (
           <>
             {/* OP Content */}
-            {opPost && (
+            {opPost ? (
               <div className="mb-3 pb-3 border-bottom border-secondary">
                 <PostHeader
                   post={opPost}
-                  isOP={true}
-                  boardSettings={{
-                    thread_ids_enabled: board?.thread_ids_enabled,
-                    country_flags_enabled: board?.country_flags_enabled,
-                  }}
                   onPostNumberClick={() => {}}
+                  showThreadId={board?.thread_ids_enabled}
+                  showCountryFlag={board?.country_flags_enabled}
+                  isPostHidden={false}
                   isUserHidden={isUserHidden(opPost.thread_user_id)}
-                  onToggleUserHidden={() =>
-                    onToggleUserHidden(opPost.thread_user_id)
-                  }
+                  onTogglePostHidden={() => {}}
+                  onToggleUserHidden={onToggleUserHidden}
                 />
                 <div className="row mt-2">
                   {opPost.image_url && (
@@ -79,12 +75,30 @@ export default function ThreadCard({
                     </div>
                   )}
                   <div className={opPost.image_url ? "col" : "col-12"}>
-                    <PostContent
-                      content={truncateText(opPost.content, 2000, 20)}
-                      onPostLinkClick={() => {}}
-                    />
+                    <div
+                      className="text-light text-break"
+                      style={{
+                        whiteSpace: "pre-wrap",
+                        wordWrap: "break-word",
+                        wordBreak: "break-word",
+                        overflowWrap: "break-word",
+                      }}
+                    >
+                      <PostContent
+                        content={truncateText(opPost.content, 2000, 20)}
+                        posts={thread.posts}
+                        allThreadsWithPosts={[thread]}
+                        boardId={boardId}
+                        onPostLinkClick={() => {}}
+                        isThreadPage={false}
+                      />
+                    </div>
                   </div>
                 </div>
+              </div>
+            ) : (
+              <div className="text-secondary mb-3">
+                <em>Loading thread content...</em>
               </div>
             )}
 
@@ -112,20 +126,18 @@ export default function ThreadCard({
                   return (
                     <div
                       key={reply.id}
-                      className="mb-2 p-2 bg-high-dark rounded border border-secondary"
+                      className="mb-2 p-2 bg-dark rounded border border-secondary"
                     >
                       <div className="mb-1">
                         <PostHeader
                           post={reply}
-                          boardSettings={{
-                            thread_ids_enabled: board?.thread_ids_enabled,
-                            country_flags_enabled: board?.country_flags_enabled,
-                          }}
                           onPostNumberClick={() => {}}
+                          showThreadId={board?.thread_ids_enabled}
+                          showCountryFlag={board?.country_flags_enabled}
+                          isPostHidden={postHidden}
                           isUserHidden={userHidden}
-                          onToggleUserHidden={() =>
-                            onToggleUserHidden(reply.thread_user_id)
-                          }
+                          onTogglePostHidden={onTogglePostHidden}
+                          onToggleUserHidden={onToggleUserHidden}
                         />
                       </div>
 
@@ -143,25 +155,31 @@ export default function ThreadCard({
                             </div>
                           )}
                           <div className={reply.image_url ? "col" : "col-12"}>
-                            <PostContent
-                              content={truncateText(reply.content, 2000, 20)}
-                              onPostLinkClick={() => {}}
-                            />
+                            <div
+                              className="small text-light text-break"
+                              style={{
+                                whiteSpace: "pre-wrap",
+                                wordWrap: "break-word",
+                                wordBreak: "break-word",
+                                overflowWrap: "break-word",
+                              }}
+                            >
+                              <PostContent
+                                content={truncateText(reply.content, 2000, 20)}
+                                posts={thread.posts}
+                                allThreadsWithPosts={[thread]}
+                                boardId={boardId}
+                                onPostLinkClick={() => {}}
+                                isThreadPage={false}
+                              />
+                            </div>
                           </div>
                         </div>
                       ) : (
                         <p className="text-secondary mb-0 small">
-                          <em>{userHidden ? "User hidden" : "Post hidden"}</em>
+                          <em>Post hidden</em>
                         </p>
                       )}
-                      <HideButton
-                        type="post"
-                        id={reply.id}
-                        isHidden={postHidden}
-                        onToggle={() => onTogglePostHidden(reply.id)}
-                        size="sm"
-                        className="mt-1"
-                      />
                     </div>
                   );
                 })}

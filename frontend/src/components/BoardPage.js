@@ -1,7 +1,6 @@
 // frontend/src/components/BoardPage.js
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
-import { Container, Row, Col } from "react-bootstrap";
+import { useParams, Link } from "react-router-dom";
 import BanNotification from "./BanNotification";
 import LoadingSpinner from "./LoadingSpinner";
 import PageHeader from "./shared/PageHeader";
@@ -15,7 +14,6 @@ import { API_BASE_URL } from "../config/api";
 
 function BoardPage() {
   const { boardId } = useParams();
-  const navigate = useNavigate();
   const [board, setBoard] = useState(null);
   const [threadsWithPosts, setThreadsWithPosts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -25,16 +23,14 @@ function BoardPage() {
   const {
     hiddenThreads,
     hiddenPosts,
-    hiddenUsers,
     toggleThreadHidden,
     togglePostHidden,
     toggleUserHidden,
     isThreadHidden,
-    isPostHidden,
     isUserHidden,
   } = useHideManager();
 
-  const { isBanned, banInfo, checkBan } = useBanCheck();
+  const { banned, banInfo, checkBanStatus, resetBanStatus } = useBanCheck();
 
   // Fetch board details
   const fetchBoard = useCallback(async () => {
@@ -68,9 +64,8 @@ function BoardPage() {
 
       // Check for ban
       if (threadsResponse.status === 403) {
-        const errorData = await threadsResponse.json();
-        checkBan(errorData.ban || errorData.rangeban);
-        return;
+        const isBanned = await checkBanStatus(threadsResponse);
+        if (isBanned) return;
       }
 
       if (!threadsResponse.ok) {
@@ -118,18 +113,19 @@ function BoardPage() {
       console.error("Error fetching threads with posts:", err);
       setError(err.message);
     }
-  }, [boardId, checkBan]);
+  }, [boardId, checkBanStatus]);
 
   // Combined fetch function
   const fetchData = useCallback(async () => {
     setLoading(true);
     setError(null);
+    resetBanStatus();
     try {
       await Promise.all([fetchBoard(), fetchThreadsWithPosts()]);
     } finally {
       setLoading(false);
     }
-  }, [fetchBoard, fetchThreadsWithPosts]);
+  }, [fetchBoard, fetchThreadsWithPosts, resetBanStatus]);
 
   // Initial data fetch
   useEffect(() => {
@@ -159,7 +155,7 @@ function BoardPage() {
   const socketConfig = useMemo(
     () => ({
       room: boardId,
-      enabled: !loading && !error && !boardNotFound,
+      enabled: !loading && !error && !boardNotFound && !banned,
       events: {
         thread_created: handleThreadCreated,
         post_created: handlePostCreated,
@@ -170,6 +166,7 @@ function BoardPage() {
       loading,
       error,
       boardNotFound,
+      banned,
       handleThreadCreated,
       handlePostCreated,
     ]
@@ -177,12 +174,12 @@ function BoardPage() {
 
   const { isConnected } = useSocket(socketConfig);
 
-  if (isBanned) {
-    return <BanNotification banInfo={banInfo} />;
+  if (banned && banInfo) {
+    return <BanNotification ban={banInfo} boardId={boardId} />;
   }
 
   if (loading) {
-    return <LoadingSpinner />;
+    return <LoadingSpinner message="Loading board..." />;
   }
 
   if (boardNotFound) {
@@ -196,61 +193,68 @@ function BoardPage() {
   }
 
   if (error) {
-    return <ErrorDisplay error={error} onRetry={fetchData} />;
+    return <ErrorDisplay error={error} />;
   }
 
   return (
-    <div className="board-page">
-      <PageHeader
-        backLink="/"
-        title={`/${board.id}/ - ${board.name}`}
-        subtitle={board.description}
-        nsfw={board.nsfw}
-        actions={
-          <Link
-            to={`/board/${boardId}/create-thread`}
-            className="btn btn-sm btn-primary"
-          >
-            New Thread
-          </Link>
-        }
-      />
-
-      <Container>
-        <ConnectionStatus connected={isConnected} className="mb-3" />
-
-        {threadsWithPosts.length === 0 ? (
-          <div className="text-center py-5">
-            <p className="text-secondary">
-              No threads yet. Be the first to create one!
-            </p>
+    <div className="container-fluid min-vh-100 bg-dark text-light py-4">
+      <div className="container">
+        <PageHeader
+          backLink="/"
+          backText="← Back to Boards"
+          title={`/${board?.id}/ - ${board?.name}`}
+          nsfw={board?.nsfw}
+          subtitle={board?.description}
+          actions={
             <Link
               to={`/board/${boardId}/create-thread`}
-              className="btn btn-primary mt-3"
+              className="btn btn-sm btn-primary"
             >
-              Create Thread
+              New Thread
             </Link>
+          }
+        />
+
+        <ConnectionStatus connected={isConnected} className="mb-3" />
+
+        <div className="card bg-mid-dark border-secondary shadow">
+          <div className="card-header border-secondary">
+            <h2 className="h5 mb-0 text-light">Threads</h2>
           </div>
-        ) : (
-          <Row>
-            {threadsWithPosts.map((thread) => (
-              <Col key={thread.id} xs={12} className="mb-4">
-                <ThreadCard
-                  thread={thread}
-                  boardId={boardId}
-                  board={board}
-                  isHidden={isThreadHidden(thread.id)}
-                  isUserHidden={(userId) => isUserHidden(userId)}
-                  onToggleHidden={() => toggleThreadHidden(thread.id)}
-                  onToggleUserHidden={toggleUserHidden}
-                  onTogglePostHidden={togglePostHidden}
-                  hiddenPosts={hiddenPosts}
-                />
-              </Col>
-            ))}
-          </Row>
-        )}
-      </Container>
+          <div className="card-body">
+            {threadsWithPosts.length > 0 ? (
+              <div className="thread-list">
+                {threadsWithPosts.map((thread) => (
+                  <ThreadCard
+                    key={thread.id}
+                    thread={thread}
+                    boardId={boardId}
+                    board={board}
+                    isHidden={isThreadHidden(thread.id)}
+                    isUserHidden={isUserHidden}
+                    onToggleHidden={() => toggleThreadHidden(thread.id)}
+                    onToggleUserHidden={toggleUserHidden}
+                    hiddenPosts={hiddenPosts}
+                    onTogglePostHidden={togglePostHidden}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-5">
+                <p className="text-secondary">
+                  No threads yet. Be the first to create one!
+                </p>
+                <Link
+                  to={`/board/${boardId}/create-thread`}
+                  className="btn btn-primary"
+                >
+                  Create Thread
+                </Link>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
