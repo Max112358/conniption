@@ -109,7 +109,8 @@ export default function ThreadCard({
                   <small className="text-secondary">
                     Latest {thread.latestReplies.length} replies:
                   </small>
-                  <div className="flex-grow-1 border-top border-secondary"></div>
+                  {/* separator line */}
+                  <div className="flex-grow-1 border-top border-secondary ms-3"></div>
                   {thread.totalReplies > 5 && (
                     <Link
                       to={`/board/${boardId}/thread/${thread.id}`}
