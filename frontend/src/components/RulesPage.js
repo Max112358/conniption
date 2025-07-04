@@ -276,7 +276,7 @@ export default function RulesPage() {
             </small>
           </p>
           <p className="mb-0">
-            <small>Last updated: {new Date().toLocaleDateString()}</small>
+            <small>Last updated: July 4th 2025</small>
           </p>
         </div>
       </div>
