@@ -51,7 +51,7 @@ export default function ThreadCard({
           <>
             {/* OP Content */}
             {opPost ? (
-              <div className="mb-3 pb-3 bg-dark border-bottom border-secondary">
+              <div className="mb-3 pb-3 bg-dark rounded border border-bottom border-secondary">
                 <PostHeader
                   post={opPost}
                   onPostNumberClick={() => {}}
