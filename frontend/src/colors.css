@@ -29,10 +29,16 @@
 }
 
 /* used to change the button colors on hover on landing page */
-.board-link:hover {
-  background-color: #343a40; /* Slightly lighter dark */
-  color: #ffffff;
-  text-decoration: none;
-  border-color: #6c757d;
+.board-link {
+  background-color: #212529; /* bg-dark */
+  color: #f8f9fa; /* text-light */
+  border: 1px solid #6c757d; /* border-secondary */
   transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.board-link:hover {
+  background-color: #343a40; /* slightly lighter */
+  color: #ffffff;
+  border-color: #adb5bd; /* subtle hover border */
+  text-decoration: none;
 }
