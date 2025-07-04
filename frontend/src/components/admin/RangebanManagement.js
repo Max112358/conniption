@@ -2,7 +2,8 @@
 import { useState, useEffect } from "react";
 import { useOutletContext } from "react-router-dom";
 import { API_BASE_URL } from "../../config/api";
-import { countryList } from "../../utils/countryList";
+import { getCountryName } from "../../utils/countryFlags";
+import FlagIcon from "../FlagIcon";
 
 export default function RangebanManagement() {
   const { adminUser } = useOutletContext(); // eslint-disable-line no-unused-vars
@@ -13,6 +14,9 @@ export default function RangebanManagement() {
   const [boards, setBoards] = useState([]);
   const [selectedBoard, setSelectedBoard] = useState("");
   const [stats, setStats] = useState(null);
+  const [showCountryToggle, setShowCountryToggle] = useState(false);
+  const [countryToggles, setCountryToggles] = useState({});
+  const [toggleLoading, setToggleLoading] = useState({});
 
   // Form state
   const [formData, setFormData] = useState({
@@ -24,6 +28,258 @@ export default function RangebanManagement() {
   });
   const [formLoading, setFormLoading] = useState(false);
   const [formError, setFormError] = useState(null);
+
+  // All available country codes
+  const countryCodes = [
+    "AD",
+    "AE",
+    "AF",
+    "AG",
+    "AI",
+    "AL",
+    "AM",
+    "AO",
+    "AQ",
+    "AR",
+    "AS",
+    "AT",
+    "AU",
+    "AW",
+    "AX",
+    "AZ",
+    "BA",
+    "BB",
+    "BD",
+    "BE",
+    "BF",
+    "BG",
+    "BH",
+    "BI",
+    "BJ",
+    "BL",
+    "BM",
+    "BN",
+    "BO",
+    "BQ",
+    "BR",
+    "BS",
+    "BT",
+    "BV",
+    "BW",
+    "BY",
+    "BZ",
+    "CA",
+    "CC",
+    "CD",
+    "CG",
+    "CH",
+    "CI",
+    "CK",
+    "CL",
+    "CM",
+    "CN",
+    "CO",
+    "CR",
+    "CU",
+    "CV",
+    "CW",
+    "CX",
+    "CY",
+    "CZ",
+    "DE",
+    "DJ",
+    "DK",
+    "DM",
+    "DO",
+    "DZ",
+    "EC",
+    "EE",
+    "EG",
+    "EH",
+    "ER",
+    "ES",
+    "ET",
+    "FI",
+    "FJ",
+    "FK",
+    "FM",
+    "FO",
+    "FR",
+    "GA",
+    "GB",
+    "GD",
+    "GE",
+    "GF",
+    "GG",
+    "GH",
+    "GI",
+    "GL",
+    "GM",
+    "GN",
+    "GP",
+    "GQ",
+    "GR",
+    "GS",
+    "GT",
+    "GU",
+    "GW",
+    "GY",
+    "HK",
+    "HM",
+    "HN",
+    "HR",
+    "HT",
+    "HU",
+    "ID",
+    "IE",
+    "IL",
+    "IM",
+    "IN",
+    "IO",
+    "IQ",
+    "IR",
+    "IS",
+    "IT",
+    "JE",
+    "JM",
+    "JO",
+    "JP",
+    "KE",
+    "KG",
+    "KH",
+    "KI",
+    "KM",
+    "KN",
+    "KP",
+    "KR",
+    "KW",
+    "KY",
+    "KZ",
+    "LA",
+    "LB",
+    "LC",
+    "LI",
+    "LK",
+    "LR",
+    "LS",
+    "LT",
+    "LU",
+    "LV",
+    "LY",
+    "MA",
+    "MC",
+    "MD",
+    "ME",
+    "MF",
+    "MG",
+    "MH",
+    "MK",
+    "ML",
+    "MM",
+    "MN",
+    "MO",
+    "MP",
+    "MQ",
+    "MR",
+    "MS",
+    "MT",
+    "MU",
+    "MV",
+    "MW",
+    "MX",
+    "MY",
+    "MZ",
+    "NA",
+    "NC",
+    "NE",
+    "NF",
+    "NG",
+    "NI",
+    "NL",
+    "NO",
+    "NP",
+    "NR",
+    "NU",
+    "NZ",
+    "OM",
+    "PA",
+    "PE",
+    "PF",
+    "PG",
+    "PH",
+    "PK",
+    "PL",
+    "PM",
+    "PN",
+    "PR",
+    "PS",
+    "PT",
+    "PW",
+    "PY",
+    "QA",
+    "RE",
+    "RO",
+    "RS",
+    "RU",
+    "RW",
+    "SA",
+    "SB",
+    "SC",
+    "SD",
+    "SE",
+    "SG",
+    "SH",
+    "SI",
+    "SJ",
+    "SK",
+    "SL",
+    "SM",
+    "SN",
+    "SO",
+    "SR",
+    "SS",
+    "ST",
+    "SV",
+    "SX",
+    "SY",
+    "SZ",
+    "TC",
+    "TD",
+    "TF",
+    "TG",
+    "TH",
+    "TJ",
+    "TK",
+    "TL",
+    "TM",
+    "TN",
+    "TO",
+    "TR",
+    "TT",
+    "TV",
+    "TW",
+    "TZ",
+    "UA",
+    "UG",
+    "UM",
+    "US",
+    "UY",
+    "UZ",
+    "VA",
+    "VC",
+    "VE",
+    "VG",
+    "VI",
+    "VN",
+    "VU",
+    "WF",
+    "WS",
+    "YE",
+    "YT",
+    "ZA",
+    "ZM",
+    "ZW",
+  ];
 
   // Fetch rangebans
   const fetchRangebans = async () => {
@@ -44,6 +300,16 @@ export default function RangebanManagement() {
 
       const data = await response.json();
       setRangebans(data.rangebans || []);
+
+      // Update country toggles based on active bans
+      const toggles = {};
+      data.rangebans.forEach((ban) => {
+        if (ban.ban_type === "country" && ban.is_active) {
+          const key = `${ban.ban_value}-${ban.board_id || "global"}`;
+          toggles[key] = true;
+        }
+      });
+      setCountryToggles(toggles);
     } catch (err) {
       console.error("Error fetching rangebans:", err);
       setError("Failed to load rangebans");
@@ -85,6 +351,70 @@ export default function RangebanManagement() {
       }
     } catch (err) {
       console.error("Error fetching stats:", err);
+    }
+  };
+
+  const handleCountryToggle = async (countryCode, boardId = null) => {
+    const key = `${countryCode}-${boardId || "global"}`;
+    const isBanned = countryToggles[key];
+
+    setToggleLoading({ ...toggleLoading, [key]: true });
+
+    try {
+      if (isBanned) {
+        // Find and remove the ban
+        const ban = rangebans.find(
+          (rb) =>
+            rb.ban_type === "country" &&
+            rb.ban_value === countryCode &&
+            rb.is_active &&
+            (rb.board_id === boardId || (!rb.board_id && !boardId))
+        );
+
+        if (ban) {
+          const response = await fetch(
+            `${API_BASE_URL}/api/admin/rangebans/${ban.id}`,
+            {
+              method: "DELETE",
+              credentials: "include",
+            }
+          );
+
+          if (!response.ok) {
+            throw new Error("Failed to remove rangeban");
+          }
+        }
+      } else {
+        // Create new ban
+        const response = await fetch(`${API_BASE_URL}/api/admin/rangebans`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            ban_type: "country",
+            ban_value: countryCode,
+            board_id: boardId,
+            reason: `Country ban: ${getCountryName(countryCode)}`,
+            expires_at: null, // permanent by default
+          }),
+          credentials: "include",
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || "Failed to create rangeban");
+        }
+      }
+
+      // Refresh data
+      await fetchRangebans();
+      await fetchStats();
+    } catch (err) {
+      console.error("Error toggling country ban:", err);
+      setError(err.message);
+    } finally {
+      setToggleLoading({ ...toggleLoading, [key]: false });
     }
   };
 
@@ -195,17 +525,108 @@ export default function RangebanManagement() {
     <div className="container-fluid">
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h1 className="h3 mb-0">Rangeban Management</h1>
-        <button
-          className="btn btn-danger"
-          onClick={() => setShowCreateModal(true)}
-        >
-          Create Rangeban
-        </button>
+        <div>
+          <button
+            className="btn btn-primary me-2"
+            onClick={() => setShowCountryToggle(!showCountryToggle)}
+          >
+            <i className="bi bi-globe me-2"></i>
+            Toggle Countries
+          </button>
+          <button
+            className="btn btn-danger"
+            onClick={() => setShowCreateModal(true)}
+          >
+            Create Rangeban
+          </button>
+        </div>
       </div>
 
       {error && (
         <div className="alert alert-danger" role="alert">
           {error}
+        </div>
+      )}
+
+      {/* Country Toggle Interface */}
+      {showCountryToggle && (
+        <div className="card bg-mid-dark border-secondary mb-4">
+          <div className="card-header border-secondary">
+            <h2 className="h5 mb-0">Quick Country Toggle</h2>
+          </div>
+          <div className="card-body">
+            <div className="mb-3">
+              <label className="form-label text-secondary">Board</label>
+              <select
+                className="form-select bg-dark text-light border-secondary"
+                value={selectedBoard}
+                onChange={(e) => setSelectedBoard(e.target.value)}
+              >
+                <option value="">Global (All Boards)</option>
+                {boards.map((board) => (
+                  <option key={board.id} value={board.id}>
+                    /{board.id}/ - {board.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="row g-2">
+              {countryCodes.map((code) => {
+                const countryName = getCountryName(code);
+                const key = `${code}-${selectedBoard || "global"}`;
+                const isBanned = countryToggles[key];
+                const isLoading = toggleLoading[key];
+
+                return (
+                  <div key={code} className="col-md-3 col-sm-4 col-6">
+                    <div
+                      className={`card ${
+                        isBanned ? "bg-danger" : "bg-dark"
+                      } border-secondary h-100`}
+                      style={{ cursor: isLoading ? "wait" : "pointer" }}
+                      onClick={() =>
+                        !isLoading &&
+                        handleCountryToggle(code, selectedBoard || null)
+                      }
+                    >
+                      <div className="card-body p-2">
+                        <div className="d-flex align-items-center">
+                          <FlagIcon
+                            countryCode={code}
+                            size="small"
+                            showTooltip={false}
+                            className="me-2"
+                          />
+                          <div className="flex-grow-1">
+                            <div className="small fw-bold text-truncate">
+                              {code}
+                            </div>
+                            <div
+                              className="small text-truncate"
+                              title={countryName}
+                            >
+                              {countryName}
+                            </div>
+                          </div>
+                          {isLoading && (
+                            <div
+                              className="spinner-border spinner-border-sm text-light"
+                              role="status"
+                            >
+                              <span className="visually-hidden">
+                                Loading...
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
       )}
 
@@ -241,7 +662,7 @@ export default function RangebanManagement() {
                         <strong>
                           {country.country_code} - {country.country_name}:
                         </strong>{" "}
-                        {country.count} bans
+                        {country.ban_count} bans
                       </li>
                     ))}
                   </ul>
@@ -263,8 +684,8 @@ export default function RangebanManagement() {
         >
           <option value="">All Boards</option>
           {boards.map((board) => (
-            <option key={board.short} value={board.short}>
-              /{board.short}/ - {board.name}
+            <option key={board.id} value={board.id}>
+              /{board.id}/ - {board.name}
             </option>
           ))}
         </select>
@@ -412,9 +833,9 @@ export default function RangebanManagement() {
                         required
                       >
                         <option value="">Select a country</option>
-                        {countryList.map((country) => (
-                          <option key={country.code} value={country.code}>
-                            {country.name} ({country.code})
+                        {countryCodes.map((code) => (
+                          <option key={code} value={code}>
+                            {getCountryName(code)} ({code})
                           </option>
                         ))}
                       </select>
@@ -452,8 +873,8 @@ export default function RangebanManagement() {
                     >
                       <option value="">Global (All Boards)</option>
                       {boards.map((board) => (
-                        <option key={board.short} value={board.short}>
-                          /{board.short}/ - {board.name}
+                        <option key={board.id} value={board.id}>
+                          /{board.id}/ - {board.name}
                         </option>
                       ))}
                     </select>
