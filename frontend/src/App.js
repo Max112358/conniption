@@ -5,6 +5,7 @@ import BoardPage from "./components/BoardPage";
 import CreateThreadPage from "./components/CreateThreadPage";
 import ThreadPage from "./components/ThreadPage";
 import RulesPage from "./components/RulesPage";
+import ContactPage from "./components/ContactPage";
 
 // Admin components
 import AdminLogin from "./components/admin/AdminLogin";
@@ -24,6 +25,7 @@ export default function App() {
   console.log("App rendering with routes:");
   console.log("/ -> LandingPage");
   console.log("/rules -> RulesPage");
+  console.log("/contact -> ContactPage");
   console.log("/board/:boardId -> BoardPage");
   console.log("/board/:boardId/create-thread -> CreateThreadPage");
   console.log("/board/:boardId/thread/:threadId -> ThreadPage");
@@ -35,6 +37,7 @@ export default function App() {
         {/* Public routes */}
         <Route path="/" element={<LandingPage />} />
         <Route path="/rules" element={<RulesPage />} />
+        <Route path="/contact" element={<ContactPage />} />
         <Route path="/board/:boardId" element={<BoardPage />} />
         <Route
           path="/board/:boardId/create-thread"
