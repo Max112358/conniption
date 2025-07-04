@@ -1,5 +1,4 @@
 // frontend/src/components/shared/PostCard.js
-
 import PostModMenu from "../admin/PostModMenu";
 import PostHeader from "../PostHeader";
 import PostContent from "../PostContent";
@@ -10,6 +9,7 @@ export default function PostCard({
   post,
   thread,
   boardId,
+  board, // Full board object (optional)
   isOP,
   isHidden,
   isUserHidden,
@@ -20,9 +20,15 @@ export default function PostCard({
   boardSettings = {},
   adminUser = null,
   className = "",
+  posts = [], // All posts in thread (for thread page)
+  allThreadsWithPosts = [], // For board page
+  isThreadPage = false,
 }) {
   const isModerator =
     adminUser?.role === "moderator" || adminUser?.role === "admin";
+
+  // Determine if we should show the mod menu
+  const showModMenu = isModerator && !isHidden && !isUserHidden;
 
   return (
     <div
@@ -38,27 +44,22 @@ export default function PostCard({
             isOP={isOP}
             boardSettings={boardSettings}
             onPostNumberClick={onPostNumberClick}
+            showThreadId={boardSettings.thread_ids_enabled}
+            showCountryFlag={boardSettings.country_flags_enabled}
+            isPostHidden={isHidden}
             isUserHidden={isUserHidden}
+            onTogglePostHidden={onToggleHidden}
             onToggleUserHidden={onToggleUserHidden}
           />
 
           <div className="d-flex gap-2">
-            <HideButton
-              type="post"
-              id={post.id}
-              isHidden={isHidden}
-              onToggle={onToggleHidden}
-            />
-            {isModerator && (
+            {showModMenu && (
               <PostModMenu
                 post={post}
                 thread={thread}
-                boardId={boardId}
-                onPostDeleted={() => window.location.reload()}
-                onThreadDeleted={() =>
-                  (window.location.href = `/board/${boardId}`)
-                }
-                onBanCreated={() => window.location.reload()}
+                board={board || { id: boardId }}
+                isAdmin={adminUser?.role === "admin"}
+                isMod={isModerator}
               />
             )}
           </div>
@@ -72,14 +73,19 @@ export default function PostCard({
                   src={post.image_url}
                   alt="Post image"
                   fileType={post.file_type}
-                  fileName={post.file_name}
-                  maxWidth="300px"
+                  postId={post.id}
                 />
               </div>
             )}
             <PostContent
               content={post.content}
+              posts={isThreadPage ? posts : undefined}
+              allThreadsWithPosts={
+                !isThreadPage ? allThreadsWithPosts : undefined
+              }
+              boardId={boardId}
               onPostLinkClick={onPostLinkClick}
+              isThreadPage={isThreadPage}
             />
           </div>
         ) : (

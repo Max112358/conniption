@@ -1,5 +1,4 @@
 // frontend/src/hooks/useBanCheck.js
-
 import { useState, useCallback } from "react";
 
 const useBanCheck = () => {
