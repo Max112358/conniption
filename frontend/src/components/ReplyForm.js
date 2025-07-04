@@ -14,7 +14,7 @@ const ReplyForm = forwardRef(
       onSubmit,
       loading,
       error,
-      maxImageSize = "5MB",
+      maxImageSize = "4MB",
       acceptedFormats = ".jpg, .jpeg, .png, .gif, .webp, .mp4, .webm",
     },
     ref
@@ -82,10 +82,9 @@ const ReplyForm = forwardRef(
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
                 placeholder="Type your message..."
-                required
                 disabled={loading}
               />
-              <small className="form-text text-muted">
+              <small className="form-text text-secondary">
                 Quote posts by clicking their post number or typing
                 &gt;&gt;[post number]
               </small>
@@ -103,7 +102,7 @@ const ReplyForm = forwardRef(
                 onChange={handleImageChange}
                 disabled={loading}
               />
-              <small className="form-text text-muted">
+              <small className="form-text text-secondary">
                 Max size: {maxImageSize}. Supported formats: JPG, PNG, GIF,
                 WEBP, MP4, WEBM
               </small>
@@ -143,7 +142,7 @@ const ReplyForm = forwardRef(
             <button
               type="submit"
               className="btn btn-primary"
-              disabled={loading || !content.trim()}
+              disabled={loading || (!content.trim() && !image)}
             >
               {loading ? (
                 <>
