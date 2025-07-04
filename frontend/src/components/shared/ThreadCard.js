@@ -1,7 +1,15 @@
-// Update ThreadCard.js to include all original functionality
+// frontend/src/components/shared/ThreadCard.js
+import { Link } from "react-router-dom";
+import PostHeader from "../PostHeader";
+import PostContent from "../PostContent";
+import MediaThumbnail from "./MediaThumbnail";
+import HideButton from "../HideButton";
+import { truncateText } from "../../utils/textHelpers";
+
 export default function ThreadCard({
   thread,
   boardId,
+  board, // Added board prop
   isHidden,
   isUserHidden,
   onToggleHidden,

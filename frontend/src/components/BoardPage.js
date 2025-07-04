@@ -244,6 +244,7 @@ function BoardPage() {
                 <ThreadCard
                   thread={thread}
                   boardId={boardId}
+                  board={board}
                   isHidden={isThreadHidden(thread.id)}
                   isUserHidden={(userId) => isUserHidden(userId)}
                   onToggleHidden={() => toggleThreadHidden(thread.id)}
