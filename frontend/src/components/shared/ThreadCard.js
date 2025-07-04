@@ -51,7 +51,7 @@ export default function ThreadCard({
           <>
             {/* OP Content */}
             {opPost ? (
-              <div className="mb-3 pb-3 bg-dark rounded border border-bottom border-secondary">
+              <div className="mb-2 p-2 bg-dark rounded border border-secondary">
                 <PostHeader
                   post={opPost}
                   onPostNumberClick={() => {}}
@@ -101,6 +101,9 @@ export default function ThreadCard({
                 <em>Loading thread content...</em>
               </div>
             )}
+
+            {/* Horizontal line separator */}
+            <hr className="border-secondary my-3" />
 
             {/* Latest Replies */}
             {hasReplies && (
