@@ -1,7 +1,7 @@
 // frontend/src/components/BoardPage.js
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { Container, Row, Col, Button } from "react-bootstrap";
+import { Container, Row, Col } from "react-bootstrap";
 import BanNotification from "./BanNotification";
 import LoadingSpinner from "./LoadingSpinner";
 import PageHeader from "./shared/PageHeader";
@@ -12,7 +12,6 @@ import useSocket from "../hooks/useSocket";
 import useHideManager from "../hooks/useHideManager";
 import useBanCheck from "../hooks/useBanCheck";
 import { API_BASE_URL } from "../config/api";
-import { truncateText } from "../utils/textHelpers";
 
 function BoardPage() {
   const { boardId } = useParams();
@@ -137,11 +136,6 @@ function BoardPage() {
     fetchData();
   }, [fetchData]);
 
-  // Handle clicking on a post link
-  const handlePostLinkClick = (postId, threadId) => {
-    navigate(`/board/${boardId}/thread/${threadId}#post-${postId}`);
-  };
-
   // Socket event handlers
   const handleThreadCreated = useCallback(
     (data) => {
@@ -195,8 +189,8 @@ function BoardPage() {
     return (
       <ErrorDisplay
         error="Board not found"
-        message="The board you're looking for doesn't exist."
-        showHomeButton
+        backLink="/"
+        backText="← Back to Boards"
       />
     );
   }
