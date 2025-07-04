@@ -37,7 +37,7 @@ export default function ThreadCard({
               <h5 className="mb-1 text-light text-break">{thread.topic}</h5>
             </Link>
           </div>
-          <div className="d-flex flex-column align-items-end text-nowrap ms-2">
+          <div className="d-flex align-items-center text-nowrap ms-2 gap-3">
             <small className="text-secondary">
               {new Date(thread.created_at).toLocaleString()}
             </small>
