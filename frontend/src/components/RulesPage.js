@@ -10,7 +10,7 @@ export default function RulesPage() {
       number: 1,
       title: "No illegal content",
       description:
-        "Do not post content that violates local or United States law. This includes but is not limited to copyrighted material, illegal pornography, threats of violence, or personal information of others.",
+        "Do not post content that violates United States law. This includes but is not limited to copyrighted material, illegal pornography, threats of violence, or personal information of others.",
     },
     {
       number: 2,
@@ -144,7 +144,6 @@ export default function RulesPage() {
             style={{ maxHeight: "80px", maxWidth: "100%" }}
             className="img-fluid mb-3"
           />
-          <h1 className="h2 text-light">Site Rules</h1>
         </div>
 
         {/* Back to Home button */}
