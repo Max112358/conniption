@@ -23,7 +23,7 @@ export default function ThreadCard({
   return (
     <div className="card bg-high-dark border-secondary mb-4">
       <div className="card-body">
-        <div className="d-flex justify-content-between align-items-start mb-3">
+        <div className="d-flex justify-content-between align-items-start mb-1">
           <div className="d-flex align-items-center gap-2">
             <HideButton
               isHidden={isHidden}
