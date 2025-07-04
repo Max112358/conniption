@@ -104,7 +104,7 @@ export default function ThreadCard({
 
             {/* Latest Replies */}
             {hasReplies && (
-              <div className="mt-3">
+              <div className="mt-1">
                 <div className="d-flex justify-content-between align-items-center mb-2">
                   <small className="text-secondary">
                     Latest {thread.latestReplies.length} replies:
