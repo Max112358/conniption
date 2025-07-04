@@ -27,7 +27,7 @@ function BoardPage() {
   // Memoize the fetch functions to prevent recreation on every render
   const fetchBoard = useCallback(async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/boards/${boardId}`);
+      const response = await fetch(`${API_BASE_URL}/api/boards/${boardId}`);
       const data = await response.json();
 
       if (!response.ok) {
@@ -48,7 +48,9 @@ function BoardPage() {
 
   const fetchThreads = useCallback(async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/boards/${boardId}/threads`);
+      const response = await fetch(
+        `${API_BASE_URL}/api/boards/${boardId}/threads`
+      );
       const data = await response.json();
 
       if (!response.ok) {

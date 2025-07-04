@@ -32,7 +32,7 @@ function ThreadPage() {
   const fetchThread = useCallback(async () => {
     try {
       const response = await fetch(
-        `${API_BASE_URL}/boards/${boardId}/threads/${threadId}`
+        `${API_BASE_URL}/api/boards/${boardId}/threads/${threadId}`
       );
       const data = await response.json();
 
@@ -55,7 +55,7 @@ function ThreadPage() {
   const fetchPosts = useCallback(async () => {
     try {
       const response = await fetch(
-        `${API_BASE_URL}/boards/${boardId}/threads/${threadId}/posts`
+        `${API_BASE_URL}/api/boards/${boardId}/threads/${threadId}/posts`
       );
       const data = await response.json();
 
@@ -131,18 +131,21 @@ function ThreadPage() {
       }
 
       try {
-        const response = await fetch(`${API_BASE_URL}/admin/posts/${postId}`, {
-          method: "DELETE",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          credentials: "include",
-          body: JSON.stringify({
-            boardId,
-            threadId,
-            reason: "Admin deletion",
-          }),
-        });
+        const response = await fetch(
+          `${API_BASE_URL}/api/admin/posts/${postId}`,
+          {
+            method: "DELETE",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            credentials: "include",
+            body: JSON.stringify({
+              boardId,
+              threadId,
+              reason: "Admin deletion",
+            }),
+          }
+        );
 
         if (!response.ok) {
           throw new Error("Failed to delete post");
