@@ -27,3 +27,12 @@
 .form-control:-ms-input-placeholder {
   color: rgba(255, 255, 255, 0.5) !important;
 }
+
+/* used to change the button colors on hover on landing page */
+.board-link:hover {
+  background-color: #343a40; /* Slightly lighter dark */
+  color: #ffffff;
+  text-decoration: none;
+  border-color: #6c757d;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
