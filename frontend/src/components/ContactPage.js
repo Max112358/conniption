@@ -14,7 +14,6 @@ export default function ContactPage() {
             style={{ maxHeight: "80px", maxWidth: "100%" }}
             className="img-fluid mb-3"
           />
-          <h1 className="h2 text-light">Contact Us</h1>
         </div>
 
         {/* Back to Home button */}
@@ -65,15 +64,6 @@ export default function ContactPage() {
                   contact@conniption.com
                 </a>
               </p>
-              <p className="text-secondary ms-3 small">
-                (Response time: usually within 48 hours)
-              </p>
-            </div>
-
-            <div className="alert alert-info mt-4">
-              <i className="bi bi-info-circle me-2"></i>
-              <strong>Note:</strong> For ban appeals, please include your
-              username and ban details in your message.
             </div>
           </div>
         </div>
