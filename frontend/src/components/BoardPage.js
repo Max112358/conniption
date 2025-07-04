@@ -21,7 +21,6 @@ function BoardPage() {
   const [boardNotFound, setBoardNotFound] = useState(false);
 
   const {
-    hiddenThreads,
     hiddenPosts,
     toggleThreadHidden,
     togglePostHidden,
@@ -53,6 +52,10 @@ function BoardPage() {
       setError(err.message);
     }
   }, [boardId]);
+
+  //The proper data structure should be:
+  //Thread metadata: topic, created_at, post_count, id
+  //OP post content: posts[0].content, posts[0].image_url, etc.
 
   // Fetch threads with their latest posts
   const fetchThreadsWithPosts = useCallback(async () => {
