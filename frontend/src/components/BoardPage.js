@@ -1,7 +1,7 @@
 // frontend/src/components/BoardPage.js
-
-import { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams, Link } from "react-router-dom";
+import { Container, Row, Col, Button } from "react-bootstrap";
 import BanNotification from "./BanNotification";
 import LoadingSpinner from "./LoadingSpinner";
 import PageHeader from "./shared/PageHeader";
@@ -13,230 +13,176 @@ import useHideManager from "../hooks/useHideManager";
 import useBanCheck from "../hooks/useBanCheck";
 import { API_BASE_URL } from "../config/api";
 
-export default function BoardPage() {
+function BoardPage() {
   const { boardId } = useParams();
   const [board, setBoard] = useState(null);
   const [threads, setThreads] = useState([]);
-  const [threadsWithPosts, setThreadsWithPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [boardNotFound, setBoardNotFound] = useState(false);
 
-  // Custom hooks
-  const { banned, banInfo } = useBanCheck();
-  const { socket, connected } = useSocket("board", boardId);
-  const {
-    hiddenPosts,
-    toggleThreadHidden,
-    togglePostHidden,
-    toggleUserHidden,
-    isThreadHidden,
-    isUserHidden,
-  } = useHideManager();
+  const { isHidden, toggleHide } = useHideManager();
+  const { isBanned, banInfo, checkBan } = useBanCheck();
 
-  // Fetch threads
-  const fetchThreads = useCallback(async () => {
+  // Memoize the fetch functions to prevent recreation on every render
+  const fetchBoard = useCallback(async () => {
     try {
-      const response = await fetch(
-        `${API_BASE_URL}/api/boards/${boardId}/threads`
-      );
-
-      if (response.status === 403) {
-        const errorData = await response.json();
-        if (errorData.error === "Banned") {
-          return false;
-        }
-      }
+      const response = await fetch(`${API_BASE_URL}/boards/${boardId}`);
+      const data = await response.json();
 
       if (!response.ok) {
-        throw new Error("Failed to load threads");
+        if (response.status === 404) {
+          setBoardNotFound(true);
+          return;
+        }
+        throw new Error(data.error || "Failed to fetch board");
       }
 
-      const data = await response.json();
-      setThreads(data.threads || []);
-      return true;
+      setBoard(data.board);
+      setBoardNotFound(false);
     } catch (err) {
-      console.error("Error fetching threads:", err);
-      setError(err.message || "Failed to load threads");
-      return false;
+      console.error("Error fetching board:", err);
+      setError(err.message);
     }
   }, [boardId]);
 
-  // Fetch posts for threads
-  const fetchThreadsWithPosts = useCallback(
-    async (threadList) => {
-      const updatedThreads = await Promise.all(
-        threadList.map(async (thread) => {
-          try {
-            const postsResponse = await fetch(
-              `${API_BASE_URL}/api/boards/${boardId}/threads/${thread.id}/posts`
-            );
+  const fetchThreads = useCallback(async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/boards/${boardId}/threads`);
+      const data = await response.json();
 
-            if (!postsResponse.ok) {
-              console.error(`Failed to fetch posts for thread ${thread.id}`);
-              return thread;
-            }
-
-            const postsData = await postsResponse.json();
-            const posts = postsData.posts || [];
-            const replies = posts.slice(1);
-            const latestReplies = replies.slice(-5);
-
-            return {
-              ...thread,
-              posts: posts,
-              latestReplies: latestReplies,
-              totalReplies: replies.length,
-            };
-          } catch (err) {
-            console.error(`Error fetching posts for thread ${thread.id}:`, err);
-            return thread;
-          }
-        })
-      );
-
-      setThreadsWithPosts(updatedThreads);
-    },
-    [boardId]
-  );
-
-  // Socket event handlers
-  useEffect(() => {
-    if (!socket) return;
-
-    const handleThreadCreated = async (data) => {
-      console.log("New thread created:", data);
-      if (data.boardId === boardId) {
-        await fetchThreads();
+      if (!response.ok) {
+        // Check for ban
+        if (response.status === 403 && data.ban) {
+          checkBan(data.ban);
+          return;
+        }
+        throw new Error(data.error || "Failed to fetch threads");
       }
-    };
 
-    const handlePostCreated = async (data) => {
-      console.log("New post created:", data);
-      if (data.boardId === boardId) {
-        // Update specific thread or refetch all
-        await fetchThreads();
-      }
-    };
+      setThreads(data.threads || []);
+    } catch (err) {
+      console.error("Error fetching threads:", err);
+      setError(err.message);
+    }
+  }, [boardId, checkBan]);
 
-    socket.on("thread_created", handleThreadCreated);
-    socket.on("post_created", handlePostCreated);
-
-    return () => {
-      socket.off("thread_created", handleThreadCreated);
-      socket.off("post_created", handlePostCreated);
-    };
-  }, [socket, boardId, fetchThreads]);
+  // Combined fetch function
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      await Promise.all([fetchBoard(), fetchThreads()]);
+    } finally {
+      setLoading(false);
+    }
+  }, [fetchBoard, fetchThreads]);
 
   // Initial data fetch
   useEffect(() => {
-    const fetchBoardData = async () => {
-      try {
-        const boardResponse = await fetch(
-          `${API_BASE_URL}/api/boards/${boardId}`
-        );
+    fetchData();
+  }, [fetchData]);
 
-        if (!boardResponse.ok) {
-          throw new Error("Board not found");
-        }
-
-        const boardData = await boardResponse.json();
-        setBoard(boardData.board);
-
-        await fetchThreads();
-        setLoading(false);
-      } catch (err) {
-        console.error("Error fetching board data:", err);
-        setError(
-          err.message || "Failed to load board data. Please try again later."
-        );
-        setLoading(false);
+  // Socket event handlers - memoized to prevent recreation
+  const handleThreadCreated = useCallback(
+    (data) => {
+      console.log("Thread created event received:", data);
+      if (data.boardId === boardId) {
+        fetchThreads();
       }
-    };
+    },
+    [boardId, fetchThreads]
+  );
 
-    fetchBoardData();
-  }, [boardId, fetchThreads]);
+  const handlePostCreated = useCallback(
+    (data) => {
+      console.log("Post created event received:", data);
+      if (data.boardId === boardId) {
+        fetchThreads();
+      }
+    },
+    [boardId, fetchThreads]
+  );
 
-  // Fetch posts when threads change
-  useEffect(() => {
-    if (threads.length > 0) {
-      fetchThreadsWithPosts(threads);
-    }
-  }, [threads, fetchThreadsWithPosts]);
+  // Socket configuration with stable dependencies
+  const socketConfig = useMemo(
+    () => ({
+      room: boardId,
+      enabled: !loading && !error && !boardNotFound,
+      events: {
+        thread_created: handleThreadCreated,
+        post_created: handlePostCreated,
+      },
+    }),
+    [
+      boardId,
+      loading,
+      error,
+      boardNotFound,
+      handleThreadCreated,
+      handlePostCreated,
+    ]
+  );
 
-  // Handle banned state
-  if (banned && banInfo) {
-    return <BanNotification ban={banInfo} boardId={boardId} />;
+  const { isConnected } = useSocket(socketConfig);
+
+  if (isBanned) {
+    return <BanNotification banInfo={banInfo} />;
   }
 
   if (loading) {
-    return <LoadingSpinner message="Loading board..." />;
+    return <LoadingSpinner />;
   }
 
-  if (error) {
+  if (boardNotFound) {
     return (
-      <ErrorDisplay error={error} backLink="/" backText="← Back to Boards" />
+      <ErrorDisplay
+        error="Board not found"
+        message="The board you're looking for doesn't exist."
+        showHomeButton
+      />
     );
   }
 
-  return (
-    <div className="container-fluid min-vh-100 bg-dark text-light py-4">
-      <div className="container">
-        <PageHeader
-          backLink="/"
-          backText="← Back to Boards"
-          title={board.name}
-          badge={`/${board.id}/`}
-          subtitle={board.description}
-          nsfw={board.nsfw}
-        />
+  if (error) {
+    return <ErrorDisplay error={error} onRetry={fetchData} />;
+  }
 
-        <div className="card bg-mid-dark border-secondary shadow">
-          <div className="card-header border-secondary d-flex justify-content-between align-items-center">
-            <h2 className="h5 mb-0 text-light">Threads</h2>
-            <div className="d-flex align-items-center gap-3">
-              <ConnectionStatus connected={connected} />
-              <Link
-                to={`/board/${boardId}/create-thread`}
-                className="btn btn-sm btn-primary"
-              >
-                New Thread
-              </Link>
-            </div>
+  return (
+    <div className="board-page">
+      <PageHeader
+        title={`/${boardId}/ - ${board?.name || "Loading..."}`}
+        subtitle={board?.description}
+      >
+        <Link to={`/boards/${boardId}/create`}>
+          <Button variant="primary">Create New Thread</Button>
+        </Link>
+      </PageHeader>
+
+      <Container>
+        <ConnectionStatus isConnected={isConnected} />
+
+        {threads.length === 0 ? (
+          <div className="text-center text-muted py-5">
+            <p>No threads yet. Be the first to create one!</p>
           </div>
-          <div className="card-body">
-            {threadsWithPosts.length > 0 ? (
-              <div className="row">
-                {threadsWithPosts.map((thread) => (
-                  <div key={thread.id} className="col-12">
-                    <ThreadCard
-                      thread={thread}
-                      boardId={boardId}
-                      isHidden={isThreadHidden(thread.id)}
-                      isUserHidden={isUserHidden}
-                      onToggleHidden={() => toggleThreadHidden(thread.id)}
-                      onToggleUserHidden={toggleUserHidden}
-                      hiddenPosts={hiddenPosts}
-                      onTogglePostHidden={togglePostHidden}
-                    />
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-5">
-                <p className="text-secondary">
-                  No threads yet. Be the first to create one!
-                </p>
-                <Link
-                  to={`/board/${boardId}/create-thread`}
-                  className="btn btn-primary"
-                >
-                  Create Thread
-                </Link>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+        ) : (
+          <Row>
+            {threads.map((thread) => (
+              <Col key={thread.id} xs={12} className="mb-4">
+                <ThreadCard
+                  thread={thread}
+                  boardId={boardId}
+                  isHidden={isHidden(thread.id)}
+                  onToggleHide={() => toggleHide(thread.id)}
+                />
+              </Col>
+            ))}
+          </Row>
+        )}
+      </Container>
     </div>
   );
 }
+
+export default BoardPage;
