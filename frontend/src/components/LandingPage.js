@@ -118,6 +118,10 @@ export default function LandingPage() {
           />
         </div>
 
+        <div className="text-center mb-4">
+          Board is under construction. Things will break frequently.
+        </div>
+
         <div className="row">
           {/* SFW Boards Section */}
           <div className="col-md-8 mb-4">
