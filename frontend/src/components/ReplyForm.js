@@ -1,4 +1,4 @@
-// frontend/src/components/shared/ReplyForm.js
+// frontend/src/components/ReplyForm.js
 
 import { forwardRef } from "react";
 

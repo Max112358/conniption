@@ -13,7 +13,7 @@ import PageHeader from "./shared/PageHeader";
 import ErrorDisplay from "./shared/ErrorDisplay";
 import ConnectionStatus from "./shared/ConnectionStatus";
 import PostCard from "./shared/PostCard";
-import ReplyForm from "./shared/ReplyForm";
+import ReplyForm from "./ReplyForm";
 import useSocket from "../hooks/useSocket";
 import useHideManager from "../hooks/useHideManager";
 import useBanCheck from "../hooks/useBanCheck";
