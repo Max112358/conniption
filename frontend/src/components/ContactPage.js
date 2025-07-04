@@ -30,8 +30,7 @@ export default function ContactPage() {
           </div>
           <div className="card-body">
             <p className="text-secondary mb-4">
-              For questions, concerns, or support, please use one of the
-              following methods:
+              For questions, concerns, or support, please use discord:
             </p>
 
             <div className="mb-4">
@@ -41,27 +40,12 @@ export default function ContactPage() {
               <p className="text-light ms-3">
                 Join our Discord server:{" "}
                 <a
-                  href="https://discord.gg/example"
+                  href="https://discord.gg/9vCr9rHgUh"
                   className="text-warning"
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  discord.gg/conniption
-                </a>
-              </p>
-            </div>
-
-            <div className="mb-4">
-              <h5 className="text-info">
-                <i className="bi bi-envelope me-2"></i>Email
-              </h5>
-              <p className="text-light ms-3">
-                Email us at:{" "}
-                <a
-                  href="mailto:contact@conniption.com"
-                  className="text-warning"
-                >
-                  contact@conniption.com
+                  discord.gg/9vCr9rHgUh
                 </a>
               </p>
             </div>
