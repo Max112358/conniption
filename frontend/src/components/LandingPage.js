@@ -167,11 +167,11 @@ export default function LandingPage() {
 
         <div className="text-center text-secondary small mt-3 pb-3">
           <p className="mb-2">Select a board to view threads and posts</p>
-          <Link to="/rules" className="btn btn-outline-secondary btn-sm">
+          <Link to="/rules" className="btn btn-outline-secondary btn-sm mx-1">
             <i className="bi bi-book me-1"></i> Rules
           </Link>
 
-          <Link to="/contact" className="btn btn-outline-secondary btn-sm">
+          <Link to="/contact" className="btn btn-outline-secondary btn-sm mx-1">
             <i className="bi bi-envelope me-1"></i> Contact Us
           </Link>
         </div>
