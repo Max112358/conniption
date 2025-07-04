@@ -3,7 +3,6 @@ import PostModMenu from "../admin/PostModMenu";
 import PostHeader from "../PostHeader";
 import PostContent from "../PostContent";
 import MediaViewer from "../MediaViewer";
-import HideButton from "../HideButton";
 
 export default function PostCard({
   post,
@@ -37,36 +36,34 @@ export default function PostCard({
         post.isNew ? "new-post" : ""
       } ${className}`}
     >
-      <div className="card-body">
-        <div className="d-flex justify-content-between align-items-start">
-          <PostHeader
+      <div className="card-header border-secondary d-flex justify-content-between align-items-center">
+        <PostHeader
+          post={post}
+          isOP={isOP}
+          boardSettings={boardSettings}
+          onPostNumberClick={onPostNumberClick}
+          showThreadId={boardSettings.thread_ids_enabled}
+          showCountryFlag={boardSettings.country_flags_enabled}
+          isPostHidden={isHidden}
+          isUserHidden={isUserHidden}
+          onTogglePostHidden={onToggleHidden}
+          onToggleUserHidden={onToggleUserHidden}
+        />
+
+        {showModMenu && (
+          <PostModMenu
             post={post}
-            isOP={isOP}
-            boardSettings={boardSettings}
-            onPostNumberClick={onPostNumberClick}
-            showThreadId={boardSettings.thread_ids_enabled}
-            showCountryFlag={boardSettings.country_flags_enabled}
-            isPostHidden={isHidden}
-            isUserHidden={isUserHidden}
-            onTogglePostHidden={onToggleHidden}
-            onToggleUserHidden={onToggleUserHidden}
+            thread={thread}
+            board={board || { id: boardId }}
+            isAdmin={adminUser?.role === "admin"}
+            isMod={isModerator}
           />
+        )}
+      </div>
 
-          <div className="d-flex gap-2">
-            {showModMenu && (
-              <PostModMenu
-                post={post}
-                thread={thread}
-                board={board || { id: boardId }}
-                isAdmin={adminUser?.role === "admin"}
-                isMod={isModerator}
-              />
-            )}
-          </div>
-        </div>
-
+      <div className="card-body">
         {!isHidden && !isUserHidden ? (
-          <div className="mt-3">
+          <div>
             {post.image_url && (
               <div className="mb-3">
                 <MediaViewer
@@ -89,7 +86,7 @@ export default function PostCard({
             />
           </div>
         ) : (
-          <p className="text-secondary mb-0 mt-2">
+          <p className="text-secondary mb-0">
             <em>{isUserHidden ? "User hidden" : "Post hidden"}</em>
           </p>
         )}

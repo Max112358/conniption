@@ -6,7 +6,7 @@ import React, {
   useMemo,
   useRef,
 } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import BanNotification from "./BanNotification";
 import LoadingSpinner from "./LoadingSpinner";
 import PageHeader from "./shared/PageHeader";
@@ -41,17 +41,11 @@ function ThreadPage() {
   const contentTextareaRef = useRef(null);
   const postsRef = useRef(posts);
 
-  const {
-    hiddenPosts,
-    hiddenUsers,
-    togglePostHidden,
-    toggleUserHidden,
-    isPostHidden,
-    isUserHidden,
-  } = useHideManager();
+  const { togglePostHidden, toggleUserHidden, isPostHidden, isUserHidden } =
+    useHideManager();
 
   const { banned, banInfo, checkBanStatus, resetBanStatus } = useBanCheck();
-  const { adminUser, isAdmin, isModerator } = useAdminStatus();
+  const { adminUser, isModerator } = useAdminStatus();
 
   // Update postsRef when posts change
   useEffect(() => {
