@@ -1,5 +1,6 @@
 // frontend/src/hooks/useBanCheck.js
 import { useState, useCallback } from "react";
+import { handleApiError } from "../utils/apiErrorHandler";
 
 const useBanCheck = () => {
   const [banned, setBanned] = useState(false);
@@ -12,14 +13,28 @@ const useBanCheck = () => {
 
         if (errorData.error === "Banned") {
           setBanned(true);
-          setBanInfo(errorData.ban);
+
+          // Use the API error handler for consistent messaging
+          const banData = {
+            ...errorData.ban,
+            displayMessage: handleApiError(errorData),
+          };
+
+          setBanInfo(banData);
           return true; // Indicates user is banned
         } else if (errorData.error === "Rangebanned") {
           setBanned(true);
-          setBanInfo({
-            rangeban: errorData.rangeban,
+
+          // Use the API error handler for consistent messaging
+          const rangebanData = {
+            rangeban: {
+              ...errorData.rangeban,
+              displayMessage: handleApiError(errorData),
+            },
             isRangeban: true,
-          });
+          };
+
+          setBanInfo(rangebanData);
           return true; // Indicates user is rangebanned
         }
       } catch (error) {
