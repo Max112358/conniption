@@ -104,7 +104,9 @@ export default function AdminDashboard() {
                       <div className="card bg-dark border-secondary">
                         <div className="card-body text-center py-3">
                           <h3 className="h2 mb-1">{stats.total || 0}</h3>
-                          <p className="small text-muted mb-0">Total Actions</p>
+                          <p className="small text-secondary mb-0">
+                            Total Actions
+                          </p>
                         </div>
                       </div>
                     </div>
@@ -115,7 +117,7 @@ export default function AdminDashboard() {
                           <div className="card bg-dark border-secondary">
                             <div className="card-body text-center py-3">
                               <h3 className="h2 mb-1">{stat.count}</h3>
-                              <p className="small text-muted mb-0">
+                              <p className="small text-secondary mb-0">
                                 {stat.action_type.charAt(0).toUpperCase() +
                                   stat.action_type.slice(1).replace("_", " ")}
                                 s
@@ -164,16 +166,16 @@ export default function AdminDashboard() {
                           <span className="badge bg-secondary me-2">
                             {action.action_type.replace("_", " ")}
                           </span>
-                          <small className="text-muted">
+                          <small className="text-secondary">
                             /{action.board_id}/
                           </small>
                         </div>
-                        <small className="text-muted">
+                        <small className="text-secondary">
                           {new Date(action.created_at).toLocaleString()}
                         </small>
                       </div>
                       <div className="mt-1 small">
-                        <span className="text-muted">By: </span>
+                        <span className="text-secondary">By: </span>
                         {action.admin_username}
                       </div>
                       <div className="mt-1 small text-truncate">
@@ -183,7 +185,7 @@ export default function AdminDashboard() {
                   ))}
                 </div>
               ) : (
-                <div className="text-center text-muted py-4">
+                <div className="text-center text-secondary py-4">
                   No recent actions found
                 </div>
               )}
@@ -217,20 +219,20 @@ export default function AdminDashboard() {
                             <span className="badge bg-danger me-2">
                               Ban #{ban.id}
                             </span>
-                            <small className="text-muted">
+                            <small className="text-secondary">
                               {ban.board_id ? `/${ban.board_id}/` : "Global"}
                             </small>
                           </div>
-                          <small className="text-muted">
+                          <small className="text-secondary">
                             {new Date(ban.created_at).toLocaleString()}
                           </small>
                         </div>
                         <div className="mt-1 small">
-                          <span className="text-muted">IP: </span>
+                          <span className="text-secondary">IP: </span>
                           {ban.ip_address}
                         </div>
                         <div className="mt-1 small text-truncate">
-                          <span className="text-muted">Reason: </span>
+                          <span className="text-secondary">Reason: </span>
                           {ban.reason}
                         </div>
                         <div className="mt-2">
@@ -245,7 +247,7 @@ export default function AdminDashboard() {
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center text-muted py-4">
+                  <div className="text-center text-secondary py-4">
                     No pending appeals
                   </div>
                 )}
