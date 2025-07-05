@@ -634,7 +634,7 @@ export default function RangebanManagement() {
       {stats && (
         <div className="card bg-mid-dark border-secondary mb-4">
           <div className="card-header border-secondary">
-            <h2 className="h5 mb-0">Rangeban Statistics</h2>
+            <h2 className="h5 mb-0 text-light">Rangeban Statistics</h2>
           </div>
           <div className="card-body">
             <div className="row">
@@ -694,7 +694,7 @@ export default function RangebanManagement() {
       {/* Rangebans Table */}
       <div className="card bg-mid-dark border-secondary">
         <div className="card-header border-secondary">
-          <h2 className="h5 mb-0">Active Rangebans</h2>
+          <h2 className="h5 mb-0 text-light">Active Rangebans</h2>
         </div>
         <div className="card-body">
           {loading ? (
