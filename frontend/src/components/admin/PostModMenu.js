@@ -129,7 +129,7 @@ export default function PostModMenu({ post, thread, board, isAdmin, isMod }) {
               right: 0,
             }}
           >
-            <h6 className="dropdown-header text-muted">Post #{post.id}</h6>
+            <h6 className="dropdown-header text-secondary">Post #{post.id}</h6>
 
             <button
               className="dropdown-item text-danger bg-dark text-light"
@@ -150,7 +150,7 @@ export default function PostModMenu({ post, thread, board, isAdmin, isMod }) {
             <div className="dropdown-divider border-secondary"></div>
 
             <button
-              className="dropdown-item text-muted bg-dark text-light"
+              className="dropdown-item text-secondary bg-dark text-light"
               type="button"
               onClick={() => setShowMenu(false)}
             >
