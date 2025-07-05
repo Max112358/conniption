@@ -2,7 +2,7 @@
 const banModel = require("../models/ban");
 const rangebanModel = require("../models/rangeban");
 const getClientIp = require("../utils/getClientIp");
-const { getCountryCode } = require("../utils/countryLookup");
+const { getCountryCode, getCountryName } = require("../utils/countryLookup");
 
 /**
  * Middleware to check if user's IP is banned or rangebanned
@@ -65,6 +65,9 @@ const checkBannedIP = async (req, res, next) => {
           `Route: Rangebanned country ${countryCode} attempted to access board ${boardId}`
         );
 
+        // Get the country name for a more user-friendly message
+        const countryName = getCountryName(countryCode);
+
         // Format expiration date if it exists
         let expiresMessage = "";
         if (countryBan.expires_at) {
@@ -74,12 +77,17 @@ const checkBannedIP = async (req, res, next) => {
           expiresMessage = " permanently";
         }
 
+        // Create a more descriptive message
+        const boardScope = countryBan.board_id ? "this board" : "this site";
+        const message = `${countryName} is range banned${expiresMessage}. Sorry, but your country is not allowed to post on ${boardScope}.`;
+
         return res.status(403).json({
-          error: "Rangebanned",
-          message: `Your country is banned from this board${expiresMessage}. Reason: ${countryBan.reason}`,
+          error: "Country Rangebanned",
+          message: message,
           rangeban: {
             type: "country",
             value: countryCode,
+            country_name: countryName,
             reason: countryBan.reason,
             expires_at: countryBan.expires_at,
             board_id: countryBan.board_id,
