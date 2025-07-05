@@ -350,7 +350,7 @@ export default function CreateBan() {
             {postContext && (
               <div className="card bg-dark border-secondary mb-4">
                 <div className="card-header border-secondary">
-                  <h3 className="h6 mb-0">Post Context</h3>
+                  <h3 className="h6 mb-0 text-light">Post Context</h3>
                 </div>
                 <div className="card-body">
                   <div className="mb-3">
