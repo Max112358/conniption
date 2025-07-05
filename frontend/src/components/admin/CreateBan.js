@@ -357,16 +357,17 @@ export default function CreateBan() {
                 <div className="card-body">
                   <div className="mb-3">
                     <p className="mb-1">
-                      <strong>Thread ID:</strong> {threadId}
+                      <strong className="text-light">Thread ID:</strong>{" "}
+                      {threadId}
                     </p>
                     <p className="mb-1">
-                      <strong>Post ID:</strong> {postId}
+                      <strong className="text-light">Post ID:</strong> {postId}
                     </p>
                   </div>
 
                   {postImage && (
                     <div className="mb-3">
-                      <label className="form-label text-secondary">Image</label>
+                      <label className="form-label text-light">Image</label>
                       <div className="border border-secondary p-2 rounded">
                         <img
                           src={postImage}
