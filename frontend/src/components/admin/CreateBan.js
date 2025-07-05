@@ -269,9 +269,7 @@ export default function CreateBan() {
             {!postContext && (
               <div className="card bg-dark border-secondary mb-4">
                 <div className="card-header border-secondary">
-                  <h3 className="h6 mb-0 text-light">
-                    Post Context (Optional)
-                  </h3>
+                  <h3 className="h6 mb-0 text-light">Post Context</h3>
                 </div>
                 <div className="card-body">
                   <div className="form-text text-muted mb-3">
@@ -356,12 +354,11 @@ export default function CreateBan() {
                 </div>
                 <div className="card-body">
                   <div className="mb-3">
-                    <p className="mb-1">
-                      <strong className="text-light">Thread ID:</strong>{" "}
-                      {threadId}
+                    <p className="mb-1 text-light">
+                      <strong>Thread ID:</strong> {threadId}
                     </p>
-                    <p className="mb-1">
-                      <strong className="text-light">Post ID:</strong> {postId}
+                    <p className="mb-1 text-light">
+                      <strong>Post ID:</strong> {postId}
                     </p>
                   </div>
 
