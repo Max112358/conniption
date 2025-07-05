@@ -11,13 +11,14 @@ export default function CreateBan() {
   // Check if we have post context from location state
   const postContext = location.state?.postContext || null;
 
-  const [ipAddress, setIpAddress] = useState(postContext?.ipAddress || "");
+  const [ipAddress, setIpAddress] = useState("");
   const [boardId, setBoardId] = useState(postContext?.boardId || "");
   const [reason, setReason] = useState("");
   const [expiresAt, setExpiresAt] = useState("30d"); // Default to 30 days
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [boards, setBoards] = useState([]);
+  const [fetchingIp, setFetchingIp] = useState(false);
 
   // Post context fields
   const [postContent, setPostContent] = useState(postContext?.content || "");
@@ -73,6 +74,54 @@ export default function CreateBan() {
 
     fetchBoards();
   }, []);
+
+  // Fetch IP address if we have post context
+  useEffect(() => {
+    const fetchIpAddress = async () => {
+      if (
+        postContext &&
+        postContext.postId &&
+        postContext.boardId &&
+        postContext.threadId &&
+        !ipAddress
+      ) {
+        setFetchingIp(true);
+        setError(null);
+
+        try {
+          const response = await fetch(
+            `${API_BASE_URL}/api/admin/posts/${postContext.postId}/ip?boardId=${postContext.boardId}&threadId=${postContext.threadId}`,
+            {
+              credentials: "include",
+            }
+          );
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || "Failed to fetch IP address");
+          }
+
+          const data = await response.json();
+          setIpAddress(data.ip_address || "");
+
+          // Update post content and image if they're provided in the response
+          if (data.post_content && !postContent) {
+            setPostContent(data.post_content);
+          }
+          if (data.image_url && !postImage) {
+            setPostImage(data.image_url);
+          }
+        } catch (err) {
+          console.error("Error fetching IP address:", err);
+          setError(`Failed to fetch IP address: ${err.message}`);
+        } finally {
+          setFetchingIp(false);
+        }
+      }
+    };
+
+    fetchIpAddress();
+  }, [postContext]); // Only depend on postContext to avoid re-fetching
 
   // Convert duration string to actual date
   const calculateExpirationDate = (durationStr) => {
@@ -174,6 +223,17 @@ export default function CreateBan() {
             </div>
           )}
 
+          {fetchingIp && (
+            <div className="alert alert-info" role="alert">
+              <span
+                className="spinner-border spinner-border-sm me-2"
+                role="status"
+                aria-hidden="true"
+              ></span>
+              Fetching IP address...
+            </div>
+          )}
+
           <form onSubmit={handleSubmit}>
             {/* Basic Ban Information */}
             <div className="mb-3">
@@ -188,10 +248,12 @@ export default function CreateBan() {
                 onChange={(e) => setIpAddress(e.target.value)}
                 placeholder="e.g. 192.168.1.1"
                 required
-                disabled={loading || postContext?.ipAddress}
+                disabled={loading || fetchingIp}
               />
               <div className="form-text text-secondary">
-                Enter the IP address to ban
+                {fetchingIp
+                  ? "Fetching IP address from post..."
+                  : "Enter the IP address to ban"}
               </div>
             </div>
 
@@ -204,7 +266,7 @@ export default function CreateBan() {
                 id="boardId"
                 value={boardId}
                 onChange={(e) => setBoardId(e.target.value)}
-                disabled={loading || postContext?.boardId}
+                disabled={loading}
               >
                 {adminUser.role === "admin" && (
                   <option value="">Global (All Boards)</option>
@@ -269,7 +331,9 @@ export default function CreateBan() {
             {!postContext && (
               <div className="card bg-dark border-secondary mb-4">
                 <div className="card-header border-secondary">
-                  <h3 className="h6 mb-0 text-light">Post Context</h3>
+                  <h3 className="h6 mb-0 text-light">
+                    Post Context (Optional)
+                  </h3>
                 </div>
                 <div className="card-body">
                   <div className="form-text text-muted mb-3">
@@ -404,7 +468,7 @@ export default function CreateBan() {
               <button
                 type="submit"
                 className="btn btn-danger"
-                disabled={loading}
+                disabled={loading || fetchingIp || !ipAddress}
               >
                 {loading ? (
                   <>

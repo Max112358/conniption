@@ -22,10 +22,11 @@ export default function PostModMenu({ post, thread, board, isAdmin, isMod }) {
     setShowMenu(false);
 
     // Navigate to the ban creation page with post context
+    // NOTE: We're NOT passing the IP address here - it will be fetched on the ban creation page
     navigate("/admin/bans/create", {
       state: {
         postContext: {
-          ipAddress: post.ip_address,
+          // ipAddress removed - will be fetched via API
           boardId: board.id,
           threadId: thread.id,
           postId: post.id,
@@ -84,10 +85,11 @@ export default function PostModMenu({ post, thread, board, isAdmin, isMod }) {
         )
       ) {
         // Navigate to the ban creation page with post context
+        // The IP address will be fetched on the ban page
         navigate("/admin/bans/create", {
           state: {
             postContext: {
-              ipAddress: data.ipAddress,
+              // ipAddress removed - will be fetched via API
               boardId: board.id,
               threadId: thread.id,
               postId: post.id,
