@@ -30,15 +30,18 @@
 
 /* used to change the button colors on hover on landing page */
 .board-link {
-  background-color: #212529; /* bg-dark */
-  color: #f8f9fa; /* text-light */
-  border: 1px solid #6c757d; /* border-secondary */
-  transition: background-color 0.2s ease, color 0.2s ease;
+  background-color: #212529 !important; /* bg-dark */
+  color: #f8f9fa !important; /* text-light */
+  border: 1px solid #6c757d !important; /* border-secondary */
+  transition: background-color 0.2s ease, color 0.2s ease,
+    border-color 0.2s ease;
+  display: block;
+  text-decoration: none !important;
 }
 
 .board-link:hover {
-  background-color: #2a2f33; /* Slightly lighter dark */
-  color: #f8f9fa; /* Bootstrap's 'text-light' */
-  border-color: #868e96; /* slightly lighter border on hover */
-  text-decoration: none;
+  background-color: #2a2f33 !important; /* Slightly lighter on hover */
+  color: #f8f9fa !important;
+  border-color: #868e96 !important;
+  text-decoration: none !important;
 }
