@@ -96,7 +96,7 @@ export default function AdminDashboard() {
             <div className="col-md-4 mb-4">
               <div className="card bg-mid-dark border-secondary h-100">
                 <div className="card-header border-secondary">
-                  <h2 className="h5 mb-0">Moderation Statistics</h2>
+                  <h2 className="h5 mb-0 text-light">Moderation Statistics</h2>
                 </div>
                 <div className="card-body">
                   <div className="row">
@@ -145,7 +145,7 @@ export default function AdminDashboard() {
         <div className="col-md-4 mb-4">
           <div className="card bg-mid-dark border-secondary h-100">
             <div className="card-header border-secondary d-flex justify-content-between align-items-center">
-              <h2 className="h5 mb-0">Recent Actions</h2>
+              <h2 className="h5 mb-0 text-light">Recent Actions</h2>
               <Link
                 to="/admin/actions"
                 className="btn btn-sm btn-outline-primary"
@@ -198,7 +198,7 @@ export default function AdminDashboard() {
           <div className="col-md-4 mb-4">
             <div className="card bg-mid-dark border-secondary h-100">
               <div className="card-header border-secondary d-flex justify-content-between align-items-center">
-                <h2 className="h5 mb-0">Pending Appeals</h2>
+                <h2 className="h5 mb-0 text-light">Pending Appeals</h2>
                 <Link
                   to="/admin/bans?filter=pending"
                   className="btn btn-sm btn-outline-primary"
@@ -262,7 +262,7 @@ export default function AdminDashboard() {
         <div className="col-12">
           <div className="card bg-mid-dark border-secondary">
             <div className="card-header border-secondary">
-              <h2 className="h5 mb-0">Quick Actions</h2>
+              <h2 className="h5 mb-0 text-light">Quick Actions</h2>
             </div>
             <div className="card-body">
               <div className="d-flex flex-wrap gap-2">
@@ -303,7 +303,7 @@ export default function AdminDashboard() {
         <div className="col-12">
           <div className="card bg-mid-dark border-secondary">
             <div className="card-header border-secondary">
-              <h2 className="h5 mb-0">Board Quick Access</h2>
+              <h2 className="h5 mb-0 text-light">Board Quick Access</h2>
             </div>
             <div className="card-body">
               <div className="row">
