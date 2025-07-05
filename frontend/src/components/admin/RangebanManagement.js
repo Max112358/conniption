@@ -650,7 +650,7 @@ export default function RangebanManagement() {
                     ))}
                   </ul>
                 ) : (
-                  <p className="text-muted">No rangebans yet</p>
+                  <p className="text-secondary">No rangebans yet</p>
                 )}
               </div>
               <div className="col-md-6">
@@ -667,7 +667,7 @@ export default function RangebanManagement() {
                     ))}
                   </ul>
                 ) : (
-                  <p className="text-muted">No country bans yet</p>
+                  <p className="text-secondary">No country bans yet</p>
                 )}
               </div>
             </div>
@@ -772,7 +772,7 @@ export default function RangebanManagement() {
             </div>
           ) : (
             <div className="text-center py-5">
-              <p className="text-muted mb-0">No active rangebans</p>
+              <p className="text-secondary mb-0">No active rangebans</p>
             </div>
           )}
         </div>
