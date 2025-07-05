@@ -239,7 +239,7 @@ const createTables = async () => {
       CREATE TABLE IF NOT EXISTS moderation_actions (
         id SERIAL PRIMARY KEY,
         admin_user_id INTEGER REFERENCES admin_users(id) ON DELETE SET NULL,
-        action_type TEXT NOT NULL CHECK (action_type IN ('ban', 'unban', 'delete_post', 'delete_thread', 'edit_post', 'appeal_response', 'rangeban', 'remove_rangeban')),
+        action_type TEXT NOT NULL CHECK (action_type IN ('ban', 'unban', 'delete_post', 'delete_thread', 'edit_post', 'appeal_response', 'rangeban', 'remove_rangeban', 'view_ip')),
         board_id TEXT REFERENCES boards(id) ON DELETE CASCADE,
         thread_id INTEGER,
         post_id INTEGER,
