@@ -19,6 +19,7 @@ import useHideManager from "../hooks/useHideManager";
 import useBanCheck from "../hooks/useBanCheck";
 import useAdminStatus from "../hooks/useAdminStatus";
 import { API_BASE_URL } from "../config/api";
+import { handleApiError } from "../utils/apiErrorHandler";
 
 function ThreadPage() {
   const { boardId, threadId } = useParams();
@@ -257,45 +258,6 @@ function ThreadPage() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // Enhanced error message handler for API responses
-  const handleApiError = (errorData) => {
-    // Default to the generic error message
-    let errorMessage = errorData.error || "An error occurred";
-
-    // If there's a more detailed message, use that instead
-    if (errorData.message) {
-      errorMessage = errorData.message;
-    }
-
-    // For rangeban errors, create a detailed message
-    if (errorData.error === "Rangebanned" && errorData.rangeban) {
-      const rangeban = errorData.rangeban;
-      let banMessage = `Your ${rangeban.type}`;
-
-      if (rangeban.type === "country") {
-        banMessage = `Your country (${rangeban.value})`;
-      }
-
-      banMessage += ` is banned from this board`;
-
-      if (rangeban.expires_at) {
-        banMessage += ` until ${new Date(
-          rangeban.expires_at
-        ).toLocaleString()}`;
-      } else {
-        banMessage += ` permanently`;
-      }
-
-      if (rangeban.reason) {
-        banMessage += `. Reason: ${rangeban.reason}`;
-      }
-
-      errorMessage = banMessage;
-    }
-
-    return errorMessage;
-  };
-
   // Handle post submission
   const handleSubmitPost = useCallback(
     async (e) => {
@@ -356,7 +318,7 @@ function ThreadPage() {
         setPostLoading(false);
       }
     },
-    [content, image, boardId, threadId, fetchPosts, handleApiError]
+    [content, image, boardId, threadId, fetchPosts]
   );
 
   // Handle clicking on a post number to quote it

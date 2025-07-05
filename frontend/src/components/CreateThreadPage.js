@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { API_BASE_URL } from "../config/api";
+import { handleApiError } from "../utils/apiErrorHandler";
 
 export default function CreateThreadPage() {
   const { boardId } = useParams();
@@ -122,40 +123,8 @@ export default function CreateThreadPage() {
       if (!response.ok) {
         const errorData = await response.json();
 
-        // Enhanced error message handling - prioritize the detailed message
-        let errorMessage = errorData.error || "Failed to create thread";
-
-        // If there's a more detailed message, use that instead
-        if (errorData.message) {
-          errorMessage = errorData.message;
-        }
-
-        // For rangeban errors, check if there's rangeban details
-        if (errorData.error === "Rangebanned" && errorData.rangeban) {
-          const rangeban = errorData.rangeban;
-          let banMessage = `Your ${rangeban.type}`;
-
-          if (rangeban.type === "country") {
-            banMessage = `Your country (${rangeban.value})`;
-          }
-
-          banMessage += ` is banned from this board`;
-
-          if (rangeban.expires_at) {
-            banMessage += ` until ${new Date(
-              rangeban.expires_at
-            ).toLocaleString()}`;
-          } else {
-            banMessage += ` permanently`;
-          }
-
-          if (rangeban.reason) {
-            banMessage += `. Reason: ${rangeban.reason}`;
-          }
-
-          errorMessage = banMessage;
-        }
-
+        // Use the centralized error handler
+        const errorMessage = handleApiError(errorData);
         throw new Error(errorMessage);
       }
 
