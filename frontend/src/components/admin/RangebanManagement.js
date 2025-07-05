@@ -641,7 +641,7 @@ export default function RangebanManagement() {
               <div className="col-md-6">
                 <h6 className="text-secondary">Ban Types</h6>
                 {stats.byType && stats.byType.length > 0 ? (
-                  <ul className="list-unstyled">
+                  <ul className="list-unstyled text-light">
                     {stats.byType.map((type) => (
                       <li key={type.ban_type}>
                         <strong>{type.ban_type}:</strong> {type.active_count}{" "}
@@ -656,7 +656,7 @@ export default function RangebanManagement() {
               <div className="col-md-6">
                 <h6 className="text-secondary">Top Banned Countries</h6>
                 {stats.topCountries && stats.topCountries.length > 0 ? (
-                  <ul className="list-unstyled">
+                  <ul className="list-unstyled text-light">
                     {stats.topCountries.map((country) => (
                       <li key={country.country_code}>
                         <strong>
