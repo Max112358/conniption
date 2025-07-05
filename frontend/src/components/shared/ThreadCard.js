@@ -57,9 +57,9 @@ export default function ThreadCard({
                   onPostNumberClick={() => {}}
                   showThreadId={board?.thread_ids_enabled}
                   showCountryFlag={board?.country_flags_enabled}
-                  isPostHidden={false}
+                  isPostHidden={hiddenPosts.has(opPost.id)}
                   isUserHidden={isUserHidden(opPost.thread_user_id)}
-                  onTogglePostHidden={() => {}}
+                  onTogglePostHidden={() => onTogglePostHidden(opPost.id)}
                   onToggleUserHidden={onToggleUserHidden}
                 />
                 <div className="row mt-2">
