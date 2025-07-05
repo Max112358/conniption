@@ -103,7 +103,9 @@ export default function AdminDashboard() {
                     <div className="col-6 mb-3">
                       <div className="card bg-dark border-secondary">
                         <div className="card-body text-center py-3">
-                          <h3 className="h2 mb-1">{stats.total || 0}</h3>
+                          <h3 className="h2 mb-1 text-light">
+                            {stats.total || 0}
+                          </h3>
                           <p className="small text-secondary mb-0">
                             Total Actions
                           </p>

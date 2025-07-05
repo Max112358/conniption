@@ -161,7 +161,7 @@ export default function AdminLayout() {
 
             <div className="d-flex align-items-center">
               <span className="text-light me-3">
-                <small className="text-muted me-2">Logged in as:</small>
+                <small className="text-secondary me-2">Logged in as:</small>
                 <span className="badge bg-secondary me-1">
                   {adminUser.role}
                 </span>
