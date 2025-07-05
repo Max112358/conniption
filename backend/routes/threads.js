@@ -7,6 +7,7 @@ const { uploadWithUrlTransform } = require("../middleware/upload"); // Changed t
 const postRoutes = require("./posts");
 const io = require("../utils/socketHandler").getIo;
 const getClientIp = require("../utils/getClientIp"); // Import the new utility
+const checkBannedIP = require("../middleware/banCheck"); // Import ban check middleware
 
 // Use post routes
 router.use("/:threadId/posts", postRoutes);
@@ -44,88 +45,98 @@ router.get("/", async (req, res, next) => {
  * @route   POST /api/boards/:boardId/threads
  * @desc    Create a new thread with initial post
  */
-// Changed from upload.single to uploadWithUrlTransform to use our URL transformation
-router.post("/", uploadWithUrlTransform("image"), async (req, res, next) => {
-  const { boardId } = req.params;
-  const { topic, content } = req.body;
-  const ipAddress = getClientIp(req); // Use the new utility
+// Apply checkBannedIP middleware BEFORE upload to block banned users early
+router.post(
+  "/",
+  checkBannedIP,
+  uploadWithUrlTransform("image"),
+  async (req, res, next) => {
+    const { boardId } = req.params;
+    const { topic, content } = req.body;
+    const ipAddress = getClientIp(req); // Use the new utility
 
-  console.log(`Route: POST /api/boards/${boardId}/threads`);
-  console.log(`Thread topic: "${topic}"`);
-  console.log(`IP Address: ${ipAddress}`);
-  console.log(`Request headers:`, {
-    "cf-connecting-ip": req.headers["cf-connecting-ip"],
-    "x-forwarded-for": req.headers["x-forwarded-for"],
-    "x-real-ip": req.headers["x-real-ip"],
-    "true-client-ip": req.headers["true-client-ip"],
-  });
+    console.log(`Route: POST /api/boards/${boardId}/threads`);
+    console.log(`Thread topic: "${topic}"`);
+    console.log(`IP Address: ${ipAddress}`);
+    console.log(`Request headers:`, {
+      "cf-connecting-ip": req.headers["cf-connecting-ip"],
+      "x-forwarded-for": req.headers["x-forwarded-for"],
+      "x-real-ip": req.headers["x-real-ip"],
+      "true-client-ip": req.headers["true-client-ip"],
+    });
 
-  try {
-    // Validate request
-    if (!topic || !content) {
-      console.log(`Route: Invalid request - missing topic or content`);
-      return res.status(400).json({ error: "Topic and content are required" });
-    }
+    try {
+      // Validate request
+      if (!topic || !content) {
+        console.log(`Route: Invalid request - missing topic or content`);
+        return res
+          .status(400)
+          .json({ error: "Topic and content are required" });
+      }
 
-    if (!req.file) {
-      console.log(`Route: Invalid request - missing media file`);
-      return res.status(400).json({ error: "Image or video is required" });
-    }
+      if (!req.file) {
+        console.log(`Route: Invalid request - missing media file`);
+        return res.status(400).json({ error: "Image or video is required" });
+      }
 
-    // Check if board exists and get board settings
-    const board = await boardModel.getBoardById(boardId);
-    if (!board) {
-      console.log(`Route: Board not found - ${boardId}`);
-      return res.status(404).json({ error: "Board not found" });
-    }
+      // Check if board exists and get board settings
+      const board = await boardModel.getBoardById(boardId);
+      if (!board) {
+        console.log(`Route: Board not found - ${boardId}`);
+        return res.status(404).json({ error: "Board not found" });
+      }
 
-    // Extract board settings
-    const boardSettings = {
-      thread_ids_enabled: board.thread_ids_enabled,
-      country_flags_enabled: board.country_flags_enabled,
-    };
+      // Extract board settings
+      const boardSettings = {
+        thread_ids_enabled: board.thread_ids_enabled,
+        country_flags_enabled: board.country_flags_enabled,
+      };
 
-    // Log file info
-    console.log(
-      `Route: File type: ${req.file.fileType}, Size: ${req.file.size} bytes`
-    );
+      // Log file info
+      console.log(
+        `Route: File type: ${req.file.fileType}, Size: ${req.file.size} bytes`
+      );
 
-    // Create thread
-    // req.file.location now contains the transformed URL with custom domain
-    const result = await threadModel.createThread(
-      boardId,
-      topic,
-      content,
-      req.file.location,
-      ipAddress,
-      boardSettings
-    );
-
-    // Notify connected clients about the new thread
-    const socketIo = io();
-    if (socketIo) {
-      console.log(`Emitting thread_created event to board ${boardId}`);
-      socketIo.to(boardId).emit("thread_created", {
-        threadId: result.threadId,
+      // Create thread
+      // req.file.location now contains the transformed URL with custom domain
+      const result = await threadModel.createThread(
         boardId,
         topic,
-      });
-    } else {
-      console.log(
-        `Warning: Socket.io not available for emitting thread_created event`
+        content,
+        req.file.location,
+        ipAddress,
+        boardSettings
       );
-    }
 
-    res.status(201).json({
-      message: "Thread created successfully",
-      threadId: result.threadId,
-      boardId,
-    });
-  } catch (error) {
-    console.error(`Route Error - POST /api/boards/${boardId}/threads:`, error);
-    next(error);
+      // Notify connected clients about the new thread
+      const socketIo = io();
+      if (socketIo) {
+        console.log(`Emitting thread_created event to board ${boardId}`);
+        socketIo.to(boardId).emit("thread_created", {
+          threadId: result.threadId,
+          boardId,
+          topic,
+        });
+      } else {
+        console.log(
+          `Warning: Socket.io not available for emitting thread_created event`
+        );
+      }
+
+      res.status(201).json({
+        message: "Thread created successfully",
+        threadId: result.threadId,
+        boardId,
+      });
+    } catch (error) {
+      console.error(
+        `Route Error - POST /api/boards/${boardId}/threads:`,
+        error
+      );
+      next(error);
+    }
   }
-});
+);
 
 /**
  * @route   GET /api/boards/:boardId/threads/:threadId
