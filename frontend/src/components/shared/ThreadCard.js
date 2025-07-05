@@ -58,43 +58,59 @@ export default function ThreadCard({
                   showThreadId={board?.thread_ids_enabled}
                   showCountryFlag={board?.country_flags_enabled}
                   isPostHidden={hiddenPosts.has(opPost.id)}
-                  isUserHidden={isUserHidden(opPost.thread_user_id)}
+                  isUserHidden={
+                    opPost.thread_user_id && isUserHidden(opPost.thread_user_id)
+                  }
                   onTogglePostHidden={() => onTogglePostHidden(opPost.id)}
                   onToggleUserHidden={onToggleUserHidden}
                 />
-                <div className="row mt-2">
-                  {opPost.image_url && (
-                    <div className="col-auto">
-                      <MediaThumbnail
-                        src={opPost.image_url}
-                        alt="Thread image"
-                        fileType={opPost.file_type}
-                        size="150px"
-                        linkTo={`/board/${boardId}/thread/${thread.id}`}
-                      />
-                    </div>
-                  )}
-                  <div className={opPost.image_url ? "col" : "col-12"}>
-                    <div
-                      className="text-light text-break"
-                      style={{
-                        whiteSpace: "pre-wrap",
-                        wordWrap: "break-word",
-                        wordBreak: "break-word",
-                        overflowWrap: "break-word",
-                      }}
-                    >
-                      <PostContent
-                        content={truncateText(opPost.content, 2000, 20)}
-                        posts={thread.posts}
-                        allThreadsWithPosts={[thread]}
-                        boardId={boardId}
-                        onPostLinkClick={() => {}}
-                        isThreadPage={false}
-                      />
+                {!(
+                  hiddenPosts.has(opPost.id) ||
+                  (opPost.thread_user_id && isUserHidden(opPost.thread_user_id))
+                ) ? (
+                  <div className="row mt-2">
+                    {opPost.image_url && (
+                      <div className="col-auto">
+                        <MediaThumbnail
+                          src={opPost.image_url}
+                          alt="Thread image"
+                          fileType={opPost.file_type}
+                          size="150px"
+                          linkTo={`/board/${boardId}/thread/${thread.id}`}
+                        />
+                      </div>
+                    )}
+                    <div className={opPost.image_url ? "col" : "col-12"}>
+                      <div
+                        className="text-light text-break"
+                        style={{
+                          whiteSpace: "pre-wrap",
+                          wordWrap: "break-word",
+                          wordBreak: "break-word",
+                          overflowWrap: "break-word",
+                        }}
+                      >
+                        <PostContent
+                          content={truncateText(opPost.content, 2000, 20)}
+                          posts={thread.posts}
+                          allThreadsWithPosts={[thread]}
+                          boardId={boardId}
+                          onPostLinkClick={() => {}}
+                          isThreadPage={false}
+                        />
+                      </div>
                     </div>
                   </div>
-                </div>
+                ) : (
+                  <p className="text-secondary mb-0">
+                    <em>
+                      {opPost.thread_user_id &&
+                      isUserHidden(opPost.thread_user_id)
+                        ? "User hidden"
+                        : "Post hidden"}
+                    </em>
+                  </p>
+                )}
               </div>
             ) : (
               <div className="text-secondary mb-3">
@@ -123,7 +139,8 @@ export default function ThreadCard({
 
                 {thread.latestReplies.map((reply) => {
                   const postHidden = hiddenPosts.has(reply.id);
-                  const userHidden = isUserHidden(reply.thread_user_id);
+                  const userHidden =
+                    reply.thread_user_id && isUserHidden(reply.thread_user_id);
 
                   return (
                     <div
@@ -138,7 +155,9 @@ export default function ThreadCard({
                           showCountryFlag={board?.country_flags_enabled}
                           isPostHidden={postHidden}
                           isUserHidden={userHidden}
-                          onTogglePostHidden={onTogglePostHidden}
+                          onTogglePostHidden={() =>
+                            onTogglePostHidden(reply.id)
+                          }
                           onToggleUserHidden={onToggleUserHidden}
                         />
                       </div>
