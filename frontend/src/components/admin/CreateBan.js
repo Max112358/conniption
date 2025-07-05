@@ -78,12 +78,12 @@ export default function CreateBan() {
   // Fetch IP address if we have post context
   useEffect(() => {
     const fetchIpAddress = async () => {
+      // Only fetch if we have post context with required fields and no IP address yet
       if (
         postContext &&
         postContext.postId &&
         postContext.boardId &&
-        postContext.threadId &&
-        !ipAddress
+        postContext.threadId
       ) {
         setFetchingIp(true);
         setError(null);
@@ -102,14 +102,20 @@ export default function CreateBan() {
           }
 
           const data = await response.json();
-          setIpAddress(data.ip_address || "");
 
-          // Update post content and image if they're provided in the response
-          if (data.post_content && !postContent) {
-            setPostContent(data.post_content);
+          // Only update if we got valid data
+          if (data.ip_address) {
+            setIpAddress(data.ip_address);
           }
-          if (data.image_url && !postImage) {
-            setPostImage(data.image_url);
+
+          // Update post content if provided and not already set
+          if (data.post_content) {
+            setPostContent((prev) => prev || data.post_content);
+          }
+
+          // Update post image if provided and not already set
+          if (data.image_url) {
+            setPostImage((prev) => prev || data.image_url);
           }
         } catch (err) {
           console.error("Error fetching IP address:", err);
@@ -120,8 +126,11 @@ export default function CreateBan() {
       }
     };
 
-    fetchIpAddress();
-  }, [postContext]); // Only depend on postContext to avoid re-fetching
+    // Only fetch if we don't have an IP address yet
+    if (!ipAddress && postContext) {
+      fetchIpAddress();
+    }
+  }, [postContext, ipAddress]); // Now properly depending on ipAddress
 
   // Convert duration string to actual date
   const calculateExpirationDate = (durationStr) => {
