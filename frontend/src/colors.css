@@ -37,8 +37,8 @@
 }
 
 .board-link:hover {
-  background-color: #343a40; /* slightly lighter */
-  color: #ffffff;
-  border-color: #adb5bd; /* subtle hover border */
+  background-color: #2a2f33; /* Slightly lighter dark */
+  color: #f8f9fa; /* Bootstrap's 'text-light' */
+  border-color: #868e96; /* slightly lighter border on hover */
   text-decoration: none;
 }
