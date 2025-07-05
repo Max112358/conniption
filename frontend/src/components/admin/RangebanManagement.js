@@ -603,7 +603,7 @@ export default function RangebanManagement() {
                               {code}
                             </div>
                             <div
-                              className="small text-truncate"
+                              className="small text-truncate text-light"
                               title={countryName}
                             >
                               {countryName}
