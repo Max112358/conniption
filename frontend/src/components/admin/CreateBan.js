@@ -380,7 +380,7 @@ export default function CreateBan() {
                   )}
 
                   <div className="mb-3">
-                    <label className="form-label text-secondary">Content</label>
+                    <label className="form-label text-light">Content</label>
                     <div className="border border-secondary p-2 rounded bg-dark">
                       <p
                         className="mb-0 text-light"
