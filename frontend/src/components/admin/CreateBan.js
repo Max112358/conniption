@@ -165,7 +165,7 @@ export default function CreateBan() {
 
       <div className="card bg-mid-dark border-secondary">
         <div className="card-header border-secondary">
-          <h2 className="h5 mb-0">Ban Details</h2>
+          <h2 className="h5 mb-0 text-light">Ban Details</h2>
         </div>
         <div className="card-body">
           {error && (
@@ -190,7 +190,7 @@ export default function CreateBan() {
                 required
                 disabled={loading || postContext?.ipAddress}
               />
-              <div className="form-text text-muted">
+              <div className="form-text text-secondary">
                 Enter the IP address to ban
               </div>
             </div>
@@ -215,7 +215,7 @@ export default function CreateBan() {
                   </option>
                 ))}
               </select>
-              <div className="form-text text-muted">
+              <div className="form-text text-secondary">
                 {adminUser.role === "admin"
                   ? "Leave empty for a global ban across all boards"
                   : "Select the board for this ban"}
@@ -236,7 +236,7 @@ export default function CreateBan() {
                 required
                 disabled={loading}
               ></textarea>
-              <div className="form-text text-muted">
+              <div className="form-text text-secondary">
                 Provide a clear reason for the ban
               </div>
             </div>
@@ -258,7 +258,7 @@ export default function CreateBan() {
                   </option>
                 ))}
               </select>
-              <div className="form-text text-muted">
+              <div className="form-text text-secondary">
                 {adminUser.role === "admin"
                   ? "Select ban duration or set as permanent"
                   : "Moderators can set bans up to 1 month maximum"}
@@ -269,7 +269,9 @@ export default function CreateBan() {
             {!postContext && (
               <div className="card bg-dark border-secondary mb-4">
                 <div className="card-header border-secondary">
-                  <h3 className="h6 mb-0">Post Context (Optional)</h3>
+                  <h3 className="h6 mb-0 text-light">
+                    Post Context (Optional)
+                  </h3>
                 </div>
                 <div className="card-body">
                   <div className="form-text text-muted mb-3">
@@ -278,10 +280,7 @@ export default function CreateBan() {
                   </div>
 
                   <div className="mb-3">
-                    <label
-                      htmlFor="threadId"
-                      className="form-label text-secondary"
-                    >
+                    <label htmlFor="threadId" className="form-label text-light">
                       Thread ID
                     </label>
                     <input
@@ -296,10 +295,7 @@ export default function CreateBan() {
                   </div>
 
                   <div className="mb-3">
-                    <label
-                      htmlFor="postId"
-                      className="form-label text-secondary"
-                    >
+                    <label htmlFor="postId" className="form-label text-light">
                       Post ID
                     </label>
                     <input
