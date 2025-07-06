@@ -54,8 +54,8 @@ export default function RulesPage() {
       boardName: "Politics",
       rules: [
         "Political and current events discussion only",
-        "Respect opposing viewpoints",
         "Posting blatant misinformation will result in a ban",
+        "It's ok to have threads only tangentially related to politics, such as the state of the world",
       ],
     },
     {
@@ -276,7 +276,7 @@ export default function RulesPage() {
             </small>
           </p>
           <p className="mb-0">
-            <small>Last updated: July 4th 2025</small>
+            <small>Last updated: July 5th 2025</small>
           </p>
         </div>
       </div>

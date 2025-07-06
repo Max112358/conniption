@@ -1,8 +1,10 @@
 // frontend/src/components/shared/PostCard.js
 import PostModMenu from "../admin/PostModMenu";
+import PostDeleteButton from "../PostDeleteButton";
 import PostHeader from "../PostHeader";
 import PostContent from "../PostContent";
 import MediaViewer from "../MediaViewer";
+import usePostOwnership from "../../hooks/usePostOwnership";
 
 export default function PostCard({
   post,
@@ -22,12 +24,25 @@ export default function PostCard({
   posts = [], // All posts in thread (for thread page)
   allThreadsWithPosts = [], // For board page
   isThreadPage = false,
+  onPostDeleted, // Callback when post is deleted
 }) {
+  const { isOwnPost, removeOwnPost } = usePostOwnership();
   const isModerator =
     adminUser?.role === "moderator" || adminUser?.role === "admin";
 
   // Determine if we should show the mod menu
   const showModMenu = isModerator && !isHidden && !isUserHidden;
+
+  // Check if this is user's own post
+  const isUserOwnPost = isOwnPost(post.id);
+
+  // Handle successful deletion
+  const handlePostDeleted = (postId) => {
+    removeOwnPost(postId);
+    if (onPostDeleted) {
+      onPostDeleted(postId);
+    }
+  };
 
   return (
     <div
@@ -50,15 +65,27 @@ export default function PostCard({
           onToggleUserHidden={onToggleUserHidden}
         />
 
-        {showModMenu && (
-          <PostModMenu
-            post={post}
-            thread={thread}
-            board={board || { id: boardId }}
-            isAdmin={adminUser?.role === "admin"}
-            isMod={isModerator}
-          />
-        )}
+        <div className="d-flex gap-2">
+          {showModMenu && (
+            <PostModMenu
+              post={post}
+              thread={thread}
+              board={board || { id: boardId }}
+              isAdmin={adminUser?.role === "admin"}
+              isMod={isModerator}
+            />
+          )}
+
+          {/* Show delete button for user's own posts */}
+          {isUserOwnPost && !isHidden && !isUserHidden && (
+            <PostDeleteButton
+              post={post}
+              boardId={boardId}
+              threadId={thread?.id || post.thread_id}
+              onDeleted={handlePostDeleted}
+            />
+          )}
+        </div>
       </div>
 
       <div className="card-body">

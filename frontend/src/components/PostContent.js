@@ -1,6 +1,7 @@
 // frontend/src/components/PostContent.js
 import { useState } from "react";
 import hideManager from "../utils/hideManager";
+import postOwnershipManager from "../utils/postOwnershipManager";
 
 // Component for post link preview
 const PostLinkPreview = ({
@@ -234,6 +235,7 @@ export default function PostContent({
           }
 
           if (targetPost) {
+            const isYou = postOwnershipManager.isOwnPost(parseInt(postId));
             return (
               <span
                 key={`${lineIndex}-${partIndex}`}
@@ -251,7 +253,8 @@ export default function PostContent({
                 onMouseLeave={() => setHoveredPostId(null)}
               >
                 {part}
-                {isOP ? "(OP)" : ""}
+                {isOP && "(OP)"}
+                {isYou && "(You)"}
               </span>
             );
           }

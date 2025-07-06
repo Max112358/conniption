@@ -18,6 +18,7 @@ import useSocket from "../hooks/useSocket";
 import useHideManager from "../hooks/useHideManager";
 import useBanCheck from "../hooks/useBanCheck";
 import useAdminStatus from "../hooks/useAdminStatus";
+import usePostOwnership from "../hooks/usePostOwnership";
 import { API_BASE_URL } from "../config/api";
 import { handleApiError } from "../utils/apiErrorHandler";
 
@@ -47,6 +48,7 @@ function ThreadPage() {
 
   const { banned, banInfo, checkBanStatus, resetBanStatus } = useBanCheck();
   const { adminUser, isModerator } = useAdminStatus();
+  const { addOwnPost, removeOwnPost } = usePostOwnership();
 
   // Update postsRef when posts change
   useEffect(() => {
@@ -207,7 +209,7 @@ function ThreadPage() {
     fetchData();
   }, [fetchData]);
 
-  // Socket event handler
+  // Socket event handlers
   const handlePostCreated = useCallback(
     (data) => {
       console.log("Post created event received:", data);
@@ -221,6 +223,24 @@ function ThreadPage() {
     [boardId, threadId, fetchPosts]
   );
 
+  const handlePostDeleted = useCallback(
+    (data) => {
+      console.log("Post deleted event received:", data);
+      if (
+        data.boardId === boardId &&
+        data.threadId === parseInt(threadId, 10)
+      ) {
+        // Remove the deleted post from the UI
+        setPosts((currentPosts) =>
+          currentPosts.filter((p) => p.id !== data.postId)
+        );
+        // Also remove from ownership tracking if it was ours
+        removeOwnPost(data.postId);
+      }
+    },
+    [boardId, threadId, removeOwnPost]
+  );
+
   // Socket configuration
   const socketConfig = useMemo(
     () => ({
@@ -228,6 +248,7 @@ function ThreadPage() {
       enabled: !loading && !error && !threadNotFound && !banned,
       events: {
         post_created: handlePostCreated,
+        post_deleted: handlePostDeleted,
       },
     }),
     [
@@ -238,6 +259,7 @@ function ThreadPage() {
       threadNotFound,
       banned,
       handlePostCreated,
+      handlePostDeleted,
     ]
   );
 
@@ -293,6 +315,13 @@ function ThreadPage() {
           throw new Error(errorMessage);
         }
 
+        const data = await response.json();
+
+        // Track the new post as owned by the user
+        if (data.postId) {
+          addOwnPost(data.postId);
+        }
+
         // Reset form
         setContent("");
         setImage(null);
@@ -318,7 +347,7 @@ function ThreadPage() {
         setPostLoading(false);
       }
     },
-    [content, image, boardId, threadId, fetchPosts]
+    [content, image, boardId, threadId, fetchPosts, addOwnPost]
   );
 
   // Handle clicking on a post number to quote it
@@ -387,6 +416,11 @@ function ThreadPage() {
     },
     [threadId, boardId]
   );
+
+  // Handle post deletion from delete button (remove from UI)
+  const handlePostDeletedByUser = useCallback((postId) => {
+    setPosts((currentPosts) => currentPosts.filter((p) => p.id !== postId));
+  }, []);
 
   // Scroll to new posts when notification is clicked
   const scrollToNewPosts = useCallback(() => {
@@ -513,6 +547,7 @@ function ThreadPage() {
                       className={post.isNew ? "new-post" : ""}
                       posts={posts}
                       isThreadPage={true}
+                      onPostDeleted={handlePostDeletedByUser}
                     />
                   </div>
                 ))}

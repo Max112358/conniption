@@ -1,6 +1,7 @@
 // backend/routes/posts.js
 const express = require("express");
 const router = express.Router({ mergeParams: true }); // mergeParams to access boardId and threadId
+const { pool } = require("../config/database");
 const postModel = require("../models/post");
 const threadModel = require("../models/thread");
 const boardModel = require("../models/board");
@@ -166,5 +167,156 @@ router.post(
     }
   }
 );
+
+/**
+ * @route   DELETE /api/boards/:boardId/threads/:threadId/posts/:postId
+ * @desc    Delete a post (by original poster or admin)
+ * @access  Public (but requires IP match or admin auth)
+ */
+router.delete("/:postId", async (req, res, next) => {
+  const { boardId, threadId, postId } = req.params;
+  const ipAddress = getClientIp(req);
+
+  console.log(
+    `Route: DELETE /api/boards/${boardId}/threads/${threadId}/posts/${postId}`
+  );
+  console.log(`Request IP: ${ipAddress}`);
+  console.log(`Admin user: ${req.session?.adminUser?.username || "none"}`);
+
+  try {
+    // First, get the post to check ownership
+    const postResult = await pool.query(
+      `SELECT id, ip_address, content, image_url 
+       FROM posts 
+       WHERE id = $1 AND thread_id = $2 AND board_id = $3`,
+      [postId, threadId, boardId]
+    );
+
+    if (postResult.rows.length === 0) {
+      console.log(`Route: Post not found - ${postId}`);
+      return res.status(404).json({ error: "Post not found" });
+    }
+
+    const post = postResult.rows[0];
+    const isOwner = post.ip_address === ipAddress;
+    const isAdmin =
+      req.session?.adminUser &&
+      ["admin", "moderator", "janitor"].includes(req.session.adminUser.role);
+
+    console.log(
+      `Route: Post IP: ${post.ip_address}, Request IP: ${ipAddress}, Is Owner: ${isOwner}, Is Admin: ${isAdmin}`
+    );
+
+    // Check authorization
+    if (!isOwner && !isAdmin) {
+      console.log(`Route: Unauthorized deletion attempt for post ${postId}`);
+      return res
+        .status(403)
+        .json({ error: "Not authorized to delete this post" });
+    }
+
+    // If admin and not owner, check board permissions
+    if (isAdmin && !isOwner && req.session.adminUser.role !== "admin") {
+      const adminModel = require("../models/admin");
+      const canModerate = adminModel.canModerateBoard(
+        req.session.adminUser,
+        boardId
+      );
+      if (!canModerate) {
+        return res
+          .status(403)
+          .json({ error: "Not authorized to moderate this board" });
+      }
+    }
+
+    // Use different deletion logic based on who's deleting
+    if (isOwner && !isAdmin) {
+      // User deleting their own post - direct deletion
+      console.log(`Route: User deleting their own post ${postId}`);
+
+      const client = await pool.connect();
+      try {
+        await client.query("BEGIN");
+
+        // Delete the post
+        await client.query(
+          `DELETE FROM posts WHERE id = $1 AND thread_id = $2 AND board_id = $3`,
+          [postId, threadId, boardId]
+        );
+
+        // Delete image from R2 if exists
+        if (post.image_url) {
+          try {
+            const fileUtils = require("../utils/fileUtils");
+            await fileUtils.deleteFile(post.image_url);
+            console.log(`Route: Deleted image from R2: ${post.image_url}`);
+          } catch (err) {
+            console.error(
+              `Route: Failed to delete image: ${post.image_url}`,
+              err
+            );
+          }
+        }
+
+        await client.query("COMMIT");
+        console.log(`Route: User successfully deleted their post ${postId}`);
+      } catch (error) {
+        await client.query("ROLLBACK");
+        throw error;
+      } finally {
+        client.release();
+      }
+    } else {
+      // Admin deletion - use moderation system
+      console.log(
+        `Route: Admin ${req.session.adminUser.username} deleting post ${postId}`
+      );
+
+      const moderationModel = require("../models/moderation");
+      const result = await moderationModel.deletePost({
+        post_id: postId,
+        thread_id: threadId,
+        board_id: boardId,
+        reason: req.body.reason || "Deleted by moderator",
+        admin_user_id: req.session.adminUser.id,
+      });
+
+      if (!result.success) {
+        return res.status(500).json({ error: "Failed to delete post" });
+      }
+    }
+
+    // Notify connected clients about the deleted post
+    const socketIo = io();
+    if (socketIo) {
+      const roomId = `${boardId}-${threadId}`;
+      console.log(`Emitting post_deleted event to room ${roomId}`);
+
+      socketIo.to(roomId).emit("post_deleted", {
+        postId: parseInt(postId),
+        threadId: parseInt(threadId),
+        boardId,
+      });
+
+      // Also emit to board room
+      socketIo.to(boardId).emit("post_deleted", {
+        postId: parseInt(postId),
+        threadId: parseInt(threadId),
+        boardId,
+      });
+    }
+
+    res.json({
+      message: "Post deleted successfully",
+      deletedBy: isOwner && !isAdmin ? "owner" : "admin",
+    });
+  } catch (error) {
+    console.error(
+      `Route Error - DELETE /api/boards/${boardId}/threads/${threadId}/posts/${postId}:`,
+      error
+    );
+    next(error);
+  }
+});
 
 module.exports = router;

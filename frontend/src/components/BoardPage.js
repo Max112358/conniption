@@ -10,6 +10,7 @@ import ThreadCard from "./shared/ThreadCard";
 import useSocket from "../hooks/useSocket";
 import useHideManager from "../hooks/useHideManager";
 import useBanCheck from "../hooks/useBanCheck";
+import usePostOwnership from "../hooks/usePostOwnership";
 import { API_BASE_URL } from "../config/api";
 
 function BoardPage() {
@@ -30,6 +31,7 @@ function BoardPage() {
   } = useHideManager();
 
   const { banned, banInfo, checkBanStatus, resetBanStatus } = useBanCheck();
+  const { removeOwnPost } = usePostOwnership();
 
   // Fetch board details
   const fetchBoard = useCallback(async () => {
@@ -154,6 +156,18 @@ function BoardPage() {
     [boardId, fetchThreadsWithPosts]
   );
 
+  const handlePostDeleted = useCallback(
+    (data) => {
+      if (data.boardId === boardId) {
+        // Remove ownership tracking
+        removeOwnPost(data.postId);
+        // Refresh to update the thread view
+        fetchThreadsWithPosts();
+      }
+    },
+    [boardId, fetchThreadsWithPosts, removeOwnPost]
+  );
+
   // Socket configuration
   const socketConfig = useMemo(
     () => ({
@@ -162,6 +176,7 @@ function BoardPage() {
       events: {
         thread_created: handleThreadCreated,
         post_created: handlePostCreated,
+        post_deleted: handlePostDeleted,
       },
     }),
     [
@@ -172,6 +187,7 @@ function BoardPage() {
       banned,
       handleThreadCreated,
       handlePostCreated,
+      handlePostDeleted,
     ]
   );
 

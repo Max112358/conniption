@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { API_BASE_URL } from "../config/api";
 import { handleApiError } from "../utils/apiErrorHandler";
+import postOwnershipManager from "../utils/postOwnershipManager";
 
 export default function CreateThreadPage() {
   const { boardId } = useParams();
@@ -129,6 +130,11 @@ export default function CreateThreadPage() {
       }
 
       const data = await response.json();
+
+      // Track the OP post as owned by the user
+      if (data.postId) {
+        postOwnershipManager.addPost(data.postId);
+      }
 
       // Show success message before redirecting
       setError(null);
