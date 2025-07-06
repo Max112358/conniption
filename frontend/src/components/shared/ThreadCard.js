@@ -64,6 +64,20 @@ export default function ThreadCard({
                   onTogglePostHidden={() => onTogglePostHidden(opPost.id)}
                   onToggleUserHidden={onToggleUserHidden}
                 />
+
+                {/* Ban Warning for OP */}
+                {opPost.isBanned && opPost.banInfo && (
+                  <div className="alert alert-danger mt-2 mb-2 fw-bold text-center">
+                    <i className="bi bi-exclamation-triangle-fill me-2"></i>
+                    USER WAS BANNED FOR THIS POST
+                    {opPost.banInfo.reason && (
+                      <div className="mt-2 small fw-normal">
+                        Reason: {opPost.banInfo.reason}
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {!(
                   hiddenPosts.has(opPost.id) ||
                   (opPost.thread_user_id && isUserHidden(opPost.thread_user_id))
@@ -161,6 +175,19 @@ export default function ThreadCard({
                           onToggleUserHidden={onToggleUserHidden}
                         />
                       </div>
+
+                      {/* Ban Warning for Reply */}
+                      {reply.isBanned && reply.banInfo && (
+                        <div className="alert alert-danger mt-2 mb-2 fw-bold text-center">
+                          <i className="bi bi-exclamation-triangle-fill me-2"></i>
+                          USER WAS BANNED FOR THIS POST
+                          {reply.banInfo.reason && (
+                            <div className="mt-2 small fw-normal">
+                              Reason: {reply.banInfo.reason}
+                            </div>
+                          )}
+                        </div>
+                      )}
 
                       {!postHidden && !userHidden ? (
                         <div className="row">
