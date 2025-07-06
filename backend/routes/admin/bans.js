@@ -51,7 +51,16 @@ router.post("/", adminAuth.requireAuth, async (req, res, next) => {
   );
 
   try {
-    const { ip_address, board_id, reason, expires_at } = req.body;
+    const {
+      ip_address,
+      board_id,
+      reason,
+      expires_at,
+      post_content,
+      post_image_url,
+      thread_id,
+      post_id,
+    } = req.body;
 
     // Validate input
     if (!ip_address || !reason) {
@@ -80,6 +89,10 @@ router.post("/", adminAuth.requireAuth, async (req, res, next) => {
       reason,
       expires_at: expires_at || null,
       admin_user_id: req.session.adminUser.id,
+      post_content: post_content || null,
+      post_image_url: post_image_url || null,
+      thread_id: thread_id || null,
+      post_id: post_id || null,
     });
 
     res.status(201).json({

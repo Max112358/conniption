@@ -4,6 +4,7 @@ const router = express.Router({ mergeParams: true }); // mergeParams to access b
 const postModel = require("../models/post");
 const threadModel = require("../models/thread");
 const boardModel = require("../models/board");
+const banModel = require("../models/ban");
 const { uploadWithUrlTransform } = require("../middleware/upload");
 const io = require("../utils/socketHandler").getIo;
 const getClientIp = require("../utils/getClientIp"); // Import the new utility
@@ -28,8 +29,19 @@ router.get("/", async (req, res, next) => {
     // Get posts
     const posts = await postModel.getPostsByThreadId(threadId, boardId);
 
-    // The posts model now returns the image_url directly from the database
-    res.json({ posts: posts });
+    // Check for bans associated with each post
+    const postsWithBanInfo = await Promise.all(
+      posts.map(async (post) => {
+        const bans = await banModel.getBansByPostId(post.id, boardId);
+        return {
+          ...post,
+          isBanned: bans.length > 0,
+          banInfo: bans.length > 0 ? bans[0] : null, // Include first ban info if exists
+        };
+      })
+    );
+
+    res.json({ posts: postsWithBanInfo });
   } catch (error) {
     console.error(
       `Route Error - GET /api/boards/${boardId}/threads/${threadId}/posts:`,

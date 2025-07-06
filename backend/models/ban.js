@@ -19,15 +19,19 @@ const banModel = {
 
       // Insert the ban
       const result = await client.query(
-        `INSERT INTO bans (ip_address, board_id, reason, expires_at, admin_user_id, is_active)
-         VALUES ($1, $2, $3, $4, $5, TRUE)
-         RETURNING id, ip_address, board_id, reason, expires_at, created_at, admin_user_id, is_active`,
+        `INSERT INTO bans (ip_address, board_id, reason, expires_at, admin_user_id, is_active, post_content, post_image_url, thread_id, post_id)
+         VALUES ($1, $2, $3, $4, $5, TRUE, $6, $7, $8, $9)
+         RETURNING id, ip_address, board_id, reason, expires_at, created_at, admin_user_id, is_active, post_content, post_image_url, thread_id, post_id`,
         [
           banData.ip_address,
           banData.board_id,
           banData.reason,
           banData.expires_at,
           banData.admin_user_id,
+          banData.post_content,
+          banData.post_image_url,
+          banData.thread_id,
+          banData.post_id,
         ]
       );
 
@@ -36,14 +40,16 @@ const banModel = {
       // Log moderation action
       await client.query(
         `INSERT INTO moderation_actions 
-         (admin_user_id, action_type, board_id, reason, ip_address, ban_id)
-         VALUES ($1, 'ban', $2, $3, $4, $5)`,
+         (admin_user_id, action_type, board_id, reason, ip_address, ban_id, thread_id, post_id)
+         VALUES ($1, 'ban', $2, $3, $4, $5, $6, $7)`,
         [
           banData.admin_user_id,
           banData.board_id,
           banData.reason,
           banData.ip_address,
           ban.id,
+          banData.thread_id,
+          banData.post_id,
         ]
       );
 
@@ -74,6 +80,7 @@ const banModel = {
       let query = `
         SELECT b.id, b.ip_address, b.board_id, b.reason, b.expires_at, b.created_at, 
                b.admin_user_id, b.is_active, b.appeal_text, b.appeal_status,
+               b.post_content, b.post_image_url, b.thread_id, b.post_id,
                a.username as admin_username
         FROM bans b
         LEFT JOIN admin_users a ON b.admin_user_id = a.id
@@ -111,6 +118,7 @@ const banModel = {
       const result = await pool.query(
         `SELECT b.id, b.ip_address, b.board_id, b.reason, b.expires_at, b.created_at, 
                 b.admin_user_id, b.is_active, b.appeal_text, b.appeal_status,
+                b.post_content, b.post_image_url, b.thread_id, b.post_id,
                 a.username as admin_username
          FROM bans b
          LEFT JOIN admin_users a ON b.admin_user_id = a.id
@@ -146,7 +154,8 @@ const banModel = {
       const now = new Date().toISOString();
 
       const result = await pool.query(
-        `SELECT id, ip_address, board_id, reason, expires_at, created_at, is_active
+        `SELECT id, ip_address, board_id, reason, expires_at, created_at, is_active,
+                post_content, post_image_url, thread_id, post_id
          FROM bans
          WHERE ip_address = $1 
          AND is_active = TRUE
@@ -166,6 +175,37 @@ const banModel = {
     } catch (error) {
       console.error(
         `Model Error - checkIpBanned(${ipAddress}, ${boardId}):`,
+        error
+      );
+      throw error;
+    }
+  },
+
+  /**
+   * Get bans by post ID
+   * @param {number} postId - Post ID
+   * @param {string} boardId - Board ID
+   * @returns {Promise<Array>} Array of ban objects for this post
+   */
+  getBansByPostId: async (postId, boardId) => {
+    console.log(`Model: Getting bans for post ${postId} on board ${boardId}`);
+
+    try {
+      const result = await pool.query(
+        `SELECT id, ip_address, board_id, reason, expires_at, created_at, is_active
+         FROM bans
+         WHERE post_id = $1 
+         AND board_id = $2
+         AND is_active = TRUE
+         ORDER BY created_at DESC`,
+        [postId, boardId]
+      );
+
+      console.log(`Model: Found ${result.rows.length} bans for post ${postId}`);
+      return result.rows;
+    } catch (error) {
+      console.error(
+        `Model Error - getBansByPostId(${postId}, ${boardId}):`,
         error
       );
       throw error;
@@ -224,7 +264,7 @@ const banModel = {
         `UPDATE bans
          SET ${updateFields.join(", ")}
          WHERE id = $${paramCounter}
-         RETURNING id, ip_address, board_id, reason, expires_at, created_at, admin_user_id, is_active, appeal_text, appeal_status`,
+         RETURNING id, ip_address, board_id, reason, expires_at, created_at, admin_user_id, is_active, appeal_text, appeal_status, post_content, post_image_url, thread_id, post_id`,
         values
       );
 
