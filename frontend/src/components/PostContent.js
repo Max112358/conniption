@@ -88,6 +88,21 @@ const PostLinkPreview = ({
   );
 };
 
+// Component for YouTube embed
+const YouTubeEmbed = ({ videoId }) => {
+  return (
+    <div className="ratio ratio-16x9 mb-2" style={{ maxWidth: "560px" }}>
+      <iframe
+        src={`https://www.youtube.com/embed/${videoId}`}
+        title="YouTube video"
+        frameBorder="0"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allowFullScreen
+      ></iframe>
+    </div>
+  );
+};
+
 // Main PostContent component
 export default function PostContent({
   content,
@@ -100,16 +115,92 @@ export default function PostContent({
   const [hoveredPostId, setHoveredPostId] = useState(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
-  // Parse content and handle both >> links and > greentext
+  // Extract YouTube video ID from various YouTube URL formats
+  const extractYouTubeId = (url) => {
+    const patterns = [
+      /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/v\/)([^&\n?#]+)/,
+      /youtube\.com\/watch\?.*v=([^&\n?#]+)/,
+    ];
+
+    for (const pattern of patterns) {
+      const match = url.match(pattern);
+      if (match && match[1]) {
+        return match[1];
+      }
+    }
+    return null;
+  };
+
+  // Parse content and handle both >> links, > greentext, and YouTube links
   const parseContent = (text) => {
+    // First, find all YouTube links and replace them with placeholders
+    const youtubeLinks = [];
+    const youtubeRegex =
+      /https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/v\/)([^&\s\n?#]+)(?:[^\s\n]*)?/g;
+
+    let processedText = text;
+    let match;
+    let linkIndex = 0;
+
+    while ((match = youtubeRegex.exec(text)) !== null) {
+      const videoId = extractYouTubeId(match[0]);
+      if (videoId) {
+        youtubeLinks.push({
+          fullMatch: match[0],
+          videoId,
+          placeholder: `__YOUTUBE_${linkIndex}__`,
+        });
+        processedText = processedText.replace(
+          match[0],
+          `__YOUTUBE_${linkIndex}__`
+        );
+        linkIndex++;
+      }
+    }
+
     // Split by lines to handle greentext
-    const lines = text.split("\n");
+    const lines = processedText.split("\n");
 
     return lines.map((line, lineIndex) => {
       // Check if this line starts with > (but not >>)
       const isGreentext = line.startsWith(">") && !line.startsWith(">>");
       // Check if this line starts with <
       const isRedtext = line.startsWith("<");
+
+      // Check if line contains a YouTube placeholder
+      const youtubePlaceholder = line.match(/__YOUTUBE_(\d+)__/);
+      if (youtubePlaceholder) {
+        const index = parseInt(youtubePlaceholder[1]);
+        const youtubeData = youtubeLinks[index];
+
+        // Split line around the placeholder
+        const parts = line.split(youtubePlaceholder[0]);
+
+        return (
+          <span key={lineIndex}>
+            {parts[0] && (
+              <span
+                className={
+                  isGreentext ? "greentext" : isRedtext ? "redtext" : ""
+                }
+              >
+                {parts[0]}
+              </span>
+            )}
+            <YouTubeEmbed videoId={youtubeData.videoId} />
+            {parts[1] && (
+              <span
+                className={
+                  isGreentext ? "greentext" : isRedtext ? "redtext" : ""
+                }
+              >
+                {parts[1]}
+              </span>
+            )}
+            {lineIndex < lines.length - 1 && <br />}
+          </span>
+        );
+      }
 
       // Split line by >>postId pattern for post links
       const parts = line.split(/(>>\d+)/g);
