@@ -177,7 +177,7 @@ export default function PostContent({
         const parts = line.split(youtubePlaceholder[0]);
 
         return (
-          <span key={lineIndex}>
+          <div key={lineIndex}>
             {parts[0] && (
               <span
                 className={
@@ -197,8 +197,7 @@ export default function PostContent({
                 {parts[1]}
               </span>
             )}
-            {lineIndex < lines.length - 1 && <br />}
-          </span>
+          </div>
         );
       }
 
