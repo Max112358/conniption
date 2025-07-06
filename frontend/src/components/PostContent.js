@@ -37,6 +37,13 @@ const PostLinkPreview = ({
     hideManager.isPostHidden(post.id) ||
     (post.thread_user_id && hideManager.isUserHidden(post.thread_user_id));
 
+  // Determine if the media is a video
+  const isVideo =
+    post.file_type === "video" ||
+    (post.image_url &&
+      (post.image_url.toLowerCase().endsWith(".mp4") ||
+        post.image_url.toLowerCase().endsWith(".webm")));
+
   return (
     <div
       style={{
@@ -64,16 +71,51 @@ const PostLinkPreview = ({
       ) : (
         <>
           {post.image_url && (
-            <img
-              src={post.image_url}
-              alt="Preview"
-              className="img-fluid mb-2"
-              style={{
-                maxHeight: "100px",
-                maxWidth: "100px",
-                objectFit: "cover",
-              }}
-            />
+            <div className="mb-2">
+              {isVideo ? (
+                <div className="position-relative d-inline-block">
+                  <video
+                    src={post.image_url}
+                    className="img-fluid"
+                    style={{
+                      maxHeight: "100px",
+                      maxWidth: "100px",
+                      objectFit: "cover",
+                      borderRadius: "4px",
+                    }}
+                    muted
+                    playsInline
+                    preload="metadata"
+                  />
+                  <div
+                    className="position-absolute top-50 start-50 translate-middle"
+                    style={{
+                      width: "30px",
+                      height: "30px",
+                      backgroundColor: "rgba(0, 0, 0, 0.7)",
+                      borderRadius: "50%",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <i className="bi bi-play-fill text-white"></i>
+                  </div>
+                </div>
+              ) : (
+                <img
+                  src={post.image_url}
+                  alt="Preview"
+                  className="img-fluid"
+                  style={{
+                    maxHeight: "100px",
+                    maxWidth: "100px",
+                    objectFit: "cover",
+                    borderRadius: "4px",
+                  }}
+                />
+              )}
+            </div>
           )}
           <p
             className="text-light mb-0 small"
