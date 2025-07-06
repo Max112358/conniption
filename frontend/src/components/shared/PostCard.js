@@ -62,6 +62,19 @@ export default function PostCard({
       </div>
 
       <div className="card-body">
+        {/* Ban Warning Message */}
+        {post.isBanned && post.banInfo && (
+          <div className="alert alert-danger mb-3 fw-bold text-center">
+            <i className="bi bi-exclamation-triangle-fill me-2"></i>
+            USER WAS BANNED FOR THIS POST
+            {post.banInfo.reason && (
+              <div className="mt-2 small fw-normal">
+                Reason: {post.banInfo.reason}
+              </div>
+            )}
+          </div>
+        )}
+
         {!isHidden && !isUserHidden ? (
           <div>
             {post.image_url && (
