@@ -230,7 +230,8 @@ router.delete("/:postId", async (req, res, next) => {
     }
 
     // FIXED: Check if this is a moderation action (has reason in body) or user self-deletion
-    const isModerationAction = isAdmin && req.body.reason !== undefined;
+    const isModerationAction =
+      isAdmin && req.body && req.body.reason !== undefined;
 
     // Use different deletion logic based on who's deleting and how
     if (!isModerationAction) {
@@ -284,7 +285,10 @@ router.delete("/:postId", async (req, res, next) => {
         post_id: postId,
         thread_id: threadId,
         board_id: boardId,
-        reason: req.body.reason || "Deleted by moderator",
+        reason:
+          req.body && req.body.reason
+            ? req.body.reason
+            : "Deleted by moderator",
         admin_user_id: req.session.adminUser.id,
       });
 
