@@ -6,7 +6,7 @@ import React, {
   useMemo,
   useRef,
 } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import BanNotification from "./BanNotification";
 import LoadingSpinner from "./LoadingSpinner";
 import PageHeader from "./shared/PageHeader";
@@ -14,16 +14,19 @@ import ErrorDisplay from "./shared/ErrorDisplay";
 import ConnectionStatus from "./shared/ConnectionStatus";
 import PostCard from "./shared/PostCard";
 import ReplyForm from "./ReplyForm";
+import ThreadDeleteButton from "./ThreadDeleteButton";
 import useSocket from "../hooks/useSocket";
 import useHideManager from "../hooks/useHideManager";
 import useBanCheck from "../hooks/useBanCheck";
 import useAdminStatus from "../hooks/useAdminStatus";
 import usePostOwnership from "../hooks/usePostOwnership";
+import useThreadOwnership from "../hooks/useThreadOwnership";
 import { API_BASE_URL } from "../config/api";
 import { handleApiError } from "../utils/apiErrorHandler";
 
 function ThreadPage() {
   const { boardId, threadId } = useParams();
+  const navigate = useNavigate();
   const [thread, setThread] = useState(null);
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -49,6 +52,7 @@ function ThreadPage() {
   const { banned, banInfo, checkBanStatus, resetBanStatus } = useBanCheck();
   const { adminUser, isModerator } = useAdminStatus();
   const { addOwnPost, removeOwnPost } = usePostOwnership();
+  const { isOwnThread, removeOwnThread } = useThreadOwnership();
 
   // Update postsRef when posts change
   useEffect(() => {
@@ -241,6 +245,20 @@ function ThreadPage() {
     [boardId, threadId, removeOwnPost]
   );
 
+  const handleThreadDeleted = useCallback(
+    (data) => {
+      console.log("Thread deleted event received:", data);
+      if (
+        data.boardId === boardId &&
+        data.threadId === parseInt(threadId, 10)
+      ) {
+        // Thread has been deleted, redirect to board
+        navigate(`/board/${boardId}`);
+      }
+    },
+    [boardId, threadId, navigate]
+  );
+
   // Socket configuration
   const socketConfig = useMemo(
     () => ({
@@ -249,6 +267,7 @@ function ThreadPage() {
       events: {
         post_created: handlePostCreated,
         post_deleted: handlePostDeleted,
+        thread_deleted: handleThreadDeleted,
       },
     }),
     [
@@ -260,6 +279,7 @@ function ThreadPage() {
       banned,
       handlePostCreated,
       handlePostDeleted,
+      handleThreadDeleted,
     ]
   );
 
@@ -486,13 +506,18 @@ function ThreadPage() {
             </div>
           }
           actions={
-            isModerator && (
-              <button
-                className="btn btn-sm btn-outline-danger"
-                onClick={() => console.log("Delete thread")}
-              >
-                <i className="bi bi-trash"></i> Delete Thread
-              </button>
+            thread && (
+              <ThreadDeleteButton
+                threadId={parseInt(threadId)}
+                boardId={boardId}
+                isOwnThread={isOwnThread(parseInt(threadId))}
+                isModerator={isModerator}
+                adminUser={adminUser}
+                onDeleted={() => {
+                  removeOwnThread(parseInt(threadId));
+                  navigate(`/board/${boardId}`);
+                }}
+              />
             )
           }
         />

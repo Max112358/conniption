@@ -4,6 +4,9 @@ import PostHeader from "../PostHeader";
 import PostContent from "../PostContent";
 import MediaThumbnail from "./MediaThumbnail";
 import HideButton from "../HideButton";
+import ThreadDeleteButton from "../ThreadDeleteButton";
+import useThreadOwnership from "../../hooks/useThreadOwnership";
+import useAdminStatus from "../../hooks/useAdminStatus";
 import { truncateText } from "../../utils/textHelpers";
 
 export default function ThreadCard({
@@ -19,6 +22,9 @@ export default function ThreadCard({
 }) {
   const hasReplies = thread.latestReplies && thread.latestReplies.length > 0;
   const opPost = thread.posts?.[0];
+
+  const { isOwnThread, removeOwnThread } = useThreadOwnership();
+  const { adminUser, isModerator } = useAdminStatus();
 
   return (
     <div className="card bg-high-dark border-secondary mb-4">
@@ -44,6 +50,18 @@ export default function ThreadCard({
             <small className="text-secondary">
               {thread.post_count} {thread.post_count === 1 ? "post" : "posts"}
             </small>
+            {/* Thread Delete Button */}
+            <ThreadDeleteButton
+              threadId={thread.id}
+              boardId={boardId}
+              isOwnThread={isOwnThread(thread.id)}
+              isModerator={isModerator}
+              adminUser={adminUser}
+              onDeleted={() => {
+                removeOwnThread(thread.id);
+                // The board page will handle refreshing via socket event
+              }}
+            />
           </div>
         </div>
 

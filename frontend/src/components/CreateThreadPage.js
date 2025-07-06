@@ -5,6 +5,7 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import { API_BASE_URL } from "../config/api";
 import { handleApiError } from "../utils/apiErrorHandler";
 import postOwnershipManager from "../utils/postOwnershipManager";
+import threadOwnershipManager from "../utils/threadOwnershipManager";
 
 export default function CreateThreadPage() {
   const { boardId } = useParams();
@@ -134,6 +135,11 @@ export default function CreateThreadPage() {
       // Track the OP post as owned by the user
       if (data.postId) {
         postOwnershipManager.addPost(data.postId);
+      }
+
+      // Track the thread as owned by the user
+      if (data.threadId) {
+        threadOwnershipManager.addThread(data.threadId);
       }
 
       // Show success message before redirecting
