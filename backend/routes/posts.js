@@ -229,10 +229,17 @@ router.delete("/:postId", async (req, res, next) => {
       }
     }
 
-    // Use different deletion logic based on who's deleting
-    if (isOwner && !isAdmin) {
-      // User deleting their own post - direct deletion
-      console.log(`Route: User deleting their own post ${postId}`);
+    // FIXED: Check if this is a moderation action (has reason in body) or user self-deletion
+    const isModerationAction = isAdmin && req.body.reason !== undefined;
+
+    // Use different deletion logic based on who's deleting and how
+    if (!isModerationAction) {
+      // User deleting their own post OR admin using regular delete button - direct deletion
+      console.log(
+        `Route: Direct deletion of post ${postId} by ${
+          isOwner ? "owner" : "admin without moderation"
+        }`
+      );
 
       const client = await pool.connect();
       try {
@@ -259,7 +266,7 @@ router.delete("/:postId", async (req, res, next) => {
         }
 
         await client.query("COMMIT");
-        console.log(`Route: User successfully deleted their post ${postId}`);
+        console.log(`Route: Successfully deleted post ${postId}`);
       } catch (error) {
         await client.query("ROLLBACK");
         throw error;
@@ -267,9 +274,9 @@ router.delete("/:postId", async (req, res, next) => {
         client.release();
       }
     } else {
-      // Admin deletion - use moderation system
+      // Admin deletion with moderation - use moderation system
       console.log(
-        `Route: Admin ${req.session.adminUser.username} deleting post ${postId}`
+        `Route: Admin ${req.session.adminUser.username} deleting post ${postId} with moderation`
       );
 
       const moderationModel = require("../models/moderation");
@@ -308,7 +315,11 @@ router.delete("/:postId", async (req, res, next) => {
 
     res.json({
       message: "Post deleted successfully",
-      deletedBy: isOwner && !isAdmin ? "owner" : "admin",
+      deletedBy: !isModerationAction
+        ? isOwner
+          ? "owner"
+          : "admin-direct"
+        : "admin-moderation",
     });
   } catch (error) {
     console.error(
