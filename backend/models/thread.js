@@ -27,6 +27,7 @@ const threadModel = {
           p.content,
           p.image_url,
           p.file_type,
+          p.color,
           (SELECT COUNT(*) FROM posts WHERE thread_id = t.id) as post_count
         FROM 
           threads t
@@ -220,8 +221,8 @@ const threadModel = {
       // Create initial post with media
       await client.query(
         `
-        INSERT INTO posts (thread_id, board_id, content, image_url, file_type, created_at, ip_address, thread_user_id, country_code)
-        VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP, $6, $7, $8)
+        INSERT INTO posts (thread_id, board_id, content, image_url, file_type, created_at, ip_address, thread_user_id, country_code, color)
+        VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP, $6, $7, $8, $9)
         `,
         [
           threadId,
@@ -232,6 +233,7 @@ const threadModel = {
           ipAddress,
           threadUserId,
           countryCode,
+          "black", // Default color
         ]
       );
       console.log(
