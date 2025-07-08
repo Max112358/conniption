@@ -4,7 +4,6 @@ const router = express.Router();
 const { pool } = require("../../config/database");
 const adminModel = require("../../models/admin");
 const moderationModel = require("../../models/moderation");
-const postModel = require("../../models/post");
 const adminAuth = require("../../middleware/adminAuth");
 
 /**
@@ -85,113 +84,6 @@ router.get(
       });
     } catch (error) {
       console.error(`Route Error - GET /api/admin/posts/${postId}/ip:`, error);
-      next(error);
-    }
-  }
-);
-
-/**
- * @route   PUT /api/admin/posts/:postId/color
- * @desc    Change the color of a post
- * @access  Private (moderator or admin only, NOT janitors)
- */
-router.put(
-  "/posts/:postId/color",
-  adminAuth.requireModerator,
-  async (req, res, next) => {
-    const { postId } = req.params;
-    const { boardId, threadId, color, reason } = req.body;
-
-    console.log(
-      `Route: PUT /api/admin/posts/${postId}/color - by ${req.session.adminUser.username}`
-    );
-
-    try {
-      // Validate input
-      if (!boardId || !threadId || !color) {
-        return res.status(400).json({
-          error: "Missing required fields",
-          required: ["boardId", "threadId", "color"],
-        });
-      }
-
-      // Validate color
-      const validColors = [
-        "black",
-        "red",
-        "orange",
-        "yellow",
-        "green",
-        "blue",
-        "purple",
-        "brown",
-      ];
-      if (!validColors.includes(color)) {
-        return res.status(400).json({
-          error: "Invalid color",
-          allowed: validColors,
-        });
-      }
-
-      // Check board permission if not admin
-      if (req.session.adminUser.role !== "admin") {
-        const canModerate = adminModel.canModerateBoard(
-          req.session.adminUser,
-          boardId
-        );
-        if (!canModerate) {
-          return res
-            .status(403)
-            .json({ error: "Not authorized to moderate this board" });
-        }
-      }
-
-      // Change the post color using the moderation model
-      const updatedPost = await moderationModel.changePostColor({
-        post_id: postId,
-        thread_id: threadId,
-        board_id: boardId,
-        color: color,
-        reason: reason || `Changed to ${color}`,
-        admin_user_id: req.session.adminUser.id,
-      });
-
-      if (!updatedPost) {
-        return res.status(404).json({ error: "Post not found" });
-      }
-
-      // Notify connected clients about the color change
-      const io = require("../../utils/socketHandler").getIo;
-      const socketIo = io();
-      if (socketIo) {
-        const roomId = `${boardId}-${threadId}`;
-        console.log(`Emitting post_color_changed event to room ${roomId}`);
-
-        socketIo.to(roomId).emit("post_color_changed", {
-          postId: parseInt(postId),
-          threadId: parseInt(threadId),
-          boardId,
-          color: color,
-        });
-
-        // Also emit to board room
-        socketIo.to(boardId).emit("post_color_changed", {
-          postId: parseInt(postId),
-          threadId: parseInt(threadId),
-          boardId,
-          color: color,
-        });
-      }
-
-      res.json({
-        message: "Post color changed successfully",
-        post: updatedPost,
-      });
-    } catch (error) {
-      console.error(
-        `Route Error - PUT /api/admin/posts/${postId}/color:`,
-        error
-      );
       next(error);
     }
   }
