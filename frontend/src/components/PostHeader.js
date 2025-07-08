@@ -152,13 +152,8 @@ export default function PostHeader({
 
     posts.forEach((p) => {
       if (p.id !== post.id && p.content) {
-        console.log(
-          `Checking post ${p.id} content: "${p.content.substring(0, 100)}..."`
-        );
-
         // Simple check - does the content contain >>postId
         if (p.content.includes(`>>${postIdStr}`)) {
-          console.log(`Found reply from post ${p.id} to post ${postIdStr}`);
           replies.push(p.id);
         }
       }
