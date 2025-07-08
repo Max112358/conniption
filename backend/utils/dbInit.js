@@ -105,6 +105,7 @@ const createTables = async () => {
         ip_address TEXT,
         thread_user_id TEXT,
         country_code VARCHAR(2),
+        color VARCHAR(20) DEFAULT 'black' CHECK (color IN ('black', 'red', 'orange', 'yellow', 'green', 'blue', 'purple', 'brown')),
         FOREIGN KEY (thread_id, board_id) REFERENCES threads(id, board_id) ON DELETE CASCADE
       )
     `);
@@ -161,6 +162,28 @@ const createTables = async () => {
       console.error("Error adding new columns to posts:", err);
     }
 
+    // Add color column to posts if it doesn't exist
+    try {
+      await pool.query(`
+        ALTER TABLE posts
+        ADD COLUMN IF NOT EXISTS color VARCHAR(20) DEFAULT 'black'
+      `);
+      console.log("Added color column to posts table");
+
+      // Add constraint for color values
+      await pool.query(`
+        ALTER TABLE posts
+        DROP CONSTRAINT IF EXISTS posts_color_check;
+        
+        ALTER TABLE posts
+        ADD CONSTRAINT posts_color_check 
+        CHECK (color IN ('black', 'red', 'orange', 'yellow', 'green', 'blue', 'purple', 'brown'))
+      `);
+      console.log("Added color constraint to posts table");
+    } catch (err) {
+      console.error("Error adding color column:", err);
+    }
+
     // Create index for file_type
     try {
       await pool.query(`
@@ -175,6 +198,7 @@ const createTables = async () => {
       await pool.query(`
         CREATE INDEX IF NOT EXISTS idx_posts_thread_user_id ON posts(thread_user_id);
         CREATE INDEX IF NOT EXISTS idx_posts_country_code ON posts(country_code);
+        CREATE INDEX IF NOT EXISTS idx_posts_color ON posts(color);
       `);
     } catch (err) {
       console.error("Error creating indexes:", err);
@@ -239,7 +263,7 @@ const createTables = async () => {
       CREATE TABLE IF NOT EXISTS moderation_actions (
         id SERIAL PRIMARY KEY,
         admin_user_id INTEGER REFERENCES admin_users(id) ON DELETE SET NULL,
-        action_type TEXT NOT NULL CHECK (action_type IN ('ban', 'unban', 'delete_post', 'delete_thread', 'edit_post', 'appeal_response', 'rangeban', 'remove_rangeban', 'view_ip')),
+        action_type TEXT NOT NULL,
         board_id TEXT REFERENCES boards(id) ON DELETE CASCADE,
         thread_id INTEGER,
         post_id INTEGER,
@@ -250,6 +274,21 @@ const createTables = async () => {
         ip_address TEXT -- IP address that was moderated (for reference)
       )
     `);
+
+    // Update moderation_actions constraint to include change_post_color
+    try {
+      await pool.query(`
+        ALTER TABLE moderation_actions
+        DROP CONSTRAINT IF EXISTS moderation_actions_action_type_check;
+        
+        ALTER TABLE moderation_actions
+        ADD CONSTRAINT moderation_actions_action_type_check 
+        CHECK (action_type IN ('ban', 'unban', 'delete_post', 'delete_thread', 'edit_post', 'appeal_response', 'rangeban', 'remove_rangeban', 'view_ip', 'change_post_color'))
+      `);
+      console.log("Updated moderation_actions action_type constraint");
+    } catch (err) {
+      console.error("Error updating moderation_actions constraint:", err);
+    }
 
     // Create admin sessions table for express-session
     await pool.query(`

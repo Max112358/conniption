@@ -21,7 +21,7 @@ const postModel = {
     try {
       const result = await pool.query(
         `
-        SELECT id, content, image_url, file_type, created_at, thread_user_id, country_code
+        SELECT id, content, image_url, file_type, created_at, thread_user_id, country_code, color
         FROM posts
         WHERE thread_id = $1 AND board_id = $2
         ORDER BY created_at ASC
@@ -98,8 +98,8 @@ const postModel = {
         // Post with media
         console.log(`Model: Creating post with ${fileType}: ${imagePath}`);
         postQuery = `
-          INSERT INTO posts (thread_id, board_id, content, image_url, file_type, created_at, ip_address, thread_user_id, country_code)
-          VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP, $6, $7, $8)
+          INSERT INTO posts (thread_id, board_id, content, image_url, file_type, created_at, ip_address, thread_user_id, country_code, color)
+          VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP, $6, $7, $8, $9)
           RETURNING id
         `;
         postParams = [
@@ -111,13 +111,14 @@ const postModel = {
           ipAddress,
           threadUserId,
           countryCode,
+          "black", // Default color
         ];
       } else {
         // Post without media
         console.log(`Model: Creating post without media`);
         postQuery = `
-          INSERT INTO posts (thread_id, board_id, content, created_at, ip_address, thread_user_id, country_code)
-          VALUES ($1, $2, $3, CURRENT_TIMESTAMP, $4, $5, $6)
+          INSERT INTO posts (thread_id, board_id, content, created_at, ip_address, thread_user_id, country_code, color)
+          VALUES ($1, $2, $3, CURRENT_TIMESTAMP, $4, $5, $6, $7)
           RETURNING id
         `;
         postParams = [
@@ -127,6 +128,7 @@ const postModel = {
           ipAddress,
           threadUserId,
           countryCode,
+          "black", // Default color
         ];
       }
 
@@ -155,6 +157,83 @@ const postModel = {
       throw error;
     } finally {
       client.release();
+    }
+  },
+
+  /**
+   * Get a single post by ID
+   * @param {number} postId - The post ID
+   * @param {string} boardId - The board ID
+   * @returns {Promise<Object|null>} Post object or null if not found
+   */
+  getPostById: async (postId, boardId) => {
+    console.log(`Model: Getting post ${postId} in board ${boardId}`);
+
+    try {
+      const result = await pool.query(
+        `
+        SELECT id, thread_id, board_id, content, image_url, file_type, created_at, 
+               ip_address, thread_user_id, country_code, color
+        FROM posts
+        WHERE id = $1 AND board_id = $2
+        `,
+        [postId, boardId]
+      );
+
+      if (result.rows.length === 0) {
+        console.log(`Model: Post not found with ID: ${postId}`);
+        return null;
+      }
+
+      const post = result.rows[0];
+      post.image_url = transformImageUrl(post.image_url);
+
+      console.log(`Model: Found post: ${postId}`);
+      return post;
+    } catch (error) {
+      console.error(`Model Error - getPostById(${postId}, ${boardId}):`, error);
+      throw error;
+    }
+  },
+
+  /**
+   * Update post color
+   * @param {number} postId - The post ID
+   * @param {string} boardId - The board ID
+   * @param {string} color - The new color
+   * @returns {Promise<Object|null>} Updated post object or null if not found
+   */
+  updatePostColor: async (postId, boardId, color) => {
+    console.log(`Model: Updating color for post ${postId} to ${color}`);
+
+    try {
+      const result = await pool.query(
+        `
+        UPDATE posts
+        SET color = $1
+        WHERE id = $2 AND board_id = $3
+        RETURNING id, thread_id, board_id, content, image_url, file_type, created_at, 
+                  ip_address, thread_user_id, country_code, color
+        `,
+        [color, postId, boardId]
+      );
+
+      if (result.rows.length === 0) {
+        console.log(`Model: Post not found with ID: ${postId}`);
+        return null;
+      }
+
+      const post = result.rows[0];
+      post.image_url = transformImageUrl(post.image_url);
+
+      console.log(`Model: Updated post ${postId} color to ${color}`);
+      return post;
+    } catch (error) {
+      console.error(
+        `Model Error - updatePostColor(${postId}, ${color}):`,
+        error
+      );
+      throw error;
     }
   },
 };
