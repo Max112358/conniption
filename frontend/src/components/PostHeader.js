@@ -143,10 +143,6 @@ export default function PostHeader({
       return [];
     }
 
-    console.log(
-      `Looking for replies to post ${post.id} among ${posts.length} posts`
-    );
-
     const replies = [];
     const postIdStr = post.id.toString();
 
@@ -159,7 +155,7 @@ export default function PostHeader({
       }
     });
 
-    console.log(`Total replies found for post ${postIdStr}: ${replies.length}`);
+    //console.log(`Total replies found for post ${postIdStr}: ${replies.length}`);
     return replies;
   };
 
