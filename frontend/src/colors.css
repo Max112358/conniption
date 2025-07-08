@@ -14,56 +14,6 @@
   color: #d85053 !important;
 }
 
-/* Post color classes for moderation */
-.post-color-black {
-  /* Default - no special styling needed */
-}
-
-.post-color-red {
-  border-color: #dc3545 !important;
-  background-color: rgba(220, 53, 69, 0.1) !important;
-}
-
-.post-color-orange {
-  border-color: #fd7e14 !important;
-  background-color: rgba(253, 126, 20, 0.1) !important;
-}
-
-.post-color-yellow {
-  border-color: #ffc107 !important;
-  background-color: rgba(255, 193, 7, 0.1) !important;
-}
-
-.post-color-green {
-  border-color: #28a745 !important;
-  background-color: rgba(40, 167, 69, 0.1) !important;
-}
-
-.post-color-blue {
-  border-color: #007bff !important;
-  background-color: rgba(0, 123, 255, 0.1) !important;
-}
-
-.post-color-purple {
-  border-color: #6f42c1 !important;
-  background-color: rgba(111, 66, 193, 0.1) !important;
-}
-
-.post-color-brown {
-  border-color: #795548 !important;
-  background-color: rgba(121, 85, 72, 0.1) !important;
-}
-
-/* Color indicator badge */
-.post-color-indicator {
-  display: inline-block;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  margin-left: 0.5rem;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-}
-
 /* Placeholder text styling for dark mode */
 .form-control::placeholder {
   color: rgba(255, 255, 255, 0.5) !important;
