@@ -106,7 +106,7 @@ export default function PostModMenu({
         throw new Error(errorData.error || "Failed to change post color");
       }
 
-      await response.json(); // Ensure response is consumed
+      const data = await response.json();
 
       // Close the modal
       setShowColorPicker(false);
