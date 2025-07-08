@@ -17,7 +17,7 @@ import AdminUserManagement from "./components/admin/AdminUserManagement";
 import AdminHousekeeping from "./components/admin/AdminHousekeeping";
 import RangebanManagement from "./components/admin/RangebanManagement";
 
-import "./styles/colors.css";
+import "./colors.css";
 
 // Main app with routing
 export default function App() {

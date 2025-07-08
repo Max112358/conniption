@@ -57,6 +57,10 @@ function BoardPage() {
     }
   }, [boardId]);
 
+  //The proper data structure should be:
+  //Thread metadata: topic, created_at, post_count, id
+  //OP post content: posts[0].content, posts[0].image_url, etc.
+
   // Fetch threads with their latest posts
   const fetchThreadsWithPosts = useCallback(async () => {
     try {
@@ -178,26 +182,6 @@ function BoardPage() {
     [boardId, fetchThreadsWithPosts, removeOwnThread]
   );
 
-  const handlePostColorChanged = useCallback(
-    (data) => {
-      if (data.boardId === boardId) {
-        // Update the post color in the threads
-        setThreadsWithPosts((currentThreads) =>
-          currentThreads.map((thread) => ({
-            ...thread,
-            posts: thread.posts.map((post) =>
-              post.id === data.postId ? { ...post, color: data.color } : post
-            ),
-            latestReplies: thread.latestReplies.map((post) =>
-              post.id === data.postId ? { ...post, color: data.color } : post
-            ),
-          }))
-        );
-      }
-    },
-    [boardId]
-  );
-
   // Socket configuration
   const socketConfig = useMemo(
     () => ({
@@ -208,7 +192,6 @@ function BoardPage() {
         post_created: handlePostCreated,
         post_deleted: handlePostDeleted,
         thread_deleted: handleThreadDeleted,
-        post_color_changed: handlePostColorChanged,
       },
     }),
     [
@@ -221,7 +204,6 @@ function BoardPage() {
       handlePostCreated,
       handlePostDeleted,
       handleThreadDeleted,
-      handlePostColorChanged,
     ]
   );
 

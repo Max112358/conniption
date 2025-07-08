@@ -259,24 +259,6 @@ function ThreadPage() {
     [boardId, threadId, navigate]
   );
 
-  const handlePostColorChanged = useCallback(
-    (data) => {
-      console.log("Post color changed event received:", data);
-      if (
-        data.boardId === boardId &&
-        data.threadId === parseInt(threadId, 10)
-      ) {
-        // Update the post color in the UI
-        setPosts((currentPosts) =>
-          currentPosts.map((p) =>
-            p.id === data.postId ? { ...p, color: data.color } : p
-          )
-        );
-      }
-    },
-    [boardId, threadId]
-  );
-
   // Socket configuration
   const socketConfig = useMemo(
     () => ({
@@ -286,7 +268,6 @@ function ThreadPage() {
         post_created: handlePostCreated,
         post_deleted: handlePostDeleted,
         thread_deleted: handleThreadDeleted,
-        post_color_changed: handlePostColorChanged,
       },
     }),
     [
@@ -299,7 +280,6 @@ function ThreadPage() {
       handlePostCreated,
       handlePostDeleted,
       handleThreadDeleted,
-      handlePostColorChanged,
     ]
   );
 
@@ -462,13 +442,6 @@ function ThreadPage() {
     setPosts((currentPosts) => currentPosts.filter((p) => p.id !== postId));
   }, []);
 
-  // Handle post color change (from mod menu)
-  const handlePostColorChangedByUser = useCallback((postId, newColor) => {
-    setPosts((currentPosts) =>
-      currentPosts.map((p) => (p.id === postId ? { ...p, color: newColor } : p))
-    );
-  }, []);
-
   // Scroll to new posts when notification is clicked
   const scrollToNewPosts = useCallback(() => {
     window.scrollTo({
@@ -600,7 +573,6 @@ function ThreadPage() {
                       posts={posts}
                       isThreadPage={true}
                       onPostDeleted={handlePostDeletedByUser}
-                      onPostColorChanged={handlePostColorChangedByUser}
                     />
                   </div>
                 ))}
