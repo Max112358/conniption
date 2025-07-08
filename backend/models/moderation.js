@@ -281,7 +281,7 @@ const moderationModel = {
         `UPDATE posts 
          SET content = $1
          WHERE id = $2 AND thread_id = $3 AND board_id = $4
-         RETURNING id, content, image_url, created_at`,
+         RETURNING id, content, image_url, created_at, color`,
         [data.content, data.post_id, data.thread_id, data.board_id]
       );
 
@@ -319,6 +319,74 @@ const moderationModel = {
   },
 
   /**
+   * Change post color and record the moderation action
+   * @param {Object} data - Data for color change
+   * @returns {Promise<Object|null>} Updated post object
+   */
+  changePostColor: async (data) => {
+    console.log(
+      `Model: Changing color of post ${data.post_id} to ${data.color}`
+    );
+    const client = await pool.connect();
+
+    try {
+      await client.query("BEGIN");
+
+      // Get current post info
+      const postResult = await client.query(
+        `SELECT ip_address, color as old_color FROM posts 
+         WHERE id = $1 AND thread_id = $2 AND board_id = $3`,
+        [data.post_id, data.thread_id, data.board_id]
+      );
+
+      if (postResult.rows.length === 0) {
+        console.log(`Model: Post not found with ID: ${data.post_id}`);
+        await client.query("ROLLBACK");
+        return null;
+      }
+
+      const oldColor = postResult.rows[0].old_color;
+      const ipAddress = postResult.rows[0].ip_address || "Unknown";
+
+      // Update post color
+      const result = await client.query(
+        `UPDATE posts 
+         SET color = $1
+         WHERE id = $2 AND thread_id = $3 AND board_id = $4
+         RETURNING id, content, image_url, created_at, color, thread_user_id, country_code`,
+        [data.color, data.post_id, data.thread_id, data.board_id]
+      );
+
+      // Log moderation action with old and new color in reason
+      await client.query(
+        `INSERT INTO moderation_actions 
+         (admin_user_id, action_type, board_id, thread_id, post_id, reason, ip_address)
+         VALUES ($1, 'change_post_color', $2, $3, $4, $5, $6)`,
+        [
+          data.admin_user_id,
+          data.board_id,
+          data.thread_id,
+          data.post_id,
+          `Changed color from ${oldColor} to ${data.color}: ${data.reason}`,
+          ipAddress,
+        ]
+      );
+
+      await client.query("COMMIT");
+      console.log(
+        `Model: Successfully changed post ${data.post_id} color to ${data.color}`
+      );
+      return result.rows[0];
+    } catch (error) {
+      await client.query("ROLLBACK");
+      console.error(`Model Error - changePostColor:`, error);
+      throw error;
+    } finally {
+      client.release();
+    }
+  },
+
+  /**
    * Get statistics for moderation actions
    * @param {Object} filters - Filter options
    * @returns {Promise<Object>} Moderation statistics
@@ -333,22 +401,22 @@ const moderationModel = {
 
       // Build conditions for WHERE clause
       if (filters.admin_user_id) {
-        conditions.push(`admin_user_id = $${paramCounter++}`);
+        conditions.push(`admin_user_id = ${paramCounter++}`);
         params.push(filters.admin_user_id);
       }
 
       if (filters.board_id) {
-        conditions.push(`board_id = $${paramCounter++}`);
+        conditions.push(`board_id = ${paramCounter++}`);
         params.push(filters.board_id);
       }
 
       if (filters.start_date) {
-        conditions.push(`created_at >= $${paramCounter++}`);
+        conditions.push(`created_at >= ${paramCounter++}`);
         params.push(filters.start_date);
       }
 
       if (filters.end_date) {
-        conditions.push(`created_at <= $${paramCounter++}`);
+        conditions.push(`created_at <= ${paramCounter++}`);
         params.push(filters.end_date);
       }
 
