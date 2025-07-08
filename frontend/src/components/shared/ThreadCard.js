@@ -1,5 +1,4 @@
 // frontend/src/components/shared/ThreadCard.js
-import { Link } from "react-router-dom";
 import PostHeader from "../PostHeader";
 import PostContent from "../PostContent";
 import MediaThumbnail from "./MediaThumbnail";
@@ -8,6 +7,13 @@ import ThreadDeleteButton from "../ThreadDeleteButton";
 import useThreadOwnership from "../../hooks/useThreadOwnership";
 import useAdminStatus from "../../hooks/useAdminStatus";
 import { truncateText } from "../../utils/textHelpers";
+
+// Mock Link component for artifact
+const Link = ({ to, children, className }) => (
+  <a href={to} className={className}>
+    {children}
+  </a>
+);
 
 export default function ThreadCard({
   thread,
@@ -72,7 +78,9 @@ export default function ThreadCard({
               <div className="mb-2 p-2 bg-dark rounded border border-secondary">
                 <PostHeader
                   post={opPost}
+                  posts={thread.posts || []}
                   onPostNumberClick={() => {}}
+                  onPostLinkClick={() => {}}
                   showThreadId={board?.thread_ids_enabled}
                   showCountryFlag={board?.country_flags_enabled}
                   isPostHidden={hiddenPosts.has(opPost.id)}
@@ -182,7 +190,9 @@ export default function ThreadCard({
                       <div className="mb-1">
                         <PostHeader
                           post={reply}
+                          posts={thread.posts || []}
                           onPostNumberClick={() => {}}
+                          onPostLinkClick={() => {}}
                           showThreadId={board?.thread_ids_enabled}
                           showCountryFlag={board?.country_flags_enabled}
                           isPostHidden={postHidden}
