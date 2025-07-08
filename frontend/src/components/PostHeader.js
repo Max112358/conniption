@@ -138,26 +138,26 @@ export default function PostHeader({
 
   // Find all posts that reply to this post
   const getReplies = () => {
+    if (!posts || posts.length === 0) {
+      return [];
+    }
+
     const replies = [];
     const postIdStr = post.id.toString();
-
-    // Debug logging
-    console.log(`Checking for replies to post ${postIdStr}`);
-    console.log(`Total posts to check: ${posts.length}`);
 
     posts.forEach((p) => {
       if (p.id !== post.id && p.content) {
         // Check if this post's content contains a reference to our post
-        // Match >>postId at word boundaries
-        const replyPattern = new RegExp(`>>${postIdStr}\\b`, "g");
+        // Match >>postId followed by optional (OP) or (You) markers
+        // The markers are added by the display layer, not stored in content
+        // So we just need to match the basic >>postId pattern
+        const replyPattern = new RegExp(`>>${postIdStr}(?!\\d)`, "g");
         if (replyPattern.test(p.content)) {
-          console.log(`Found reply from post ${p.id} to post ${postIdStr}`);
           replies.push(p.id);
         }
       }
     });
 
-    console.log(`Found ${replies.length} replies to post ${postIdStr}`);
     return replies;
   };
 
