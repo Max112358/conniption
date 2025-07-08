@@ -1,4 +1,5 @@
 // frontend/src/components/shared/PostCard.js
+import { useState } from "react";
 import PostModMenu from "../admin/PostModMenu";
 import PostDeleteButton from "../PostDeleteButton";
 import PostHeader from "../PostHeader";
@@ -25,8 +26,10 @@ export default function PostCard({
   allThreadsWithPosts = [], // For board page
   isThreadPage = false,
   onPostDeleted, // Callback when post is deleted
+  onPostColorChanged, // Callback when post color is changed
 }) {
   const { isOwnPost, removeOwnPost } = usePostOwnership();
+  const [postColor, setPostColor] = useState(post.color || "black");
   const isModerator =
     adminUser?.role === "moderator" || adminUser?.role === "admin";
 
@@ -44,12 +47,20 @@ export default function PostCard({
     }
   };
 
+  // Handle color change
+  const handleColorChanged = (postId, newColor) => {
+    setPostColor(newColor);
+    if (onPostColorChanged) {
+      onPostColorChanged(postId, newColor);
+    }
+  };
+
   return (
     <div
       id={`post-${post.id}`}
       className={`card bg-dark border-secondary mb-3 shadow ${
         post.isNew ? "new-post" : ""
-      } ${className}`}
+      } ${postColor !== "black" ? `post-color-${postColor}` : ""} ${className}`}
     >
       <div className="card-header border-secondary d-flex justify-content-between align-items-center">
         <PostHeader
@@ -65,14 +76,42 @@ export default function PostCard({
           onToggleUserHidden={onToggleUserHidden}
         />
 
-        <div className="d-flex gap-2">
+        <div className="d-flex gap-2 align-items-center">
+          {/* Color indicator for non-black posts */}
+          {postColor !== "black" && (
+            <span
+              className="post-color-indicator"
+              style={{
+                backgroundColor:
+                  postColor === "red"
+                    ? "#dc3545"
+                    : postColor === "orange"
+                    ? "#fd7e14"
+                    : postColor === "yellow"
+                    ? "#ffc107"
+                    : postColor === "green"
+                    ? "#28a745"
+                    : postColor === "blue"
+                    ? "#007bff"
+                    : postColor === "purple"
+                    ? "#6f42c1"
+                    : postColor === "brown"
+                    ? "#795548"
+                    : "#212529",
+              }}
+              title={`Post marked as ${postColor}`}
+            ></span>
+          )}
+
           {showModMenu && (
             <PostModMenu
-              post={post}
+              post={{ ...post, color: postColor }}
               thread={thread}
               board={board || { id: boardId }}
               isAdmin={adminUser?.role === "admin"}
               isMod={isModerator}
+              adminUser={adminUser}
+              onColorChanged={handleColorChanged}
             />
           )}
 
