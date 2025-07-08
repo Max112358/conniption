@@ -65,9 +65,11 @@ export default function PostCard({
       <div className="card-header border-secondary d-flex justify-content-between align-items-center">
         <PostHeader
           post={post}
+          posts={posts}
           isOP={isOP}
           boardSettings={boardSettings}
           onPostNumberClick={onPostNumberClick}
+          onPostLinkClick={onPostLinkClick}
           showThreadId={boardSettings.thread_ids_enabled}
           showCountryFlag={boardSettings.country_flags_enabled}
           isPostHidden={isHidden}
