@@ -4,11 +4,20 @@ const express = require("express");
 const boardModel = require("../models/board");
 const boardsRouter = require("./boards");
 
-// Mock models
+// Mock models and middleware
 jest.mock("../models/board");
-jest.mock("./threads", () => express.Router());
-jest.mock("./appeals", () => express.Router());
+jest.mock("./threads", () => {
+  const router = require("express").Router();
+  router.get("/", (req, res) => res.json({ threads: [] }));
+  router.post("/", (req, res) => res.json({ threadId: 1 }));
+  return router;
+});
+jest.mock("./appeals", () => require("express").Router());
 jest.mock("../middleware/banCheck", () => (req, res, next) => next());
+jest.mock("../middleware/adminAuth", () => ({
+  checkBanned: (req, res, next) => next(),
+  enforceBan: (req, res, next) => next(),
+}));
 
 describe("Boards Routes", () => {
   let app;
@@ -32,12 +41,16 @@ describe("Boards Routes", () => {
           name: "Technology",
           description: "Tech discussion",
           nsfw: false,
+          thread_ids_enabled: false,
+          country_flags_enabled: false,
         },
         {
           id: "random",
           name: "Random",
           description: "Random discussion",
           nsfw: true,
+          thread_ids_enabled: true,
+          country_flags_enabled: true,
         },
       ]);
 
@@ -68,6 +81,8 @@ describe("Boards Routes", () => {
         name: "Technology",
         description: "Tech discussion",
         nsfw: false,
+        thread_ids_enabled: false,
+        country_flags_enabled: false,
       });
 
       const response = await request(app).get("/api/boards/tech");

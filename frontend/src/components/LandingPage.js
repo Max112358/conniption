@@ -119,9 +119,11 @@ export default function LandingPage() {
         </div>
 
         {/* remove this warning when the site is finished */}
+        {/*
         <div className="text-center mb-4">
           This site is under construction. Things will break frequently.
         </div>
+        */}
 
         <div className="row">
           {/* SFW Boards Section */}

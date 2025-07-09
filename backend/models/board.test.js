@@ -1,65 +1,90 @@
 // backend/models/board.test.js
-const { newDb } = require("pg-mem");
 const boardModel = require("./board");
+const { pool } = require("../config/database");
 
-// Mock the pool module
-jest.mock("../config/database", () => {
-  // Create an in-memory instance of postgres
-  const pgMem = newDb();
-
-  // Create the boards table
-  pgMem.public.query(`
-    CREATE TABLE boards (
-      id TEXT PRIMARY KEY,
-      name TEXT NOT NULL,
-      description TEXT NOT NULL,
-      nsfw BOOLEAN DEFAULT FALSE
-    )
-  `);
-
-  // Insert test data
-  pgMem.public.query(`
-    INSERT INTO boards (id, name, description, nsfw)
-    VALUES
-      ('tech', 'Technology', 'Tech discussion', false),
-      ('random', 'Random', 'Random discussion', true)
-  `);
-
-  // Return the mock pool
-  return {
-    pool: pgMem.adapters.createPool(),
-  };
-});
+// Mock the database connection
+jest.mock("../config/database", () => ({
+  pool: {
+    query: jest.fn(),
+  },
+}));
 
 describe("Board Model", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   describe("getAllBoards", () => {
     it("should return all boards", async () => {
+      const mockBoards = [
+        {
+          id: "tech",
+          name: "Technology",
+          description: "Tech discussion",
+          nsfw: false,
+          thread_ids_enabled: false,
+          country_flags_enabled: false,
+        },
+        {
+          id: "random",
+          name: "Random",
+          description: "Random discussion",
+          nsfw: true,
+          thread_ids_enabled: true,
+          country_flags_enabled: true,
+        },
+      ];
+
+      pool.query.mockResolvedValue({ rows: mockBoards });
+
       const boards = await boardModel.getAllBoards();
 
-      expect(boards).toHaveLength(2);
-      expect(boards[0]).toHaveProperty("id", "tech");
-      expect(boards[1]).toHaveProperty("id", "random");
+      expect(boards).toEqual(mockBoards);
+      expect(pool.query).toHaveBeenCalledWith(
+        "SELECT id, name, description, nsfw, thread_ids_enabled, country_flags_enabled FROM boards"
+      );
+    });
 
-      // Verify NSFW property
-      expect(boards[0].nsfw).toBe(false);
-      expect(boards[1].nsfw).toBe(true);
+    it("should handle database errors", async () => {
+      pool.query.mockRejectedValue(new Error("Database error"));
+
+      await expect(boardModel.getAllBoards()).rejects.toThrow("Database error");
     });
   });
 
   describe("getBoardById", () => {
     it("should return a board when found", async () => {
+      const mockBoard = {
+        id: "tech",
+        name: "Technology",
+        description: "Tech discussion",
+        nsfw: false,
+        thread_ids_enabled: false,
+        country_flags_enabled: false,
+      };
+
+      pool.query.mockResolvedValue({ rows: [mockBoard] });
+
       const board = await boardModel.getBoardById("tech");
 
-      expect(board).not.toBeNull();
-      expect(board).toHaveProperty("id", "tech");
-      expect(board).toHaveProperty("name", "Technology");
-      expect(board).toHaveProperty("description", "Tech discussion");
+      expect(board).toEqual(mockBoard);
+      expect(pool.query).toHaveBeenCalledWith(expect.any(String), ["tech"]);
     });
 
     it("should return null when board not found", async () => {
+      pool.query.mockResolvedValue({ rows: [] });
+
       const board = await boardModel.getBoardById("nonexistent");
 
       expect(board).toBeNull();
+    });
+
+    it("should handle database errors", async () => {
+      pool.query.mockRejectedValue(new Error("Database error"));
+
+      await expect(boardModel.getBoardById("tech")).rejects.toThrow(
+        "Database error"
+      );
     });
   });
 
@@ -70,17 +95,64 @@ describe("Board Model", () => {
         name: "Test Board",
         description: "Board for testing",
         nsfw: false,
+        thread_ids_enabled: false,
+        country_flags_enabled: false,
       };
+
+      pool.query.mockResolvedValue({ rows: [newBoard] });
 
       const board = await boardModel.createBoard(newBoard);
 
-      expect(board).not.toBeNull();
-      expect(board).toHaveProperty("id", "test");
-      expect(board).toHaveProperty("name", "Test Board");
+      expect(board).toEqual(newBoard);
+      expect(pool.query).toHaveBeenCalledWith(expect.any(String), [
+        "test",
+        "Test Board",
+        "Board for testing",
+        false,
+        false,
+        false,
+      ]);
+    });
 
-      // Verify board was added to database
-      const allBoards = await boardModel.getAllBoards();
-      expect(allBoards).toHaveLength(3);
+    it("should use default values for optional fields", async () => {
+      const boardData = {
+        id: "test",
+        name: "Test Board",
+        description: "Board for testing",
+      };
+
+      const returnedBoard = {
+        ...boardData,
+        nsfw: false,
+        thread_ids_enabled: false,
+        country_flags_enabled: false,
+      };
+
+      pool.query.mockResolvedValue({ rows: [returnedBoard] });
+
+      const board = await boardModel.createBoard(boardData);
+
+      expect(board).toEqual(returnedBoard);
+      expect(pool.query).toHaveBeenCalledWith(expect.any(String), [
+        "test",
+        "Test Board",
+        "Board for testing",
+        false,
+        false,
+        false,
+      ]);
+    });
+
+    it("should handle database errors", async () => {
+      pool.query.mockRejectedValue(new Error("Duplicate key"));
+
+      await expect(
+        boardModel.createBoard({
+          id: "test",
+          name: "Test",
+          description: "Test",
+        })
+      ).rejects.toThrow("Duplicate key");
     });
   });
 });
