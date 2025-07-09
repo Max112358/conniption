@@ -110,11 +110,13 @@ describe("Thread Model", () => {
 
   describe("createThread", () => {
     it("should create a new thread with initial post", async () => {
-      // Mock thread count check
+      // Set up mock sequence for transaction
       mockClient.query
-        .mockResolvedValueOnce({ rows: [{ count: "50" }] }) // Thread count
-        .mockResolvedValueOnce({ rows: [{ id: 123 }] }) // New thread ID
-        .mockResolvedValueOnce({ rows: [] }); // Create post
+        .mockResolvedValueOnce(undefined) // BEGIN
+        .mockResolvedValueOnce({ rows: [{ count: "50" }] }) // Thread count check
+        .mockResolvedValueOnce({ rows: [{ id: 123 }] }) // INSERT thread
+        .mockResolvedValueOnce({ rows: [] }) // INSERT post
+        .mockResolvedValueOnce(undefined); // COMMIT
 
       const result = await threadModel.createThread(
         "tech",
@@ -132,9 +134,10 @@ describe("Thread Model", () => {
     });
 
     it("should delete oldest thread when board has 100 threads", async () => {
-      // Mock reaching thread limit
+      // Set up mock sequence for transaction with thread deletion
       mockClient.query
-        .mockResolvedValueOnce({ rows: [{ count: "100" }] }) // Thread count
+        .mockResolvedValueOnce(undefined) // BEGIN
+        .mockResolvedValueOnce({ rows: [{ count: "100" }] }) // Thread count = 100
         .mockResolvedValueOnce({
           rows: [
             {
@@ -145,10 +148,11 @@ describe("Thread Model", () => {
               ],
             },
           ],
-        }) // Oldest thread
-        .mockResolvedValueOnce({ rows: [] }) // Delete thread
-        .mockResolvedValueOnce({ rows: [{ id: 123 }] }) // New thread ID
-        .mockResolvedValueOnce({ rows: [] }); // Create post
+        }) // Get oldest thread
+        .mockResolvedValueOnce({ rows: [] }) // DELETE oldest thread
+        .mockResolvedValueOnce({ rows: [{ id: 123 }] }) // INSERT new thread
+        .mockResolvedValueOnce({ rows: [] }) // INSERT post
+        .mockResolvedValueOnce(undefined); // COMMIT
 
       const result = await threadModel.createThread(
         "tech",
@@ -168,8 +172,9 @@ describe("Thread Model", () => {
 
     it("should handle transaction rollback on error", async () => {
       mockClient.query
-        .mockResolvedValueOnce({ rows: [{ count: "50" }] })
-        .mockRejectedValueOnce(new Error("Database error"));
+        .mockResolvedValueOnce(undefined) // BEGIN
+        .mockResolvedValueOnce({ rows: [{ count: "50" }] }) // Thread count
+        .mockRejectedValueOnce(new Error("Database error")); // Error on INSERT
 
       await expect(
         threadModel.createThread(
@@ -190,13 +195,15 @@ describe("Thread Model", () => {
   describe("deleteThread", () => {
     it("should delete a thread and its images", async () => {
       mockClient.query
+        .mockResolvedValueOnce(undefined) // BEGIN
         .mockResolvedValueOnce({
           rows: [
             { image_url: "https://test.r2.dev/image1.jpg" },
             { image_url: "https://test.r2.dev/image2.jpg" },
           ],
-        }) // Get images
-        .mockResolvedValueOnce({ rows: [{ id: 123 }] }); // Delete thread
+        }) // SELECT images
+        .mockResolvedValueOnce({ rows: [{ id: 123 }] }) // DELETE thread (returns deleted row)
+        .mockResolvedValueOnce(undefined); // COMMIT
 
       const result = await threadModel.deleteThread(123, "tech");
 
@@ -205,14 +212,16 @@ describe("Thread Model", () => {
       expect(mockClient.query).toHaveBeenCalledWith("COMMIT");
       expect(mockClient.query).toHaveBeenCalledWith(
         expect.stringContaining("DELETE FROM threads"),
-        [123, "tech"]
+        expect.arrayContaining([123, "tech"])
       );
     });
 
     it("should return false when thread not found", async () => {
       mockClient.query
-        .mockResolvedValueOnce({ rows: [] }) // No images
-        .mockResolvedValueOnce({ rows: [] }); // Thread not found
+        .mockResolvedValueOnce(undefined) // BEGIN
+        .mockResolvedValueOnce({ rows: [] }) // SELECT images (no images)
+        .mockResolvedValueOnce({ rows: [] }) // DELETE thread (no rows deleted)
+        .mockResolvedValueOnce(undefined); // ROLLBACK
 
       const result = await threadModel.deleteThread(999, "tech");
 

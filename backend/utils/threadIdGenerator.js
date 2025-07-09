@@ -9,11 +9,17 @@ const SECRET_KEY =
 // This is cleared periodically to prevent memory bloat
 const threadIdCache = new Map();
 
-// Clear cache every hour
-setInterval(() => {
-  threadIdCache.clear();
-  console.log("Thread ID cache cleared");
-}, 60 * 60 * 1000);
+// Store interval reference so we can clear it in tests
+let cacheCleanupInterval;
+
+// Only set up interval if not in test environment
+if (process.env.NODE_ENV !== "test") {
+  // Clear cache every hour
+  cacheCleanupInterval = setInterval(() => {
+    threadIdCache.clear();
+    console.log("Thread ID cache cleared");
+  }, 60 * 60 * 1000);
+}
 
 /**
  * Generate a unique thread ID for a user within a specific thread
@@ -95,8 +101,19 @@ const getThreadIdColor = (threadUserId) => {
   return `#${color}`;
 };
 
+/**
+ * Clear the cache cleanup interval (for testing)
+ */
+const clearCacheInterval = () => {
+  if (cacheCleanupInterval) {
+    clearInterval(cacheCleanupInterval);
+    cacheCleanupInterval = null;
+  }
+};
+
 module.exports = {
   generateThreadUserId,
   generateThreadSalt,
   getThreadIdColor,
+  clearCacheInterval, // Export for testing
 };

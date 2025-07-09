@@ -12,6 +12,7 @@ jest.mock("../../config/database", () => ({
       release: jest.fn(),
     }),
     end: jest.fn(),
+    on: jest.fn(), // Add the missing on method
   },
   testConnection: jest.fn().mockResolvedValue(true),
 }));
@@ -26,6 +27,7 @@ jest.mock("../../utils/scheduledJobs", () => ({
   getStatus: jest.fn().mockReturnValue({ initialized: true, jobs: {} }),
 }));
 
+// Fix Socket.io mock to include engine property
 jest.mock("socket.io", () => {
   const mockEmit = jest.fn();
   const mockOn = jest.fn();
@@ -35,10 +37,33 @@ jest.mock("socket.io", () => {
     on: mockOn,
     emit: mockEmit,
     to: mockTo,
-    engine: { clientsCount: 0 },
+    engine: {
+      clientsCount: 0,
+      on: jest.fn(), // Add the missing on method for engine
+    },
     close: jest.fn(),
     use: jest.fn(),
   }));
+});
+
+// Mock the socketHandler to prevent the error
+jest.mock("../../utils/socketHandler", () => {
+  const mockIo = {
+    on: jest.fn(),
+    emit: jest.fn(),
+    to: jest.fn().mockReturnThis(),
+    engine: {
+      clientsCount: 0,
+      on: jest.fn(),
+    },
+    close: jest.fn(),
+    use: jest.fn(),
+  };
+
+  return jest.fn(() => {
+    // Don't try to set up engine.on here since it's already mocked
+    return mockIo;
+  });
 });
 
 // Mock session for admin tests
@@ -158,7 +183,14 @@ describe("API Integration Tests", () => {
 
       // Mock getting posts
       pool.query.mockResolvedValueOnce({
-        rows: [{ id: 1, board_id: "tech", topic: "Test Thread" }], // Thread exists
+        rows: [
+          {
+            id: 1,
+            board_id: "tech",
+            topic: "Test Thread",
+            thread_salt: "test-salt",
+          },
+        ], // Thread exists with salt
       });
       pool.query.mockResolvedValueOnce({
         rows: [
@@ -167,15 +199,27 @@ describe("API Integration Tests", () => {
             content: "First post",
             image_url: "https://test.r2.dev/image.jpg",
             created_at: new Date(),
+            file_type: "image",
+            thread_user_id: null,
+            country_code: null,
+            color: "black",
           },
           {
             id: 2,
             content: "Reply post",
             image_url: null,
             created_at: new Date(),
+            file_type: null,
+            thread_user_id: null,
+            country_code: null,
+            color: "black",
           },
         ],
       });
+
+      // Mock ban check for posts (getBansByPostId is called for each post)
+      const banModel = require("../../models/ban");
+      banModel.getBansByPostId = jest.fn().mockResolvedValue([]);
 
       // 5. Get posts for thread
       const postsResponse = await request(app).get(
