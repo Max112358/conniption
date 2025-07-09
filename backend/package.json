@@ -19,7 +19,8 @@
     "test:utils": "jest utils/*.test.js",
     "test:debug": "node --inspect-brk node_modules/.bin/jest --runInBand",
     "lint": "eslint .",
-    "lint:fix": "eslint . --fix"
+    "lint:fix": "eslint . --fix",
+    "clean-install": "rm -rf node_modules package-lock.json && npm install"
   },
   "keywords": [
     "imageboard",
