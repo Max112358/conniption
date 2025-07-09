@@ -35,8 +35,8 @@ export default function ThreadCard({
   return (
     <div className="card bg-high-dark border-secondary mb-4">
       <div className="card-body">
-        <div className="d-flex justify-content-between align-items-start mb-2">
-          <div className="d-flex align-items-center gap-2">
+        <div className="d-flex flex-column flex-sm-row justify-content-between align-items-start mb-2 gap-2">
+          <div className="d-flex align-items-center gap-2 w-100 w-sm-auto">
             <HideButton
               isHidden={isHidden}
               onToggle={onToggleHidden}
@@ -44,19 +44,31 @@ export default function ThreadCard({
             />
             <Link
               to={`/board/${boardId}/thread/${thread.id}`}
-              className="text-decoration-none"
+              className="text-decoration-none flex-grow-1"
             >
-              <h5 className="mb-1 text-light text-break">{thread.topic}</h5>
+              {/* Thread title with improved mobile handling */}
+              <h5
+                className="mb-0 text-light text-break"
+                style={{ minWidth: 0 }}
+              >
+                {thread.topic}
+              </h5>
             </Link>
           </div>
-          <div className="d-flex align-items-center text-nowrap ms-2 gap-3">
-            <small className="text-secondary">
+
+          {/* Date, post count and delete button - now mobile-friendly */}
+          <div className="d-flex align-items-center flex-wrap gap-2 gap-sm-3 ms-sm-2 w-100 w-sm-auto justify-content-end">
+            {/* Date - shows only date on mobile, full datetime on larger screens */}
+            <small className="text-secondary text-nowrap">
               {new Date(thread.created_at).toLocaleString()}
             </small>
-            <small className="text-secondary">
+
+            {/* Post count */}
+            <small className="text-secondary text-nowrap">
               {thread.post_count} {thread.post_count === 1 ? "post" : "posts"}
             </small>
-            {/* Thread Delete Button */}
+
+            {/* Thread Delete Button - position maintained */}
             <ThreadDeleteButton
               threadId={thread.id}
               boardId={boardId}
