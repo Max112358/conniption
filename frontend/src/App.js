@@ -18,6 +18,7 @@ import AdminHousekeeping from "./components/admin/AdminHousekeeping";
 import RangebanManagement from "./components/admin/RangebanManagement";
 
 import "./styles/colors.css";
+import "./styles/spoilers.css"; //spoiler text styles
 
 // Main app with routing
 export default function App() {

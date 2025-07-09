@@ -1,0 +1,45 @@
+/* frontend/src/styles/spoilers.css */
+
+/* Spoiler text styling */
+.spoiler {
+  background-color: #000000;
+  color: #000000;
+  padding: 0 4px;
+  border-radius: 3px;
+  cursor: help;
+  transition: all 0.2s ease;
+  display: inline;
+  text-decoration: none;
+}
+
+.spoiler:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #f8f9fa;
+}
+
+/* Ensure spoilers work within different text colors */
+.greentext .spoiler,
+.redtext .spoiler {
+  background-color: #000000;
+  color: #000000;
+}
+
+.greentext .spoiler:hover,
+.redtext .spoiler:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* For spoiler preview in forms */
+.spoiler-preview {
+  background-color: rgba(0, 0, 0, 0.7);
+  color: rgba(0, 0, 0, 0.7);
+  padding: 0 4px;
+  border-radius: 3px;
+  cursor: help;
+  display: inline;
+}
+
+.spoiler-preview:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #f8f9fa;
+}

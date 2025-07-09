@@ -1,6 +1,6 @@
 // frontend/src/components/ReplyForm.js
-
 import { forwardRef } from "react";
+import PreviewableTextArea from "./PreviewableTextArea";
 
 const ReplyForm = forwardRef(
   (
@@ -48,6 +48,11 @@ const ReplyForm = forwardRef(
       }
     };
 
+    const handleFormSubmit = (e) => {
+      e.preventDefault();
+      onSubmit(e);
+    };
+
     return (
       <div className="card bg-dark border-secondary shadow">
         <div className="card-header border-secondary">
@@ -60,16 +65,15 @@ const ReplyForm = forwardRef(
             </div>
           )}
 
-          <form onSubmit={onSubmit}>
+          <div>
             <div className="mb-3">
               <label htmlFor="content" className="form-label text-secondary">
                 Message
               </label>
-              <textarea
+              <PreviewableTextArea
                 ref={ref}
-                className="form-control bg-dark text-light border-secondary"
                 id="content"
-                rows="5"
+                rows={5}
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
                 placeholder="Type your message..."
@@ -134,6 +138,7 @@ const ReplyForm = forwardRef(
               type="submit"
               className="btn btn-primary"
               disabled={loading || (!content.trim() && !image)}
+              onClick={handleFormSubmit}
             >
               {loading ? (
                 <>
@@ -148,7 +153,7 @@ const ReplyForm = forwardRef(
                 "Post Reply"
               )}
             </button>
-          </form>
+          </div>
         </div>
       </div>
     );
