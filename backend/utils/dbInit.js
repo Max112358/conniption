@@ -204,6 +204,92 @@ const createTables = async () => {
       console.error("Error creating indexes:", err);
     }
 
+    // ==================== SURVEY SYSTEM TABLES ====================
+
+    // Create surveys table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS surveys (
+        id SERIAL PRIMARY KEY,
+        post_id INTEGER NOT NULL,
+        thread_id INTEGER NOT NULL,
+        board_id TEXT NOT NULL,
+        survey_type TEXT NOT NULL CHECK (survey_type IN ('single', 'multiple')),
+        question TEXT NOT NULL,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        expires_at TIMESTAMP WITH TIME ZONE,
+        is_active BOOLEAN DEFAULT TRUE,
+        FOREIGN KEY (post_id, thread_id, board_id) 
+          REFERENCES posts(id, thread_id, board_id) ON DELETE CASCADE,
+        UNIQUE(post_id)
+      )
+    `);
+
+    // Create survey options table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS survey_options (
+        id SERIAL PRIMARY KEY,
+        survey_id INTEGER NOT NULL REFERENCES surveys(id) ON DELETE CASCADE,
+        option_text TEXT NOT NULL,
+        option_order INTEGER NOT NULL,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT unique_survey_option_order UNIQUE (survey_id, option_order)
+      )
+    `);
+
+    // Create survey responses table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS survey_responses (
+        id SERIAL PRIMARY KEY,
+        survey_id INTEGER NOT NULL REFERENCES surveys(id) ON DELETE CASCADE,
+        ip_address TEXT NOT NULL,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT unique_survey_ip UNIQUE (survey_id, ip_address)
+      )
+    `);
+
+    // Create survey response options table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS survey_response_options (
+        id SERIAL PRIMARY KEY,
+        response_id INTEGER NOT NULL REFERENCES survey_responses(id) ON DELETE CASCADE,
+        option_id INTEGER NOT NULL REFERENCES survey_options(id) ON DELETE CASCADE,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT unique_response_option UNIQUE (response_id, option_id)
+      )
+    `);
+
+    // Create indexes for survey tables
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_surveys_post_id ON surveys(post_id);
+      CREATE INDEX IF NOT EXISTS idx_surveys_board_id ON surveys(board_id);
+      CREATE INDEX IF NOT EXISTS idx_survey_options_survey_id ON survey_options(survey_id);
+      CREATE INDEX IF NOT EXISTS idx_survey_responses_survey_id ON survey_responses(survey_id);
+      CREATE INDEX IF NOT EXISTS idx_survey_responses_ip ON survey_responses(ip_address);
+      CREATE INDEX IF NOT EXISTS idx_survey_response_options_response_id ON survey_response_options(response_id);
+      CREATE INDEX IF NOT EXISTS idx_survey_response_options_option_id ON survey_response_options(option_id);
+    `);
+
+    // Create view for survey results
+    await pool.query(`
+      CREATE OR REPLACE VIEW survey_results AS
+      SELECT 
+        s.id as survey_id,
+        s.question,
+        s.survey_type,
+        so.id as option_id,
+        so.option_text,
+        so.option_order,
+        COUNT(DISTINCT sr.id) as vote_count,
+        ROUND((COUNT(DISTINCT sr.id)::NUMERIC / NULLIF((SELECT COUNT(DISTINCT id) FROM survey_responses WHERE survey_id = s.id), 0) * 100), 2) as percentage
+      FROM surveys s
+      LEFT JOIN survey_options so ON s.id = so.survey_id
+      LEFT JOIN survey_responses sr ON s.id = sr.survey_id
+      LEFT JOIN survey_response_options sro ON sr.id = sro.response_id AND so.id = sro.option_id
+      GROUP BY s.id, s.question, s.survey_type, so.id, so.option_text, so.option_order
+      ORDER BY s.id, so.option_order
+    `);
+
     // ==================== ADMIN SYSTEM TABLES ====================
 
     // Create admin_users table

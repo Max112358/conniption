@@ -10,6 +10,9 @@ const { uploadWithUrlTransform } = require("../middleware/upload");
 const io = require("../utils/socketHandler").getIo;
 const getClientIp = require("../utils/getClientIp"); // Import the new utility
 const checkBannedIP = require("../middleware/banCheck"); // Import ban check middleware
+const surveyRoutes = require("./surveys");
+
+router.use("/", surveyRoutes);
 
 /**
  * @route   GET /api/boards/:boardId/threads/:threadId/posts
