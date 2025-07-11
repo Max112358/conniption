@@ -1,4 +1,4 @@
-# Admin API Guide
+# Updated Admin API Guide
 
 ## Overview
 
@@ -256,7 +256,11 @@ This guide documents all administrative API endpoints for the imageboard. All en
       "admin_username": "admin",
       "is_active": true,
       "appeal_text": "I promise to behave",
-      "appeal_status": "pending" // "none", "pending", "approved", "denied"
+      "appeal_status": "pending", // "none", "pending", "approved", "denied"
+      "post_content": "Banned post content",
+      "post_image_url": "https://cdn.example.com/image.jpg",
+      "thread_id": 123,
+      "post_id": 456
     }
   ]
 }
@@ -273,7 +277,11 @@ This guide documents all administrative API endpoints for the imageboard. All en
   "ip_address": "192.168.1.100",
   "board_id": "tech", // null for global ban
   "reason": "Spam",
-  "expires_at": "2024-12-31T23:59:59Z" // null for permanent
+  "expires_at": "2024-12-31T23:59:59Z", // null for permanent
+  "post_content": "Content that caused the ban", // Optional
+  "post_image_url": "https://cdn.example.com/image.jpg", // Optional
+  "thread_id": 123, // Optional
+  "post_id": 456 // Optional
 }
 ```
 
@@ -314,7 +322,11 @@ This guide documents all administrative API endpoints for the imageboard. All en
     "admin_username": "admin",
     "is_active": true,
     "appeal_text": "I promise to behave",
-    "appeal_status": "pending"
+    "appeal_status": "pending",
+    "post_content": "Content that caused the ban",
+    "post_image_url": "https://cdn.example.com/image.jpg",
+    "thread_id": 123,
+    "post_id": 456
   }
 }
 ```
@@ -345,6 +357,122 @@ This guide documents all administrative API endpoints for the imageboard. All en
 }
 ```
 
+## Range Ban Management (Admin Only)
+
+### List Range Bans
+
+**Endpoint:** `GET /api/admin/rangebans`  
+**Authentication:** Admin only  
+**Query Parameters:**
+
+- `boardId` (optional) - Filter rangebans by board
+
+**Response:**
+
+```json
+{
+  "rangebans": [
+    {
+      "id": 1,
+      "ban_type": "country",
+      "ban_value": "RU",
+      "board_id": null, // null means global ban
+      "reason": "Spam prevention",
+      "expires_at": null, // null means permanent
+      "created_at": "2024-01-15T10:30:00Z",
+      "admin_user_id": 1,
+      "admin_username": "admin",
+      "is_active": true,
+      "country_name": "Russia" // Added for country bans
+    }
+  ]
+}
+```
+
+### Create Range Ban
+
+**Endpoint:** `POST /api/admin/rangebans`  
+**Authentication:** Admin only  
+**Body:**
+
+```json
+{
+  "ban_type": "country", // "country", "ip_range", or "asn"
+  "ban_value": "RU", // Two-letter country code (uppercase)
+  "board_id": null, // null for global, or specific board ID
+  "reason": "Spam from this region",
+  "expires_at": null // null for permanent, or ISO date string
+}
+```
+
+**Response:**
+
+```json
+{
+  "message": "Rangeban created successfully",
+  "rangeban": {
+    "id": 2,
+    "ban_type": "country",
+    "ban_value": "RU",
+    "board_id": null,
+    "reason": "Spam from this region",
+    "expires_at": null,
+    "created_at": "2024-01-15T10:35:00Z",
+    "admin_user_id": 1,
+    "is_active": true,
+    "country_name": "Russia"
+  }
+}
+```
+
+### Update Range Ban
+
+**Endpoint:** `PUT /api/admin/rangebans/:rangebanId`  
+**Authentication:** Admin only  
+**Body:**
+
+```json
+{
+  "reason": "Updated reason",
+  "expires_at": "2024-12-31T23:59:59Z", // Set expiration
+  "is_active": true // or false to disable
+}
+```
+
+### Remove Range Ban
+
+**Endpoint:** `DELETE /api/admin/rangebans/:rangebanId`  
+**Authentication:** Admin only  
+**Description:** Sets the rangeban to inactive (soft delete)
+
+### Get Range Ban Statistics
+
+**Endpoint:** `GET /api/admin/rangebans/stats`  
+**Authentication:** Admin only  
+**Response:**
+
+```json
+{
+  "stats": {
+    "byType": [
+      {
+        "ban_type": "country",
+        "count": "5",
+        "active_count": "3"
+      }
+    ],
+    "topCountries": [
+      {
+        "country_code": "RU",
+        "ban_count": "2",
+        "global_bans": "1",
+        "country_name": "Russia"
+      }
+    ]
+  }
+}
+```
+
 ## Content Moderation
 
 ### Get Post IP Address
@@ -367,6 +495,36 @@ This guide documents all administrative API endpoints for the imageboard. All en
 ```
 
 **Note:** This action is logged for audit purposes.
+
+### Change Post Color
+
+**Endpoint:** `PUT /api/admin/posts/:postId/color`  
+**Authentication:** Required (Moderator or Admin only, NOT janitors)  
+**Body:**
+
+```json
+{
+  "boardId": "tech",
+  "threadId": 123,
+  "color": "red", // Valid colors: black, red, orange, yellow, green, blue, purple, brown
+  "reason": "Rule violation warning"
+}
+```
+
+**Response:**
+
+```json
+{
+  "message": "Post color changed successfully",
+  "post": {
+    "id": 123,
+    "content": "Post content",
+    "image_url": "https://cdn.example.com/image.jpg",
+    "created_at": "2024-01-15T09:00:00Z",
+    "color": "red"
+  }
+}
+```
 
 ### Delete Thread
 
@@ -459,6 +617,7 @@ This guide documents all administrative API endpoints for the imageboard. All en
 - `thread_id` - Filter by thread
 - `post_id` - Filter by post
 - `ban_id` - Filter by ban
+- `rangeban_id` - Filter by rangeban
 - `ip_address` - Filter by IP address
 - `start_date` - Filter by start date (ISO format)
 - `end_date` - Filter by end date (ISO format)
@@ -479,6 +638,7 @@ This guide documents all administrative API endpoints for the imageboard. All en
       "thread_id": 123,
       "post_id": 456,
       "ban_id": null,
+      "rangeban_id": null,
       "reason": "Spam",
       "created_at": "2024-01-15T10:30:00Z",
       "ip_address": "192.168.1.100"
@@ -486,6 +646,19 @@ This guide documents all administrative API endpoints for the imageboard. All en
   ]
 }
 ```
+
+**Action Types:**
+
+- `ban` - User banned
+- `unban` - Ban removed
+- `delete_post` - Post deleted
+- `delete_thread` - Thread deleted
+- `edit_post` - Post content edited
+- `change_post_color` - Post color changed
+- `appeal_response` - Ban appeal processed
+- `rangeban` - Range ban created
+- `remove_rangeban` - Range ban removed
+- `view_ip` - IP address viewed
 
 ### Get Moderation Statistics
 
@@ -512,6 +685,10 @@ This guide documents all administrative API endpoints for the imageboard. All en
       {
         "action_type": "ban",
         "count": "30"
+      },
+      {
+        "action_type": "change_post_color",
+        "count": "15"
       }
     ],
     "byAdmin": [
@@ -587,20 +764,59 @@ This guide documents all administrative API endpoints for the imageboard. All en
 ### Roles
 
 1. **Admin**: Full access to all features
-2. **Moderator**: Can moderate boards, view/create bans, delete content
+2. **Moderator**: Can moderate boards, view/create bans, delete content, change post colors
 3. **Janitor**: Can only delete posts and threads (limited access)
 
 ### Permission Matrix
 
-| Action            | Admin | Moderator | Janitor |
-| ----------------- | ----- | --------- | ------- |
-| Manage Users      | ✓     | ✗         | ✗       |
-| Create/Edit Bans  | ✓     | ✓         | ✗       |
-| Delete Content    | ✓     | ✓         | ✓       |
-| View IP Addresses | ✓     | ✓         | ✗       |
-| View All Stats    | ✓     | ✓         | ✗       |
-| Run Housekeeping  | ✓     | ✗         | ✗       |
-| Manage Rangebans  | ✓     | ✗         | ✗       |
+| Action                 | Admin | Moderator | Janitor |
+| ---------------------- | ----- | --------- | ------- |
+| Manage Users           | ✓     | ✗         | ✗       |
+| Create/Edit Bans       | ✓     | ✓         | ✗       |
+| Create/Edit Range Bans | ✓     | ✗         | ✗       |
+| Delete Content         | ✓     | ✓         | ✓       |
+| Edit Posts             | ✓     | ✓         | ✗       |
+| Change Post Colors     | ✓     | ✓         | ✗       |
+| View IP Addresses      | ✓     | ✓         | ✗       |
+| View All Stats         | ✓     | ✓         | ✗       |
+| Run Housekeeping       | ✓     | ✗         | ✗       |
+
+## Ban Appeals System
+
+### Submit Appeal
+
+**Endpoint:** `POST /api/boards/:boardId/appeal/:banId`  
+**Authentication:** None (public endpoint)  
+**Body:**
+
+```json
+{
+  "appealText": "I promise to follow the rules and not spam anymore."
+}
+```
+
+**Response:**
+
+```json
+{
+  "message": "Appeal submitted successfully",
+  "status": "pending"
+}
+```
+
+### Get Appeal Status
+
+**Endpoint:** `GET /api/boards/:boardId/appeal/:banId`  
+**Authentication:** None (public endpoint)  
+**Response:**
+
+```json
+{
+  "appeal_status": "pending", // "none", "pending", "approved", "denied"
+  "appeal_text": "I promise to follow the rules and not spam anymore.",
+  "is_active": true
+}
+```
 
 ## Error Responses
 
@@ -669,6 +885,10 @@ This guide documents all administrative API endpoints for the imageboard. All en
 
 7. **Error Handling**: Always check response status codes and handle errors appropriately.
 
+8. **Color Changes**: Only moderators and admins can change post colors. This creates a moderation log entry.
+
+9. **Range Bans**: Only admins can create/manage range bans. These are powerful tools for blocking entire countries or IP ranges.
+
 ## Testing with cURL
 
 ### Login
@@ -699,3 +919,55 @@ curl -X POST https://conniption.onrender.com/api/admin/bans \
     "reason":"Spam"
   }'
 ```
+
+### Change Post Color
+
+```bash
+curl -X PUT https://conniption.onrender.com/api/admin/posts/123/color \
+  -H "Content-Type: application/json" \
+  -b cookies.txt \
+  -d '{
+    "boardId":"tech",
+    "threadId":456,
+    "color":"red",
+    "reason":"Rule violation"
+  }'
+```
+
+### Create Range Ban
+
+```bash
+curl -X POST https://conniption.onrender.com/api/admin/rangebans \
+  -H "Content-Type: application/json" \
+  -b cookies.txt \
+  -d '{
+    "ban_type":"country",
+    "ban_value":"RU",
+    "reason":"Spam prevention"
+  }'
+```
+
+## Changes from Previous Version
+
+### New Features Added:
+
+- **Range Ban Management**: Complete API for country/IP range bans
+- **Post Color Changes**: Moderators can change post colors
+- **Enhanced Ban System**: Bans now store post content, images, and references
+- **Appeal System**: Users can appeal bans through dedicated endpoints
+- **Improved Logging**: All actions now logged with detailed information
+
+### Updated Endpoints:
+
+- Ban creation now supports post context information
+- Moderation actions expanded to include new action types
+- Statistics endpoints now include range ban data
+- Enhanced error responses with more context
+
+### Permission Changes:
+
+- Janitors cannot change post colors (moderator/admin only)
+- Range bans are admin-only (not available to moderators)
+- Appeal handling requires moderator+ permissions
+
+This updated guide reflects all the current functionality in your backend system and should provide comprehensive documentation for frontend development.
