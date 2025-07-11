@@ -5,13 +5,15 @@ import PostDeleteButton from "../PostDeleteButton";
 import PostHeader from "../PostHeader";
 import PostContent from "../PostContent";
 import MediaViewer from "../MediaViewer";
+import SurveyView from "../survey/SurveyView";
+import CreateSurvey from "../survey/CreateSurvey";
 import usePostOwnership from "../../hooks/usePostOwnership";
 
 export default function PostCard({
   post,
   thread,
   boardId,
-  board, // Full board object (optional)
+  board,
   isOP,
   isHidden,
   isUserHidden,
@@ -22,24 +24,22 @@ export default function PostCard({
   boardSettings = {},
   adminUser = null,
   className = "",
-  posts = [], // All posts in thread (for thread page)
-  allThreadsWithPosts = [], // For board page
+  posts = [],
+  allThreadsWithPosts = [],
   isThreadPage = false,
-  onPostDeleted, // Callback when post is deleted
-  onPostColorChanged, // Callback when post color is changed
+  onPostDeleted,
+  onPostColorChanged,
 }) {
   const { isOwnPost, removeOwnPost } = usePostOwnership();
   const [postColor, setPostColor] = useState(post.color || "black");
+  const [showCreateSurvey, setShowCreateSurvey] = useState(false);
+  const [postSurvey, setPostSurvey] = useState(post.survey || null);
   const isModerator =
     adminUser?.role === "moderator" || adminUser?.role === "admin";
 
-  // Determine if we should show the mod menu
   const showModMenu = isModerator && !isHidden && !isUserHidden;
-
-  // Check if this is user's own post
   const isUserOwnPost = isOwnPost(post.id);
 
-  // Handle successful deletion
   const handlePostDeleted = (postId) => {
     removeOwnPost(postId);
     if (onPostDeleted) {
@@ -47,7 +47,6 @@ export default function PostCard({
     }
   };
 
-  // Handle color change
   const handleColorChanged = (postId, newColor) => {
     setPostColor(newColor);
     if (onPostColorChanged) {
@@ -79,7 +78,6 @@ export default function PostCard({
         />
 
         <div className="d-flex gap-2 align-items-center">
-          {/* Color indicator for non-black posts */}
           {postColor !== "black" && (
             <span
               className="post-color-indicator"
@@ -117,7 +115,6 @@ export default function PostCard({
             />
           )}
 
-          {/* Show delete button for user's own posts */}
           {isUserOwnPost && !isHidden && !isUserHidden && (
             <PostDeleteButton
               post={post}
@@ -130,7 +127,6 @@ export default function PostCard({
       </div>
 
       <div className="card-body">
-        {/* Ban Warning Message */}
         {post.isBanned && post.banInfo && (
           <div className="alert alert-danger mb-3 fw-bold text-center">
             <i className="bi bi-exclamation-triangle-fill me-2"></i>
@@ -165,6 +161,48 @@ export default function PostCard({
               onPostLinkClick={onPostLinkClick}
               isThreadPage={isThreadPage}
             />
+
+            {/* Survey Component */}
+            {postSurvey && (
+              <div className="mt-3">
+                <SurveyView
+                  survey={postSurvey}
+                  postId={post.id}
+                  threadId={thread?.id || post.thread_id}
+                  boardId={boardId}
+                  isPostOwner={isUserOwnPost}
+                />
+              </div>
+            )}
+
+            {/* Create Survey Button/Form */}
+            {!postSurvey && isUserOwnPost && !showCreateSurvey && (
+              <div className="mt-3">
+                <button
+                  className="btn btn-sm btn-outline-primary"
+                  onClick={() => setShowCreateSurvey(true)}
+                >
+                  <i className="bi bi-bar-chart me-1"></i>
+                  Add Survey
+                </button>
+              </div>
+            )}
+
+            {/* Create Survey Form */}
+            {showCreateSurvey && (
+              <div className="mt-3">
+                <CreateSurvey
+                  postId={post.id}
+                  threadId={thread?.id || post.thread_id}
+                  boardId={boardId}
+                  onSurveyCreated={(survey) => {
+                    setPostSurvey(survey);
+                    setShowCreateSurvey(false);
+                  }}
+                  onCancel={() => setShowCreateSurvey(false)}
+                />
+              </div>
+            )}
           </div>
         ) : (
           <p className="text-secondary mb-0">
