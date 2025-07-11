@@ -39,38 +39,6 @@ const postModel = {
         image_url: transformImageUrl(post.image_url),
       }));
 
-      // Get survey info for posts
-      const postIds = posts.map((p) => p.id);
-      if (postIds.length > 0) {
-        const surveyResult = await pool.query(
-          `SELECT s.id as survey_id, s.post_id, s.survey_type, s.question, 
-                  COUNT(DISTINCT sr.id) as response_count
-           FROM surveys s
-           LEFT JOIN survey_responses sr ON s.id = sr.survey_id
-           WHERE s.post_id = ANY($1) AND s.board_id = $2 AND s.is_active = TRUE
-           GROUP BY s.id`,
-          [postIds, boardId]
-        );
-
-        // Create a map of post_id to survey info
-        const surveyMap = {};
-        surveyResult.rows.forEach((survey) => {
-          surveyMap[survey.post_id] = {
-            survey_id: survey.survey_id,
-            survey_type: survey.survey_type,
-            question: survey.question,
-            response_count: parseInt(survey.response_count),
-          };
-        });
-
-        // Add survey info to posts
-        posts.forEach((post) => {
-          if (surveyMap[post.id]) {
-            post.survey = surveyMap[post.id];
-          }
-        });
-      }
-
       return posts;
     } catch (error) {
       console.error(

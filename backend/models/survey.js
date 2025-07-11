@@ -5,6 +5,49 @@ const { pool } = require("../config/database");
  * Survey model functions
  */
 const surveyModel = {
+  // ... existing methods remain unchanged ...
+
+  /**
+   * Get surveys for multiple posts
+   * @param {Array<number>} postIds - Array of post IDs
+   * @param {string} boardId - Board ID
+   * @returns {Promise<Array>} Array of survey objects with basic info
+   */
+  getSurveysByPostIds: async (postIds, boardId) => {
+    console.log(
+      `Model: Getting surveys for ${postIds.length} posts in board ${boardId}`
+    );
+
+    if (!postIds || postIds.length === 0) {
+      return [];
+    }
+
+    try {
+      const result = await pool.query(
+        `SELECT s.id as survey_id, s.post_id, s.survey_type, s.question, 
+                COUNT(DISTINCT sr.id) as response_count
+         FROM surveys s
+         LEFT JOIN survey_responses sr ON s.id = sr.survey_id
+         WHERE s.post_id = ANY($1) AND s.board_id = $2 AND s.is_active = TRUE
+         GROUP BY s.id`,
+        [postIds, boardId]
+      );
+
+      console.log(`Model: Found ${result.rows.length} surveys for posts`);
+
+      return result.rows.map((survey) => ({
+        survey_id: survey.survey_id,
+        post_id: survey.post_id,
+        survey_type: survey.survey_type,
+        question: survey.question,
+        response_count: parseInt(survey.response_count),
+      }));
+    } catch (error) {
+      console.error(`Model Error - getSurveysByPostIds:`, error);
+      throw error;
+    }
+  },
+
   /**
    * Create a new survey attached to a post
    * @param {Object} surveyData - Survey data

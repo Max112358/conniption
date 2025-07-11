@@ -3,6 +3,7 @@ const express = require("express");
 const router = express.Router({ mergeParams: true }); // mergeParams to access boardId and threadId
 const { pool } = require("../config/database");
 const postModel = require("../models/post");
+const surveyModel = require("../models/survey");
 const threadModel = require("../models/thread");
 const boardModel = require("../models/board");
 const banModel = require("../models/ban");
@@ -20,6 +21,8 @@ router.use("/", surveyRoutes);
  */
 router.get("/", async (req, res, next) => {
   const { boardId, threadId } = req.params;
+  const { includeSurveys = "true" } = req.query; // Default to including surveys
+
   console.log(`Route: GET /api/boards/${boardId}/threads/${threadId}/posts`);
 
   try {
@@ -45,7 +48,32 @@ router.get("/", async (req, res, next) => {
       })
     );
 
-    res.json({ posts: postsWithBanInfo });
+    // Optionally get survey info for posts
+    let finalPosts = postsWithBanInfo;
+
+    if (includeSurveys === "true" && posts.length > 0) {
+      // Get all post IDs
+      const postIds = posts.map((p) => p.id);
+
+      // Get surveys for these posts
+      const surveys = await surveyModel.getSurveysByPostIds(postIds, boardId);
+
+      // Create a map of post_id to survey info for efficient lookup
+      const surveyMap = {};
+      surveys.forEach((survey) => {
+        surveyMap[survey.post_id] = survey;
+      });
+
+      // Add survey info to posts
+      finalPosts = postsWithBanInfo.map((post) => {
+        if (surveyMap[post.id]) {
+          return { ...post, survey: surveyMap[post.id] };
+        }
+        return post;
+      });
+    }
+
+    res.json({ posts: finalPosts });
   } catch (error) {
     console.error(
       `Route Error - GET /api/boards/${boardId}/threads/${threadId}/posts:`,

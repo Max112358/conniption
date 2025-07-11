@@ -63,6 +63,17 @@ describe("Post Model", () => {
         123,
         "tech",
       ]);
+      // Should only be called once (no survey query)
+      expect(pool.query).toHaveBeenCalledTimes(1);
+    });
+
+    it("should handle empty results", async () => {
+      pool.query.mockResolvedValue({ rows: [] });
+
+      const posts = await postModel.getPostsByThreadId(123, "tech");
+
+      expect(posts).toEqual([]);
+      expect(pool.query).toHaveBeenCalledTimes(1);
     });
 
     it("should handle database errors", async () => {

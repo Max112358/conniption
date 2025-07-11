@@ -217,6 +217,11 @@ describe("API Integration Tests", () => {
         ],
       });
 
+      // Mock survey query that getPostsByThreadId now makes
+      pool.query.mockResolvedValueOnce({
+        rows: [], // No surveys for these posts
+      });
+
       // Mock ban check for posts (getBansByPostId is called for each post)
       const banModel = require("../../models/ban");
       banModel.getBansByPostId = jest.fn().mockResolvedValue([]);

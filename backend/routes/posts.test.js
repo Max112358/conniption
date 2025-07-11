@@ -63,6 +63,8 @@ describe("Post Routes", () => {
         topic: "Test Thread",
       });
 
+      // Mock the getPostsByThreadId to return posts without survey info
+      // The actual implementation adds survey info, but for this test we mock the final result
       postModel.getPostsByThreadId.mockResolvedValue([
         {
           id: 1,
@@ -86,6 +88,7 @@ describe("Post Routes", () => {
         },
       ]);
 
+      // Mock getBansByPostId for each post
       banModel.getBansByPostId.mockResolvedValue([]);
 
       const response = await request(app).get(
