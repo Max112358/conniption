@@ -210,16 +210,14 @@ const createTables = async () => {
     await pool.query(`
       CREATE TABLE IF NOT EXISTS surveys (
         id SERIAL PRIMARY KEY,
-        post_id INTEGER NOT NULL,
+        post_id INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
         thread_id INTEGER NOT NULL,
-        board_id TEXT NOT NULL,
+        board_id TEXT NOT NULL REFERENCES boards(id) ON DELETE CASCADE,
         survey_type TEXT NOT NULL CHECK (survey_type IN ('single', 'multiple')),
         question TEXT NOT NULL,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
         expires_at TIMESTAMP WITH TIME ZONE,
         is_active BOOLEAN DEFAULT TRUE,
-        FOREIGN KEY (post_id, thread_id, board_id) 
-          REFERENCES posts(id, thread_id, board_id) ON DELETE CASCADE,
         UNIQUE(post_id)
       )
     `);
@@ -263,6 +261,7 @@ const createTables = async () => {
     await pool.query(`
       CREATE INDEX IF NOT EXISTS idx_surveys_post_id ON surveys(post_id);
       CREATE INDEX IF NOT EXISTS idx_surveys_board_id ON surveys(board_id);
+      CREATE INDEX IF NOT EXISTS idx_surveys_thread_id ON surveys(thread_id);
       CREATE INDEX IF NOT EXISTS idx_survey_options_survey_id ON survey_options(survey_id);
       CREATE INDEX IF NOT EXISTS idx_survey_responses_survey_id ON survey_responses(survey_id);
       CREATE INDEX IF NOT EXISTS idx_survey_responses_ip ON survey_responses(ip_address);
