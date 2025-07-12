@@ -226,11 +226,13 @@ function ThreadPage() {
 
     try {
       // Fetch all data in parallel
-      const [boardSuccess, threadSuccess, postsSuccess] = await Promise.all([
+      const results = await Promise.all([
         fetchBoard(),
         fetchThread(),
         fetchPosts(false),
       ]);
+
+      const [, threadSuccess, postsSuccess] = results;
 
       // Check if thread exists
       if (!threadSuccess) {
