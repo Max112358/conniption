@@ -1,23 +1,16 @@
 // frontend/src/components/CreateThreadPage.js
+
 import { useState, useEffect } from "react";
-import PreviewableTextArea from "./PreviewableTextArea";
-
-// Mock implementations for demo
-const API_BASE_URL = "https://example.com";
-const handleApiError = (error) => error.message || "An error occurred";
-const postOwnershipManager = { addPost: () => {} };
-const threadOwnershipManager = { addThread: () => {} };
-
-// Mock Link component
-const Link = ({ to, children, className }) => (
-  <a href={to} className={className}>
-    {children}
-  </a>
-);
+import { useParams, useNavigate, Link } from "react-router-dom";
+import { API_BASE_URL } from "../config/api";
+import { handleApiError } from "../utils/apiErrorHandler";
+import postOwnershipManager from "../utils/postOwnershipManager";
+import threadOwnershipManager from "../utils/threadOwnershipManager";
 
 export default function CreateThreadPage() {
-  const boardId = "tech"; // Mock boardId for demo
-  const navigate = (path) => console.log("Navigate to:", path);
+  const { boardId } = useParams();
+  console.log("CreateThreadPage mounting, boardId:", boardId);
+  const navigate = useNavigate();
 
   const [topic, setTopic] = useState("");
   const [content, setContent] = useState("");
@@ -39,6 +32,7 @@ export default function CreateThreadPage() {
         }
       } catch (err) {
         console.error("Error fetching board data:", err);
+        // Don't set error state here as it's not critical for thread creation
       }
     };
 
@@ -52,7 +46,7 @@ export default function CreateThreadPage() {
       // Check file size (4MB limit)
       if (file.size > 4 * 1024 * 1024) {
         setError("File size must be less than 4MB");
-        e.target.value = null;
+        e.target.value = null; // Clear the input
         setImage(null);
         setImagePreview(null);
         return;
@@ -71,7 +65,7 @@ export default function CreateThreadPage() {
         setError(
           "Invalid file type. Only PNG, JPG, WebP, GIF, MP4, and WebM files are allowed."
         );
-        e.target.value = null;
+        e.target.value = null; // Clear the input
         setImage(null);
         setImagePreview(null);
         return;
@@ -124,11 +118,14 @@ export default function CreateThreadPage() {
         {
           method: "POST",
           body: formData,
+          // Note: Don't set Content-Type header when using FormData
         }
       );
 
       if (!response.ok) {
         const errorData = await response.json();
+
+        // Use the centralized error handler
         const errorMessage = handleApiError(errorData);
         throw new Error(errorMessage);
       }
@@ -207,14 +204,14 @@ export default function CreateThreadPage() {
               </div>
             )}
 
-            <div>
+            <form onSubmit={handleSubmit}>
               <div className="mb-3">
                 <label htmlFor="topic" className="form-label text-secondary">
                   Thread Topic
                 </label>
                 <input
                   type="text"
-                  className="form-control bg-dark text-light border-secondary"
+                  className="form-control bg-dark text-light border-secondary text-light"
                   id="topic"
                   value={topic}
                   onChange={(e) => setTopic(e.target.value)}
@@ -228,15 +225,16 @@ export default function CreateThreadPage() {
                 <label htmlFor="content" className="form-label text-secondary">
                   Content
                 </label>
-                <PreviewableTextArea
+                <textarea
+                  className="form-control bg-dark text-light border-secondary text-light"
                   id="content"
-                  rows={5}
+                  rows="5"
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
                   placeholder="Enter your post content"
-                  maxLength={2000}
-                  disabled={loading}
-                />
+                  required
+                  maxLength="2000"
+                ></textarea>
               </div>
 
               <div className="mb-3">
@@ -245,7 +243,7 @@ export default function CreateThreadPage() {
                 </label>
                 <input
                   type="file"
-                  className="form-control bg-dark text-light border-secondary"
+                  className="form-control bg-dark text-light border-secondary text-light"
                   id="image"
                   accept="image/png,image/jpeg,image/webp,image/gif,video/mp4,video/webm"
                   onChange={handleImageChange}
@@ -288,7 +286,6 @@ export default function CreateThreadPage() {
                   type="submit"
                   className="btn btn-primary"
                   disabled={loading}
-                  onClick={handleSubmit}
                 >
                   {loading ? (
                     <>
@@ -304,7 +301,7 @@ export default function CreateThreadPage() {
                   )}
                 </button>
               </div>
-            </div>
+            </form>
           </div>
         </div>
       </div>
