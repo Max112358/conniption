@@ -110,21 +110,24 @@ function ThreadPage() {
       const response = await fetch(
         `${API_BASE_URL}/api/boards/${boardId}/threads/${threadId}`
       );
-      const data = await response.json();
 
       if (!response.ok) {
         if (response.status === 404) {
           setThreadNotFound(true);
-          return;
+          return false;
         }
+        const data = await response.json();
         throw new Error(data.error || "Failed to fetch thread");
       }
 
+      const data = await response.json();
       setThread(data.thread);
       setThreadNotFound(false);
+      return true;
     } catch (err) {
       console.error("Error fetching thread:", err);
       setError(err.message);
+      return false;
     }
   }, [boardId, threadId]);
 
@@ -132,10 +135,13 @@ function ThreadPage() {
   const fetchPosts = useCallback(
     async (isSocketUpdate = false) => {
       try {
+        console.log(
+          `Fetching posts for thread ${threadId} on board ${boardId}`
+        );
+
         const response = await fetch(
           `${API_BASE_URL}/api/boards/${boardId}/threads/${threadId}/posts`
         );
-        const data = await response.json();
 
         if (!response.ok) {
           // Check for ban
@@ -143,10 +149,25 @@ function ThreadPage() {
             const isBanned = await checkBanStatus(response);
             if (isBanned) return false;
           }
-          throw new Error(data.error || "Failed to fetch posts");
+
+          const errorData = await response.json();
+          throw new Error(errorData.error || "Failed to fetch posts");
         }
 
-        const newPosts = data.posts || [];
+        const data = await response.json();
+        console.log("Posts API response:", data);
+
+        // Ensure we have an array of posts - handle both data.posts and direct array response
+        let newPosts = [];
+        if (Array.isArray(data)) {
+          newPosts = data;
+        } else if (data && Array.isArray(data.posts)) {
+          newPosts = data.posts;
+        } else if (data && data.data && Array.isArray(data.data)) {
+          newPosts = data.data;
+        }
+
+        console.log(`Fetched ${newPosts.length} posts`);
 
         // If this is a socket update and we have existing posts, mark new ones
         if (isSocketUpdate && postsRef.current.length > 0) {
@@ -198,11 +219,29 @@ function ThreadPage() {
 
   // Combined fetch function
   const fetchData = useCallback(async () => {
+    console.log("Starting fetchData...");
     setLoading(true);
     setError(null);
     resetBanStatus();
+
     try {
-      await Promise.all([fetchBoard(), fetchThread(), fetchPosts(false)]);
+      // Fetch all data in parallel
+      const [boardSuccess, threadSuccess, postsSuccess] = await Promise.all([
+        fetchBoard(),
+        fetchThread(),
+        fetchPosts(false),
+      ]);
+
+      // Check if thread exists
+      if (!threadSuccess) {
+        console.log("Thread not found");
+        return;
+      }
+
+      console.log(`Data fetch complete. Posts loaded: ${postsSuccess}`);
+    } catch (err) {
+      console.error("Error in fetchData:", err);
+      setError(err.message || "Failed to load thread data");
     } finally {
       setLoading(false);
     }
@@ -500,6 +539,9 @@ function ThreadPage() {
     return <ErrorDisplay error={error} backLink={`/board/${boardId}`} />;
   }
 
+  // Debug logging
+  console.log("Rendering ThreadPage with posts:", posts);
+
   return (
     <div className="container-fluid min-vh-100 bg-dark text-light py-4">
       <div className="container">
@@ -511,7 +553,10 @@ function ThreadPage() {
           subtitle={
             <div className="d-flex justify-content-between align-items-center">
               <span>
-                Thread created: {new Date(thread.created_at).toLocaleString()}
+                {thread &&
+                  `Thread created: ${new Date(
+                    thread.created_at
+                  ).toLocaleString()}`}
               </span>
               <div className="d-flex align-items-center gap-2">
                 <ConnectionStatus connected={isConnected} />
@@ -568,7 +613,7 @@ function ThreadPage() {
         {/* Posts Section */}
         <div className="card bg-mid-dark border-secondary shadow mb-4">
           <div className="card-header border-secondary">
-            <h2 className="h5 mb-0 text-light">Posts</h2>
+            <h2 className="h5 mb-0 text-light">Posts ({posts.length})</h2>
           </div>
           <div className="card-body">
             {posts.length > 0 ? (
@@ -606,15 +651,21 @@ function ThreadPage() {
                 ))}
               </div>
             ) : (
-              <div className="text-center py-3">
-                <p className="text-muted">No posts available.</p>
+              <div className="text-center py-5">
+                <p className="text-muted">
+                  No posts available in this thread yet.
+                </p>
+                <p className="text-muted small">
+                  This could mean the thread is new or there was an error
+                  loading posts.
+                </p>
               </div>
             )}
           </div>
         </div>
 
         {/* Reply Form */}
-        {!showReplyForm && (
+        {!showReplyForm && posts.length > 0 && (
           <div className="text-center mb-4">
             <button
               className="btn btn-primary"
