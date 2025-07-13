@@ -1,19 +1,16 @@
 // frontend/src/components/CreateThreadPage.js
 
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import { API_BASE_URL } from "../config/api";
 import { handleApiError } from "../utils/apiErrorHandler";
 import postOwnershipManager from "../utils/postOwnershipManager";
 import threadOwnershipManager from "../utils/threadOwnershipManager";
 import PreviewableTextArea from "./PreviewableTextArea";
-
-// Mock Link component for artifact
-const Link = ({ to, children, className }) => (
-  <a href={to} className={className}>
-    {children}
-  </a>
-);
+import SurveyFormSection, {
+  validateSurveyData,
+  calculateSurveyExpiresAt,
+} from "./survey/SurveyFormSection";
 
 export default function CreateThreadPage() {
   const { boardId } = useParams();
@@ -30,10 +27,12 @@ export default function CreateThreadPage() {
 
   // Survey state
   const [includeSurvey, setIncludeSurvey] = useState(false);
-  const [surveyType, setSurveyType] = useState("single");
-  const [surveyQuestion, setSurveyQuestion] = useState("");
-  const [surveyOptions, setSurveyOptions] = useState(["", ""]);
-  const [surveyExpiresIn, setSurveyExpiresIn] = useState("");
+  const [surveyData, setSurveyData] = useState({
+    surveyType: "single",
+    surveyQuestion: "",
+    surveyOptions: ["", ""],
+    surveyExpiresIn: "",
+  });
 
   // Fetch board details on component mount
   useEffect(() => {
@@ -96,68 +95,6 @@ export default function CreateThreadPage() {
     }
   };
 
-  // Survey option management
-  const addSurveyOption = () => {
-    if (surveyOptions.length < 16) {
-      setSurveyOptions([...surveyOptions, ""]);
-    }
-  };
-
-  const removeSurveyOption = (index) => {
-    if (surveyOptions.length > 2) {
-      setSurveyOptions(surveyOptions.filter((_, i) => i !== index));
-    }
-  };
-
-  const updateSurveyOption = (index, value) => {
-    const newOptions = [...surveyOptions];
-    newOptions[index] = value;
-    setSurveyOptions(newOptions);
-  };
-
-  // Calculate survey expiration date
-  const calculateSurveyExpiresAt = () => {
-    if (!surveyExpiresIn) return null;
-
-    const now = new Date();
-    const [value, unit] = surveyExpiresIn.split("-");
-    const amount = parseInt(value);
-
-    switch (unit) {
-      case "hours":
-        now.setHours(now.getHours() + amount);
-        break;
-      case "days":
-        now.setDate(now.getDate() + amount);
-        break;
-      case "weeks":
-        now.setDate(now.getDate() + amount * 7);
-        break;
-      default:
-        return null;
-    }
-
-    return now.toISOString();
-  };
-
-  // Validate survey data
-  const validateSurvey = () => {
-    if (!includeSurvey) return true;
-
-    if (!surveyQuestion.trim()) {
-      setError("Survey question is required");
-      return false;
-    }
-
-    const validOptions = surveyOptions.filter((opt) => opt.trim());
-    if (validOptions.length < 2) {
-      setError("Survey must have at least 2 options");
-      return false;
-    }
-
-    return true;
-  };
-
   // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -178,8 +115,13 @@ export default function CreateThreadPage() {
       return;
     }
 
-    if (!validateSurvey()) {
-      return;
+    // Validate survey if enabled
+    if (includeSurvey) {
+      const validation = validateSurveyData(surveyData);
+      if (!validation.valid) {
+        setError(validation.error);
+        return;
+      }
     }
 
     setLoading(true);
@@ -221,7 +163,9 @@ export default function CreateThreadPage() {
       // Create survey if requested
       if (includeSurvey && data.postId) {
         try {
-          const validOptions = surveyOptions.filter((opt) => opt.trim());
+          const validOptions = surveyData.surveyOptions.filter((opt) =>
+            opt.trim()
+          );
 
           const surveyResponse = await fetch(
             `${API_BASE_URL}/api/boards/${boardId}/threads/${data.threadId}/posts/${data.postId}/survey`,
@@ -231,10 +175,12 @@ export default function CreateThreadPage() {
                 "Content-Type": "application/json",
               },
               body: JSON.stringify({
-                survey_type: surveyType,
-                question: surveyQuestion.trim(),
+                survey_type: surveyData.surveyType,
+                question: surveyData.surveyQuestion.trim(),
                 options: validOptions,
-                expires_at: calculateSurveyExpiresAt(),
+                expires_at: calculateSurveyExpiresAt(
+                  surveyData.surveyExpiresIn
+                ),
               }),
             }
           );
@@ -388,167 +334,14 @@ export default function CreateThreadPage() {
                 </div>
               )}
 
-              {/* Survey Section */}
-              <div className="card bg-dark border-secondary mb-3">
-                <div className="card-header border-secondary">
-                  <div className="form-check">
-                    <input
-                      className="form-check-input"
-                      type="checkbox"
-                      id="includeSurvey"
-                      checked={includeSurvey}
-                      onChange={(e) => setIncludeSurvey(e.target.checked)}
-                      disabled={loading}
-                    />
-                    <label className="form-check-label" htmlFor="includeSurvey">
-                      Add a survey/poll to this thread
-                    </label>
-                  </div>
-                </div>
-
-                {includeSurvey && (
-                  <div className="card-body">
-                    {/* Survey Type */}
-                    <div className="mb-3">
-                      <label className="form-label text-secondary">
-                        Survey Type
-                      </label>
-                      <div>
-                        <div className="form-check form-check-inline">
-                          <input
-                            className="form-check-input"
-                            type="radio"
-                            name="surveyType"
-                            id="singleChoice"
-                            value="single"
-                            checked={surveyType === "single"}
-                            onChange={(e) => setSurveyType(e.target.value)}
-                            disabled={loading}
-                          />
-                          <label
-                            className="form-check-label"
-                            htmlFor="singleChoice"
-                          >
-                            Single Choice
-                          </label>
-                        </div>
-                        <div className="form-check form-check-inline">
-                          <input
-                            className="form-check-input"
-                            type="radio"
-                            name="surveyType"
-                            id="multipleChoice"
-                            value="multiple"
-                            checked={surveyType === "multiple"}
-                            onChange={(e) => setSurveyType(e.target.value)}
-                            disabled={loading}
-                          />
-                          <label
-                            className="form-check-label"
-                            htmlFor="multipleChoice"
-                          >
-                            Multiple Choice
-                          </label>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Survey Question */}
-                    <div className="mb-3">
-                      <label
-                        htmlFor="surveyQuestion"
-                        className="form-label text-secondary"
-                      >
-                        Survey Question
-                      </label>
-                      <input
-                        type="text"
-                        className="form-control bg-dark text-light border-secondary"
-                        id="surveyQuestion"
-                        value={surveyQuestion}
-                        onChange={(e) => setSurveyQuestion(e.target.value)}
-                        placeholder="What would you like to ask?"
-                        maxLength="200"
-                        disabled={loading}
-                      />
-                    </div>
-
-                    {/* Survey Options */}
-                    <div className="mb-3">
-                      <label className="form-label text-secondary">
-                        Options (minimum 2, maximum 16)
-                      </label>
-                      {surveyOptions.map((option, index) => (
-                        <div key={index} className="input-group mb-2">
-                          <span className="input-group-text bg-dark text-secondary border-secondary">
-                            {index + 1}
-                          </span>
-                          <input
-                            type="text"
-                            className="form-control bg-dark text-light border-secondary"
-                            value={option}
-                            onChange={(e) =>
-                              updateSurveyOption(index, e.target.value)
-                            }
-                            placeholder={`Option ${index + 1}`}
-                            maxLength="100"
-                            disabled={loading}
-                          />
-                          {surveyOptions.length > 2 && (
-                            <button
-                              type="button"
-                              className="btn btn-outline-danger"
-                              onClick={() => removeSurveyOption(index)}
-                              disabled={loading}
-                            >
-                              <i className="bi bi-trash"></i>
-                            </button>
-                          )}
-                        </div>
-                      ))}
-
-                      {surveyOptions.length < 16 && (
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-outline-secondary"
-                          onClick={addSurveyOption}
-                          disabled={loading}
-                        >
-                          <i className="bi bi-plus-circle me-1"></i>
-                          Add Option
-                        </button>
-                      )}
-                    </div>
-
-                    {/* Survey Expiration */}
-                    <div className="mb-3">
-                      <label
-                        htmlFor="surveyExpiresIn"
-                        className="form-label text-secondary"
-                      >
-                        Expires In (optional)
-                      </label>
-                      <select
-                        className="form-select bg-dark text-light border-secondary"
-                        id="surveyExpiresIn"
-                        value={surveyExpiresIn}
-                        onChange={(e) => setSurveyExpiresIn(e.target.value)}
-                        disabled={loading}
-                      >
-                        <option value="">Never</option>
-                        <option value="1-hours">1 Hour</option>
-                        <option value="6-hours">6 Hours</option>
-                        <option value="12-hours">12 Hours</option>
-                        <option value="1-days">1 Day</option>
-                        <option value="3-days">3 Days</option>
-                        <option value="7-days">1 Week</option>
-                        <option value="14-days">2 Weeks</option>
-                        <option value="30-days">1 Month</option>
-                      </select>
-                    </div>
-                  </div>
-                )}
-              </div>
+              {/* Survey Section - Using shared component */}
+              <SurveyFormSection
+                includeSurvey={includeSurvey}
+                setIncludeSurvey={setIncludeSurvey}
+                surveyData={surveyData}
+                setSurveyData={setSurveyData}
+                loading={loading}
+              />
 
               <div className="d-grid gap-2">
                 <button

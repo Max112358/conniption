@@ -23,6 +23,7 @@ import usePostOwnership from "../hooks/usePostOwnership";
 import useThreadOwnership from "../hooks/useThreadOwnership";
 import { API_BASE_URL } from "../config/api";
 import { handleApiError } from "../utils/apiErrorHandler";
+import { calculateSurveyExpiresAt } from "./survey/SurveyFormSection";
 
 function ThreadPage() {
   const { boardId, threadId } = useParams();
@@ -363,11 +364,17 @@ function ThreadPage() {
 
   // Handle post submission
   const handleSubmitPost = useCallback(
-    async (e) => {
-      e.preventDefault();
+    async (submitData) => {
+      // Extract data from the submit object
+      const {
+        content: submitContent,
+        image: submitImage,
+        includeSurvey,
+        surveyData,
+      } = submitData;
 
       // Validation
-      if (!content.trim() && !image) {
+      if (!submitContent.trim() && !submitImage) {
         setPostError("Either content or an image/video is required");
         return;
       }
@@ -376,9 +383,9 @@ function ThreadPage() {
       setPostError(null);
 
       const formData = new FormData();
-      formData.append("content", content);
-      if (image) {
-        formData.append("image", image);
+      formData.append("content", submitContent);
+      if (submitImage) {
+        formData.append("image", submitImage);
       }
 
       try {
@@ -403,13 +410,43 @@ function ThreadPage() {
           addOwnPost(data.postId);
         }
 
+        // Create survey if requested
+        if (includeSurvey && data.postId && surveyData) {
+          try {
+            const surveyResponse = await fetch(
+              `${API_BASE_URL}/api/boards/${boardId}/threads/${threadId}/posts/${data.postId}/survey`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  survey_type: surveyData.surveyType,
+                  question: surveyData.surveyQuestion.trim(),
+                  options: surveyData.surveyOptions, // Already filtered in ReplyForm
+                  expires_at: calculateSurveyExpiresAt(
+                    surveyData.surveyExpiresIn
+                  ),
+                }),
+              }
+            );
+
+            if (!surveyResponse.ok) {
+              console.error("Failed to create survey, but post was created");
+            }
+          } catch (surveyErr) {
+            console.error("Error creating survey:", surveyErr);
+            // Don't fail the post creation if survey fails
+          }
+        }
+
         // Reset form
         setContent("");
         setImage(null);
         setImagePreview(null);
         setShowReplyForm(false);
 
-        // Fetch updated posts
+        // Fetch updated posts (with survey data)
         await fetchPosts(false);
 
         // Scroll to bottom to see new post
@@ -428,7 +465,7 @@ function ThreadPage() {
         setPostLoading(false);
       }
     },
-    [content, image, boardId, threadId, fetchPosts, addOwnPost]
+    [boardId, threadId, fetchPosts, addOwnPost]
   );
 
   // Handle clicking on a post number to quote it

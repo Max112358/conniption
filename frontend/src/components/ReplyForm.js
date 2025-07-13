@@ -1,6 +1,9 @@
 // frontend/src/components/ReplyForm.js
-import { forwardRef } from "react";
+import { forwardRef, useState } from "react";
 import PreviewableTextArea from "./PreviewableTextArea";
+import SurveyFormSection, {
+  validateSurveyData,
+} from "./survey/SurveyFormSection";
 
 const ReplyForm = forwardRef(
   (
@@ -19,6 +22,15 @@ const ReplyForm = forwardRef(
     },
     ref
   ) => {
+    // Survey state
+    const [includeSurvey, setIncludeSurvey] = useState(false);
+    const [surveyData, setSurveyData] = useState({
+      surveyType: "single",
+      surveyQuestion: "",
+      surveyOptions: ["", ""],
+      surveyExpiresIn: "",
+    });
+
     const handleImageChange = (e) => {
       const file = e.target.files[0];
       if (file) {
@@ -50,7 +62,30 @@ const ReplyForm = forwardRef(
 
     const handleFormSubmit = (e) => {
       e.preventDefault();
-      onSubmit(e);
+
+      // Validate survey if enabled
+      if (includeSurvey) {
+        const validation = validateSurveyData(surveyData);
+        if (!validation.valid) {
+          alert(validation.error);
+          return;
+        }
+      }
+
+      // Pass all data to parent handler
+      onSubmit({
+        content,
+        image,
+        includeSurvey,
+        surveyData: includeSurvey
+          ? {
+              ...surveyData,
+              surveyOptions: surveyData.surveyOptions.filter((opt) =>
+                opt.trim()
+              ),
+            }
+          : null,
+      });
     };
 
     return (
@@ -65,7 +100,7 @@ const ReplyForm = forwardRef(
             </div>
           )}
 
-          <div>
+          <form onSubmit={handleFormSubmit}>
             <div className="mb-3">
               <label htmlFor="content" className="form-label text-secondary">
                 Message
@@ -134,11 +169,19 @@ const ReplyForm = forwardRef(
               </div>
             )}
 
+            {/* Survey Section - Using shared component */}
+            <SurveyFormSection
+              includeSurvey={includeSurvey}
+              setIncludeSurvey={setIncludeSurvey}
+              surveyData={surveyData}
+              setSurveyData={setSurveyData}
+              loading={loading}
+            />
+
             <button
               type="submit"
               className="btn btn-primary"
               disabled={loading || (!content.trim() && !image)}
-              onClick={handleFormSubmit}
             >
               {loading ? (
                 <>
@@ -153,7 +196,7 @@ const ReplyForm = forwardRef(
                 "Post Reply"
               )}
             </button>
-          </div>
+          </form>
         </div>
       </div>
     );

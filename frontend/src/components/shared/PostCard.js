@@ -6,7 +6,6 @@ import PostHeader from "../PostHeader";
 import PostContent from "../PostContent";
 import MediaViewer from "../MediaViewer";
 import SurveyView from "../survey/SurveyView";
-import CreateSurvey from "../survey/CreateSurvey";
 import usePostOwnership from "../../hooks/usePostOwnership";
 
 export default function PostCard({
@@ -32,8 +31,6 @@ export default function PostCard({
 }) {
   const { isOwnPost, removeOwnPost } = usePostOwnership();
   const [postColor, setPostColor] = useState(post.color || "black");
-  const [showCreateSurvey, setShowCreateSurvey] = useState(false);
-  const [postSurvey, setPostSurvey] = useState(post.survey || null);
   const isModerator =
     adminUser?.role === "moderator" || adminUser?.role === "admin";
 
@@ -162,44 +159,15 @@ export default function PostCard({
               isThreadPage={isThreadPage}
             />
 
-            {/* Survey Component */}
-            {postSurvey && (
+            {/* Survey Component - Only show if survey exists */}
+            {post.survey && (
               <div className="mt-3">
                 <SurveyView
-                  survey={postSurvey}
+                  survey={post.survey}
                   postId={post.id}
                   threadId={thread?.id || post.thread_id}
                   boardId={boardId}
                   isPostOwner={isUserOwnPost}
-                />
-              </div>
-            )}
-
-            {/* Create Survey Button/Form */}
-            {!postSurvey && isUserOwnPost && !showCreateSurvey && (
-              <div className="mt-3">
-                <button
-                  className="btn btn-sm btn-outline-primary"
-                  onClick={() => setShowCreateSurvey(true)}
-                >
-                  <i className="bi bi-bar-chart me-1"></i>
-                  Add Survey
-                </button>
-              </div>
-            )}
-
-            {/* Create Survey Form */}
-            {showCreateSurvey && (
-              <div className="mt-3">
-                <CreateSurvey
-                  postId={post.id}
-                  threadId={thread?.id || post.thread_id}
-                  boardId={boardId}
-                  onSurveyCreated={(survey) => {
-                    setPostSurvey(survey);
-                    setShowCreateSurvey(false);
-                  }}
-                  onCancel={() => setShowCreateSurvey(false)}
                 />
               </div>
             )}
