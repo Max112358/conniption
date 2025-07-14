@@ -149,6 +149,7 @@ export default function CreateThreadPage() {
       }
 
       const data = await response.json();
+      console.log("Thread created response:", data);
 
       // Track the OP post as owned by the user
       if (data.postId) {
@@ -166,6 +167,14 @@ export default function CreateThreadPage() {
           const validOptions = surveyData.surveyOptions.filter((opt) =>
             opt.trim()
           );
+
+          console.log("Creating survey for post:", data.postId);
+          console.log("Survey data:", {
+            survey_type: surveyData.surveyType,
+            question: surveyData.surveyQuestion.trim(),
+            options: validOptions,
+            expires_at: calculateSurveyExpiresAt(surveyData.surveyExpiresIn),
+          });
 
           const surveyResponse = await fetch(
             `${API_BASE_URL}/api/boards/${boardId}/threads/${data.threadId}/posts/${data.postId}/survey`,
@@ -186,11 +195,31 @@ export default function CreateThreadPage() {
           );
 
           if (!surveyResponse.ok) {
-            console.error("Failed to create survey, but thread was created");
+            const surveyError = await surveyResponse.json();
+            console.error("Failed to create survey:", surveyError);
+            // Don't throw here - thread was created successfully
+            setError(
+              `Thread created but survey failed: ${
+                surveyError.error || "Unknown error"
+              }`
+            );
+            // Still redirect after a delay
+            setTimeout(() => {
+              navigate(`/board/${boardId}/thread/${data.threadId}`);
+            }, 3000);
+            return;
           }
+
+          const surveyResult = await surveyResponse.json();
+          console.log("Survey created successfully:", surveyResult);
         } catch (surveyErr) {
           console.error("Error creating survey:", surveyErr);
-          // Don't fail the thread creation if survey fails
+          setError(`Thread created but survey failed: ${surveyErr.message}`);
+          // Still redirect after a delay
+          setTimeout(() => {
+            navigate(`/board/${boardId}/thread/${data.threadId}`);
+          }, 3000);
+          return;
         }
       }
 
