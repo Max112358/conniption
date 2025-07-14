@@ -24,7 +24,7 @@ export default function PostPreview({
 }) {
   const { isOwnPost } = usePostOwnership();
   const [postColor] = useState(post.color || "black");
-  const isUserOwnPost = isOwnPost(post.id);
+  //const isUserOwnPost = isOwnPost(post.id);
 
   const containerClass = compact
     ? "border border-secondary rounded p-2 mb-2"
