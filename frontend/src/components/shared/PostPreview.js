@@ -3,7 +3,7 @@ import { useState } from "react";
 import PostHeader from "../PostHeader";
 import PostContent from "../PostContent";
 import MediaThumbnail from "./MediaThumbnail";
-import usePostOwnership from "../../hooks/usePostOwnership";
+//import usePostOwnership from "../../hooks/usePostOwnership";
 
 export default function PostPreview({
   post,
