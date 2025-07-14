@@ -22,7 +22,7 @@ export default function PostPreview({
   allThreadsWithPosts = [],
   compact = false,
 }) {
-  const { isOwnPost } = usePostOwnership();
+  //const { isOwnPost } = usePostOwnership();
   const [postColor] = useState(post.color || "black");
   //const isUserOwnPost = isOwnPost(post.id);
 
