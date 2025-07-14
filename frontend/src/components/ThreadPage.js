@@ -161,7 +161,20 @@ function ThreadPage() {
         }
 
         const data = await response.json();
-        console.log("Posts API response:", data);
+        console.log("=== SURVEY DEBUG: Raw API response ===");
+        console.log("Full response object:", JSON.stringify(data, null, 2));
+        console.log("Response type:", typeof data);
+        console.log("Is array?", Array.isArray(data));
+        console.log("Has posts property?", data.hasOwnProperty("posts"));
+        if (data.posts && Array.isArray(data.posts)) {
+          console.log("Posts array length:", data.posts.length);
+          data.posts.forEach((post, index) => {
+            console.log(`Raw post ${index}:`, JSON.stringify(post, null, 2));
+          });
+        }
+
+        //const data = await response.json();
+        //console.log("Posts API response:", data);
 
         // Ensure we have an array of posts - handle both data.posts and direct array response
         let newPosts = [];
