@@ -390,7 +390,7 @@ function ThreadPage() {
 
       try {
         const response = await fetch(
-          `${API_BASE_URL}/api/boards/${boardId}/threads/${threadId}/posts`,
+          `${API_BASE_URL}/api/boards/${boardId}/threads/${threadId}/posts?includeSurveys=true`,
           {
             method: "POST",
             body: formData,

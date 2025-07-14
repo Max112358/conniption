@@ -82,7 +82,7 @@ function BoardPage() {
       const threadsWithPostsPromises = threads.map(async (thread) => {
         try {
           const postsResponse = await fetch(
-            `${API_BASE_URL}/api/boards/${boardId}/threads/${thread.id}/posts`
+            `${API_BASE_URL}/api/boards/${boardId}/threads/${thread.id}/posts?includeSurveys=true`
           );
 
           if (postsResponse.ok) {
