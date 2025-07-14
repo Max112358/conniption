@@ -2,130 +2,18 @@
 const express = require("express");
 const router = express.Router({ mergeParams: true });
 const surveyModel = require("../models/survey");
-const postModel = require("../models/post");
 const getClientIp = require("../utils/getClientIp");
 const checkBannedIP = require("../middleware/banCheck");
 
 /**
- * @route   POST /api/boards/:boardId/threads/:threadId/posts/:postId/survey
- * @desc    Create a survey attached to a post
- * @access  Public (must be post owner)
+ * This file handles survey-specific routes that don't fit under the posts hierarchy:
+ * - Voting on surveys
+ * - Getting survey results
+ * - Getting correlations
+ * - Listing all surveys for a board
+ *
+ * Survey creation/retrieval for specific posts is handled in posts.js
  */
-router.post("/:postId/survey", checkBannedIP, async (req, res, next) => {
-  const { boardId, threadId, postId } = req.params;
-  const { survey_type, question, options, expires_at } = req.body;
-  const ipAddress = getClientIp(req);
-
-  console.log(
-    `Route: POST /api/boards/${boardId}/threads/${threadId}/posts/${postId}/survey`
-  );
-
-  try {
-    // Validate input
-    if (!survey_type || !question || !options) {
-      return res.status(400).json({
-        error: "Missing required fields",
-        required: ["survey_type", "question", "options"],
-      });
-    }
-
-    if (!["single", "multiple"].includes(survey_type)) {
-      return res.status(400).json({
-        error: "Invalid survey type",
-        allowed: ["single", "multiple"],
-      });
-    }
-
-    if (!Array.isArray(options) || options.length < 2 || options.length > 16) {
-      return res.status(400).json({
-        error: "Options must be an array with 2-16 items",
-      });
-    }
-
-    // Check if user is the post owner
-    const post = await postModel.getPostById(postId, boardId);
-    if (!post) {
-      return res.status(404).json({ error: "Post not found" });
-    }
-
-    if (post.ip_address !== ipAddress) {
-      return res.status(403).json({
-        error: "Only the post owner can attach a survey",
-      });
-    }
-
-    // Check if post already has a survey
-    const existingSurvey = await surveyModel.getSurveyByPostId(postId, boardId);
-    if (existingSurvey) {
-      return res.status(409).json({
-        error: "Post already has a survey attached",
-      });
-    }
-
-    // Create survey
-    const survey = await surveyModel.createSurvey({
-      post_id: parseInt(postId),
-      thread_id: parseInt(threadId),
-      board_id: boardId,
-      survey_type,
-      question,
-      options,
-      expires_at,
-    });
-
-    console.log(`Route: Created survey ${survey.id} for post ${postId}`);
-    res.status(201).json({
-      message: "Survey created successfully",
-      survey,
-    });
-  } catch (error) {
-    console.error(`Route Error - POST survey:`, error);
-    next(error);
-  }
-});
-
-/**
- * @route   GET /api/boards/:boardId/threads/:threadId/posts/:postId/survey
- * @desc    Get survey attached to a post
- * @access  Public
- */
-router.get("/:postId/survey", async (req, res, next) => {
-  const { boardId, postId } = req.params;
-  const ipAddress = getClientIp(req);
-
-  console.log(
-    `Route: GET /api/boards/${boardId}/threads/.../posts/${postId}/survey`
-  );
-
-  try {
-    const survey = await surveyModel.getSurveyByPostId(postId, boardId);
-
-    if (!survey) {
-      return res.status(404).json({ error: "Survey not found" });
-    }
-
-    // Check if survey is expired
-    if (survey.expires_at && new Date(survey.expires_at) < new Date()) {
-      survey.is_expired = true;
-    } else {
-      survey.is_expired = false;
-    }
-
-    // Get user's existing response if any
-    const userResponse = await surveyModel.getUserResponse(
-      survey.id,
-      ipAddress
-    );
-    if (userResponse) {
-      survey.user_response = userResponse;
-    }
-
-    res.json({ survey });
-  } catch (error) {
-    console.error(`Route Error - GET survey:`, error);
-    next(error);
-  }
-});
 
 /**
  * @route   POST /api/boards/:boardId/surveys/:surveyId/vote

@@ -12,7 +12,7 @@ router.use("/:boardId/threads", threadRoutes);
 // Use appeal routes
 router.use("/:boardId/appeal", appealRoutes);
 
-// This will handle board-level survey routes like /api/boards/:boardId/surveys
+// Survey voting routes (these don't conflict with post-level survey routes)
 router.use("/:boardId/surveys", surveyRoutes);
 
 /**

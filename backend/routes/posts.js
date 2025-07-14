@@ -481,6 +481,20 @@ router.get("/:postId/survey", async (req, res, next) => {
     console.error(`Route Error - GET survey:`, error);
     next(error);
   }
-});
+}); // mergeParams to access boardId and threadId
+const { pool } = require("../config/database");
+const postModel = require("../models/post");
+const surveyModel = require("../models/survey");
+const threadModel = require("../models/thread");
+const boardModel = require("../models/board");
+const banModel = require("../models/ban");
+const { uploadWithUrlTransform } = require("../middleware/upload");
+const io = require("../utils/socketHandler").getIo;
+const getClientIp = require("../utils/getClientIp"); // Import the new utility
+const checkBannedIP = require("../middleware/banCheck"); // Import ban check middleware
+const surveyRoutes = require("./surveys");
+
+// This creates routes like /api/boards/:boardId/threads/:threadId/posts/:postId/survey
+router.use("/", surveyRoutes);
 
 module.exports = router;
