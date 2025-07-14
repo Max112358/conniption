@@ -24,6 +24,13 @@ export default function SurveyFormSection({
   const survey = surveyData || localSurveyData;
   const updateSurvey = setSurveyData || setLocalSurveyData;
 
+  console.log("=== SURVEY FORM DEBUG ===");
+  console.log("includeSurvey prop:", includeSurvey);
+  console.log("surveyData prop:", JSON.stringify(surveyData, null, 2));
+  console.log("showSurvey (computed):", showSurvey);
+  console.log("survey (computed):", JSON.stringify(survey, null, 2));
+  console.log("loading:", loading);
+
   // Survey option management
   const addSurveyOption = () => {
     if (survey.surveyOptions.length < 16) {

@@ -63,29 +63,61 @@ const ReplyForm = forwardRef(
     const handleFormSubmit = (e) => {
       e.preventDefault();
 
+      console.log("=== REPLY FORM DEBUG: Form submission ===");
+      console.log("Content:", content);
+      console.log("Has image:", !!image);
+      console.log("Include survey:", includeSurvey);
+      console.log("Raw survey data:", JSON.stringify(surveyData, null, 2));
+
       // Validate survey if enabled
       if (includeSurvey) {
+        console.log("=== REPLY FORM DEBUG: Validating survey ===");
         const validation = validateSurveyData(surveyData);
+        console.log("Survey validation result:", validation);
+
         if (!validation.valid) {
+          console.error("Survey validation failed:", validation.error);
           alert(validation.error);
           return;
         }
       }
 
-      // Pass all data to parent handler
-      onSubmit({
+      // Prepare survey data for submission
+      const processedSurveyData = includeSurvey
+        ? {
+            ...surveyData,
+            surveyOptions: surveyData.surveyOptions.filter((opt) => opt.trim()),
+          }
+        : null;
+
+      console.log("=== REPLY FORM DEBUG: Processed survey data ===");
+      console.log(
+        "Processed survey data:",
+        JSON.stringify(processedSurveyData, null, 2)
+      );
+
+      const submitData = {
         content,
         image,
         includeSurvey,
-        surveyData: includeSurvey
-          ? {
-              ...surveyData,
-              surveyOptions: surveyData.surveyOptions.filter((opt) =>
-                opt.trim()
-              ),
-            }
-          : null,
-      });
+        surveyData: processedSurveyData,
+      };
+
+      console.log("=== REPLY FORM DEBUG: Final submit data ===");
+      console.log(
+        "Submit data:",
+        JSON.stringify(
+          {
+            ...submitData,
+            image: image ? `[File: ${image.name}, ${image.size} bytes]` : null,
+          },
+          null,
+          2
+        )
+      );
+
+      // Pass all data to parent handler
+      onSubmit(submitData);
     };
 
     return (

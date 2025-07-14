@@ -99,6 +99,13 @@ export default function CreateThreadPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    console.log("=== CREATE THREAD DEBUG: Form submission ===");
+    console.log("Topic:", topic);
+    console.log("Content:", content);
+    console.log("Has image:", !!image);
+    console.log("Include survey:", includeSurvey);
+    console.log("Raw survey data:", JSON.stringify(surveyData, null, 2));
+
     // Validate form
     if (!topic.trim()) {
       setError("Topic is required");
@@ -117,8 +124,12 @@ export default function CreateThreadPage() {
 
     // Validate survey if enabled
     if (includeSurvey) {
+      console.log("=== CREATE THREAD DEBUG: Validating survey ===");
       const validation = validateSurveyData(surveyData);
+      console.log("Survey validation result:", validation);
+
       if (!validation.valid) {
+        console.error("Survey validation failed:", validation.error);
         setError(validation.error);
         return;
       }
@@ -133,7 +144,23 @@ export default function CreateThreadPage() {
     formData.append("content", content);
     formData.append("image", image);
 
+    console.log("=== CREATE THREAD DEBUG: FormData contents ===");
+    console.log("Topic:", formData.get("topic"));
+    console.log("Content:", formData.get("content"));
+    console.log(
+      "Image:",
+      formData.get("image")
+        ? `[File: ${image.name}, ${image.size} bytes]`
+        : null
+    );
+
     try {
+      console.log("=== CREATE THREAD DEBUG: Creating thread ===");
+      console.log(
+        "Thread URL:",
+        `${API_BASE_URL}/api/boards/${boardId}/threads`
+      );
+
       const response = await fetch(
         `${API_BASE_URL}/api/boards/${boardId}/threads`,
         {
@@ -142,14 +169,18 @@ export default function CreateThreadPage() {
         }
       );
 
+      console.log("Thread creation response status:", response.status);
+      console.log("Thread creation response statusText:", response.statusText);
+
       if (!response.ok) {
         const errorData = await response.json();
+        console.error("Thread creation failed:", errorData);
         const errorMessage = handleApiError(errorData);
         throw new Error(errorMessage);
       }
 
       const data = await response.json();
-      console.log("Thread created response:", data);
+      console.log("Thread creation successful:", JSON.stringify(data, null, 2));
 
       // Track the OP post as owned by the user
       if (data.postId) {
@@ -163,18 +194,32 @@ export default function CreateThreadPage() {
 
       // Create survey if requested
       if (includeSurvey && data.postId) {
+        console.log(
+          "=== CREATE THREAD DEBUG: Creating survey for new thread ==="
+        );
+        console.log("Thread ID:", data.threadId);
+        console.log("Post ID:", data.postId);
+
         try {
           const validOptions = surveyData.surveyOptions.filter((opt) =>
             opt.trim()
           );
 
-          console.log("Creating survey for post:", data.postId);
-          console.log("Survey data:", {
+          const surveyRequestBody = {
             survey_type: surveyData.surveyType,
             question: surveyData.surveyQuestion.trim(),
             options: validOptions,
             expires_at: calculateSurveyExpiresAt(surveyData.surveyExpiresIn),
-          });
+          };
+
+          console.log(
+            "Survey request body:",
+            JSON.stringify(surveyRequestBody, null, 2)
+          );
+          console.log(
+            "Survey URL:",
+            `${API_BASE_URL}/api/boards/${boardId}/threads/${data.threadId}/posts/${data.postId}/survey`
+          );
 
           const surveyResponse = await fetch(
             `${API_BASE_URL}/api/boards/${boardId}/threads/${data.threadId}/posts/${data.postId}/survey`,
@@ -183,43 +228,26 @@ export default function CreateThreadPage() {
               headers: {
                 "Content-Type": "application/json",
               },
-              body: JSON.stringify({
-                survey_type: surveyData.surveyType,
-                question: surveyData.surveyQuestion.trim(),
-                options: validOptions,
-                expires_at: calculateSurveyExpiresAt(
-                  surveyData.surveyExpiresIn
-                ),
-              }),
+              body: JSON.stringify(surveyRequestBody),
             }
           );
 
-          if (!surveyResponse.ok) {
-            const surveyError = await surveyResponse.json();
-            console.error("Failed to create survey:", surveyError);
-            // Don't throw here - thread was created successfully
-            setError(
-              `Thread created but survey failed: ${
-                surveyError.error || "Unknown error"
-              }`
-            );
-            // Still redirect after a delay
-            setTimeout(() => {
-              navigate(`/board/${boardId}/thread/${data.threadId}`);
-            }, 3000);
-            return;
-          }
+          console.log("Survey response status:", surveyResponse.status);
+          console.log("Survey response statusText:", surveyResponse.statusText);
 
-          const surveyResult = await surveyResponse.json();
-          console.log("Survey created successfully:", surveyResult);
+          if (!surveyResponse.ok) {
+            const surveyErrorData = await surveyResponse.json();
+            console.error("Survey creation failed:", surveyErrorData);
+          } else {
+            const surveyResultData = await surveyResponse.json();
+            console.log(
+              "Survey created successfully:",
+              JSON.stringify(surveyResultData, null, 2)
+            );
+          }
         } catch (surveyErr) {
           console.error("Error creating survey:", surveyErr);
-          setError(`Thread created but survey failed: ${surveyErr.message}`);
-          // Still redirect after a delay
-          setTimeout(() => {
-            navigate(`/board/${boardId}/thread/${data.threadId}`);
-          }, 3000);
-          return;
+          // Don't fail the thread creation if survey fails
         }
       }
 
