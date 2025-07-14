@@ -144,6 +144,11 @@ function ThreadPage() {
           `${API_BASE_URL}/api/boards/${boardId}/threads/${threadId}/posts`
         );
 
+        console.log("=== SURVEY DEBUG: Fetch URL ===");
+        console.log(
+          `URL: ${API_BASE_URL}/api/boards/${boardId}/threads/${threadId}/posts?includeSurveys=true`
+        );
+
         if (!response.ok) {
           // Check for ban
           if (response.status === 403) {

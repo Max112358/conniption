@@ -21,6 +21,11 @@ export default function SurveyView({
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  console.log(`=== SURVEY DEBUG: SurveyView for post ${postId} ===`);
+  console.log("Survey prop received:", survey);
+  console.log("Thread ID:", threadId);
+  console.log("Board ID:", boardId);
+
   // Fetch survey data and user's response
   const fetchSurveyData = useCallback(async () => {
     try {

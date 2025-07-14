@@ -37,6 +37,14 @@ export default function PostCard({
   const showModMenu = isModerator && !isHidden && !isUserHidden;
   const isUserOwnPost = isOwnPost(post.id);
 
+  // Debug survey data
+  console.log(`=== SURVEY DEBUG: PostCard for post ${post.id} ===`);
+  console.log("Post object:", post);
+  console.log("Has survey:", !!post.survey);
+  if (post.survey) {
+    console.log("Survey data:", post.survey);
+  }
+
   const handlePostDeleted = (postId) => {
     removeOwnPost(postId);
     if (onPostDeleted) {
