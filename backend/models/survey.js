@@ -2,11 +2,9 @@
 const { pool } = require("../config/database");
 
 /**
- * Survey model functions
+ * Survey model functions - NO EXPIRATION FUNCTIONALITY
  */
 const surveyModel = {
-  // ... existing methods remain unchanged ...
-
   /**
    * Get surveys for multiple posts
    * @param {Array<number>} postIds - Array of post IDs
@@ -69,18 +67,17 @@ const surveyModel = {
         throw new Error("Survey must have between 2 and 16 options");
       }
 
-      // Insert survey
+      // Insert survey WITHOUT expires_at
       const surveyResult = await client.query(
-        `INSERT INTO surveys (post_id, thread_id, board_id, survey_type, question, expires_at, is_active)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)
-         RETURNING id, post_id, thread_id, board_id, survey_type, question, created_at, expires_at, is_active`,
+        `INSERT INTO surveys (post_id, thread_id, board_id, survey_type, question, is_active)
+         VALUES ($1, $2, $3, $4, $5, $6)
+         RETURNING id, post_id, thread_id, board_id, survey_type, question, created_at, is_active`,
         [
           surveyData.post_id,
           surveyData.thread_id,
           surveyData.board_id,
           surveyData.survey_type,
           surveyData.question,
-          surveyData.expires_at || null,
           true,
         ]
       );
@@ -125,10 +122,10 @@ const surveyModel = {
     console.log(`Model: Getting survey for post ${postId} in board ${boardId}`);
 
     try {
-      // Get survey
+      // Get survey WITHOUT expires_at
       const surveyResult = await pool.query(
         `SELECT id, post_id, thread_id, board_id, survey_type, question, 
-                created_at, expires_at, is_active
+                created_at, is_active
          FROM surveys
          WHERE post_id = $1 AND board_id = $2`,
         [postId, boardId]
@@ -174,7 +171,7 @@ const surveyModel = {
     try {
       const surveyResult = await pool.query(
         `SELECT id, post_id, thread_id, board_id, survey_type, question, 
-                created_at, expires_at, is_active
+                created_at, is_active
          FROM surveys
          WHERE id = $1`,
         [surveyId]
@@ -318,10 +315,10 @@ const surveyModel = {
     console.log(`Model: Getting results for survey ${surveyId}`);
 
     try {
-      // Get survey info
+      // Get survey info WITHOUT expiration fields
       const surveyResult = await pool.query(
         `SELECT id, post_id, thread_id, board_id, survey_type, question, 
-                created_at, expires_at, is_active
+                created_at, is_active
          FROM surveys
          WHERE id = $1`,
         [surveyId]
@@ -552,7 +549,7 @@ const surveyModel = {
     try {
       const result = await pool.query(
         `SELECT s.id, s.post_id, s.thread_id, s.survey_type, s.question, 
-                s.created_at, s.expires_at, s.is_active,
+                s.created_at, s.is_active,
                 COUNT(DISTINCT sr.id) as response_count
          FROM surveys s
          LEFT JOIN survey_responses sr ON s.id = sr.survey_id

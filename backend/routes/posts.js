@@ -364,12 +364,12 @@ router.delete("/:postId", async (req, res, next) => {
 
 /**
  * @route   POST /api/boards/:boardId/threads/:threadId/posts/:postId/survey
- * @desc    Create a survey attached to a post
+ * @desc    Create a survey attached to a post - NO EXPIRATION
  * @access  Public (must be post owner)
  */
 router.post("/:postId/survey", checkBannedIP, async (req, res, next) => {
   const { boardId, threadId, postId } = req.params;
-  const { survey_type, question, options, expires_at } = req.body;
+  const { survey_type, question, options } = req.body; // REMOVED expires_at
   const ipAddress = getClientIp(req);
 
   console.log(
@@ -418,7 +418,7 @@ router.post("/:postId/survey", checkBannedIP, async (req, res, next) => {
       });
     }
 
-    // Create survey
+    // Create survey WITHOUT expiration
     const survey = await surveyModel.createSurvey({
       post_id: parseInt(postId),
       thread_id: parseInt(threadId),
@@ -426,7 +426,7 @@ router.post("/:postId/survey", checkBannedIP, async (req, res, next) => {
       survey_type,
       question,
       options,
-      expires_at,
+      // NO expires_at field
     });
 
     console.log(`Route: Created survey ${survey.id} for post ${postId}`);
@@ -442,7 +442,7 @@ router.post("/:postId/survey", checkBannedIP, async (req, res, next) => {
 
 /**
  * @route   GET /api/boards/:boardId/threads/:threadId/posts/:postId/survey
- * @desc    Get survey attached to a post
+ * @desc    Get survey attached to a post - NO EXPIRATION CHECKS
  * @access  Public
  */
 router.get("/:postId/survey", async (req, res, next) => {
@@ -460,12 +460,7 @@ router.get("/:postId/survey", async (req, res, next) => {
       return res.status(404).json({ error: "Survey not found" });
     }
 
-    // Check if survey is expired
-    if (survey.expires_at && new Date(survey.expires_at) < new Date()) {
-      survey.is_expired = true;
-    } else {
-      survey.is_expired = false;
-    }
+    // NO expiration checks - surveys never expire
 
     // Get user's existing response if any
     const userResponse = await surveyModel.getUserResponse(

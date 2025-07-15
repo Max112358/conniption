@@ -14,7 +14,7 @@ export default function SurveyFormSection({
     surveyType: "single",
     surveyQuestion: "",
     surveyOptions: ["", ""],
-    surveyExpiresIn: "",
+    // REMOVED surveyExpiresIn
   });
 
   // Use provided state or local state
@@ -206,37 +206,7 @@ export default function SurveyFormSection({
             )}
           </div>
 
-          {/* Survey Expiration */}
-          <div className="mb-3">
-            <label
-              htmlFor="surveyExpiresIn"
-              className="form-label text-secondary"
-            >
-              Expires In (optional)
-            </label>
-            <select
-              className="form-select bg-dark text-light border-secondary"
-              id="surveyExpiresIn"
-              value={survey.surveyExpiresIn}
-              onChange={(e) =>
-                updateSurvey({
-                  ...survey,
-                  surveyExpiresIn: e.target.value,
-                })
-              }
-              disabled={loading}
-            >
-              <option value="">Never</option>
-              <option value="1-hours">1 Hour</option>
-              <option value="6-hours">6 Hours</option>
-              <option value="12-hours">12 Hours</option>
-              <option value="1-days">1 Day</option>
-              <option value="3-days">3 Days</option>
-              <option value="7-days">1 Week</option>
-              <option value="14-days">2 Weeks</option>
-              <option value="30-days">1 Month</option>
-            </select>
-          </div>
+          {/* NO EXPIRATION SECTION - REMOVED */}
         </div>
       )}
     </div>
@@ -257,27 +227,4 @@ export const validateSurveyData = (surveyData) => {
   return { valid: true, validOptions };
 };
 
-// Export function to calculate expiration date
-export const calculateSurveyExpiresAt = (expiresIn) => {
-  if (!expiresIn) return null;
-
-  const now = new Date();
-  const [value, unit] = expiresIn.split("-");
-  const amount = parseInt(value);
-
-  switch (unit) {
-    case "hours":
-      now.setHours(now.getHours() + amount);
-      break;
-    case "days":
-      now.setDate(now.getDate() + amount);
-      break;
-    case "weeks":
-      now.setDate(now.getDate() + amount * 7);
-      break;
-    default:
-      return null;
-  }
-
-  return now.toISOString();
-};
+// REMOVED calculateSurveyExpiresAt function - no longer needed

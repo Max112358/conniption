@@ -204,9 +204,9 @@ const createTables = async () => {
       console.error("Error creating indexes:", err);
     }
 
-    // ==================== SURVEY SYSTEM TABLES ====================
+    // ==================== SURVEY SYSTEM TABLES (NO EXPIRATION) ====================
 
-    // Create surveys table
+    // Create surveys table WITHOUT expires_at column
     await pool.query(`
       CREATE TABLE IF NOT EXISTS surveys (
         id SERIAL PRIMARY KEY,
@@ -216,7 +216,6 @@ const createTables = async () => {
         survey_type TEXT NOT NULL CHECK (survey_type IN ('single', 'multiple')),
         question TEXT NOT NULL,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-        expires_at TIMESTAMP WITH TIME ZONE,
         is_active BOOLEAN DEFAULT TRUE,
         UNIQUE(post_id)
       )
@@ -269,7 +268,7 @@ const createTables = async () => {
       CREATE INDEX IF NOT EXISTS idx_survey_response_options_option_id ON survey_response_options(option_id);
     `);
 
-    // Create view for survey results - FIXED VERSION
+    // Create view for survey results - WITHOUT expiration checks
     await pool.query(`
     CREATE OR REPLACE VIEW survey_results AS
     SELECT 

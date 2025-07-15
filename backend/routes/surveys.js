@@ -13,11 +13,12 @@ const checkBannedIP = require("../middleware/banCheck");
  * - Listing all surveys for a board
  *
  * Survey creation/retrieval for specific posts is handled in posts.js
+ * NO EXPIRATION FUNCTIONALITY - surveys never expire
  */
 
 /**
  * @route   POST /api/boards/:boardId/surveys/:surveyId/vote
- * @desc    Submit or update a survey response
+ * @desc    Submit or update a survey response - NO EXPIRATION CHECKS
  * @access  Public
  */
 router.post("/:surveyId/vote", checkBannedIP, async (req, res, next) => {
@@ -45,10 +46,7 @@ router.post("/:surveyId/vote", checkBannedIP, async (req, res, next) => {
       return res.status(403).json({ error: "Survey not found in this board" });
     }
 
-    // Check if survey is expired
-    if (survey.expires_at && new Date(survey.expires_at) < new Date()) {
-      return res.status(400).json({ error: "Survey has expired" });
-    }
+    // NO expiration checks - surveys never expire
 
     if (!survey.is_active) {
       return res.status(400).json({ error: "Survey is not active" });
@@ -111,7 +109,7 @@ router.post("/:surveyId/vote", checkBannedIP, async (req, res, next) => {
 
 /**
  * @route   DELETE /api/boards/:boardId/surveys/:surveyId/vote
- * @desc    Rescind (delete) a survey response
+ * @desc    Rescind (delete) a survey response - NO EXPIRATION CHECKS
  * @access  Public
  */
 router.delete("/:surveyId/vote", checkBannedIP, async (req, res, next) => {
@@ -131,8 +129,7 @@ router.delete("/:surveyId/vote", checkBannedIP, async (req, res, next) => {
       return res.status(403).json({ error: "Survey not found in this board" });
     }
 
-    // Check if survey is expired - users can still rescind votes from expired surveys
-    // This allows them to remove their data even after voting has closed
+    // NO expiration checks - users can always rescind votes
 
     // Delete the response
     const deleted = await surveyModel.deleteResponse({
@@ -175,7 +172,7 @@ router.delete("/:surveyId/vote", checkBannedIP, async (req, res, next) => {
 
 /**
  * @route   GET /api/boards/:boardId/surveys/:surveyId/results
- * @desc    Get survey results
+ * @desc    Get survey results - NO EXPIRATION CHECKS
  * @access  Public
  */
 router.get("/:surveyId/results", async (req, res, next) => {
