@@ -58,15 +58,38 @@ export default function SurveyView({
   // Fetch results
   const fetchResults = useCallback(async () => {
     try {
-      const response = await fetch(
-        `${API_BASE_URL}/api/boards/${boardId}/surveys/${surveyData.id}/results`
-      );
+      console.log("=== SURVEY VIEW DEBUG: Fetching results ===");
+      const url = `${API_BASE_URL}/api/boards/${boardId}/surveys/${surveyData.id}/results`;
+      console.log("Fetching from URL:", url);
+
+      const response = await fetch(url);
 
       if (!response.ok) {
         throw new Error("Failed to fetch results");
       }
 
       const data = await response.json();
+      console.log("=== SURVEY VIEW DEBUG: Raw response from API ===");
+      console.log(JSON.stringify(data, null, 2));
+
+      console.log("=== SURVEY VIEW DEBUG: Results breakdown ===");
+      if (data.results) {
+        console.log("Total responses:", data.results.total_responses);
+        console.log("Survey type:", data.results.survey_type);
+        console.log("Results array:", data.results.results);
+
+        if (data.results.results) {
+          data.results.results.forEach((result, index) => {
+            console.log(`Option ${index + 1}:`, {
+              id: result.option_id,
+              text: result.option_text,
+              votes: result.vote_count,
+              percentage: result.percentage,
+            });
+          });
+        }
+      }
+
       setResults(data.results);
     } catch (err) {
       console.error("Error fetching results:", err);
