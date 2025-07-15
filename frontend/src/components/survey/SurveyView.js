@@ -20,6 +20,7 @@ export default function SurveyView({
   const [voting, setVoting] = useState(false);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isChangingVote, setIsChangingVote] = useState(false); // Track if user is changing vote
 
   console.log(`=== SURVEY DEBUG: SurveyView for post ${postId} ===`);
   console.log("Survey prop received:", survey);
@@ -179,12 +180,20 @@ export default function SurveyView({
       const data = await response.json();
       setUserResponse(data.response);
       setShowResults(true);
+      setIsChangingVote(false); // Reset changing vote state
     } catch (err) {
       console.error("Error voting:", err);
       setError(err.message || "Failed to submit vote");
     } finally {
       setVoting(false);
     }
+  };
+
+  // Handle change vote button click
+  const handleChangeVote = () => {
+    setShowResults(false);
+    setIsChangingVote(true);
+    setSelectedOptions(new Set(userResponse.selected_options));
   };
 
   if (loading) {
@@ -207,7 +216,8 @@ export default function SurveyView({
   }
 
   const isExpired = surveyData.is_expired;
-  const canVote = !isExpired && !showResults;
+  const canVote = !isExpired && (!showResults || isChangingVote);
+  const hasUserVoted = !!userResponse;
 
   return (
     <div className="card bg-mid-dark border-secondary">
@@ -240,7 +250,7 @@ export default function SurveyView({
 
             return (
               <div key={option.id} className="mb-2">
-                {showResults ? (
+                {showResults && !isChangingVote ? (
                   <div className="position-relative">
                     <div
                       className="progress bg-dark"
@@ -327,14 +337,16 @@ export default function SurveyView({
                       role="status"
                       aria-hidden="true"
                     ></span>
-                    Voting...
+                    {isChangingVote ? "Updating..." : "Voting..."}
                   </>
+                ) : isChangingVote ? (
+                  "Update Vote"
                 ) : (
                   "Vote"
                 )}
               </button>
             )}
-            {!showResults && !isExpired && (
+            {!showResults && !isExpired && !isChangingVote && (
               <button
                 className="btn btn-sm btn-outline-secondary ms-2"
                 onClick={() => setShowResults(true)}
@@ -342,30 +354,31 @@ export default function SurveyView({
                 View Results
               </button>
             )}
-            {showResults && !isExpired && !userResponse && (
-              <button
-                className="btn btn-sm btn-outline-secondary"
-                onClick={() => setShowResults(false)}
-              >
-                Back to Vote
-              </button>
-            )}
-            {userResponse && !isExpired && (
+            {hasUserVoted && !isExpired && showResults && !isChangingVote && (
               <button
                 className="btn btn-sm btn-outline-primary ms-2"
+                onClick={handleChangeVote}
+              >
+                Change Vote
+              </button>
+            )}
+            {isChangingVote && (
+              <button
+                className="btn btn-sm btn-outline-secondary ms-2"
                 onClick={() => {
-                  setShowResults(false);
+                  setIsChangingVote(false);
+                  setShowResults(true);
                   setSelectedOptions(new Set(userResponse.selected_options));
                 }}
               >
-                Change Vote
+                Cancel
               </button>
             )}
           </div>
         </div>
 
         {/* Connection status */}
-        {isConnected && showResults && (
+        {isConnected && showResults && !isChangingVote && (
           <div className="text-center mt-2">
             <small className="text-success">
               <i
@@ -378,32 +391,34 @@ export default function SurveyView({
         )}
 
         {/* Correlations for multiple choice surveys */}
-        {surveyData.survey_type === "multiple" && showResults && (
-          <div className="mt-3">
-            {!showCorrelations ? (
-              <button
-                className="btn btn-sm btn-outline-info w-100"
-                onClick={() => setShowCorrelations(true)}
-              >
-                <i className="bi bi-diagram-3 me-1"></i>
-                Show Option Correlations
-              </button>
-            ) : (
-              <>
+        {surveyData.survey_type === "multiple" &&
+          showResults &&
+          !isChangingVote && (
+            <div className="mt-3">
+              {!showCorrelations ? (
                 <button
-                  className="btn btn-sm btn-outline-secondary w-100"
-                  onClick={() => setShowCorrelations(false)}
+                  className="btn btn-sm btn-outline-info w-100"
+                  onClick={() => setShowCorrelations(true)}
                 >
-                  Hide Correlations
+                  <i className="bi bi-diagram-3 me-1"></i>
+                  Show Option Correlations
                 </button>
-                <SurveyCorrelations
-                  surveyId={surveyData.id}
-                  boardId={boardId}
-                />
-              </>
-            )}
-          </div>
-        )}
+              ) : (
+                <>
+                  <button
+                    className="btn btn-sm btn-outline-secondary w-100"
+                    onClick={() => setShowCorrelations(false)}
+                  >
+                    Hide Correlations
+                  </button>
+                  <SurveyCorrelations
+                    surveyId={surveyData.id}
+                    boardId={boardId}
+                  />
+                </>
+              )}
+            </div>
+          )}
       </div>
     </div>
   );
