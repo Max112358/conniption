@@ -71,7 +71,10 @@ export default function SurveyFormSection({
             onChange={(e) => setShowSurvey(e.target.checked)}
             disabled={loading}
           />
-          <label className="form-check-label" htmlFor="includeSurvey">
+          <label
+            className="form-check-label text-secondary"
+            htmlFor="includeSurvey"
+          >
             Add a survey/poll to this post
           </label>
         </div>
@@ -99,7 +102,10 @@ export default function SurveyFormSection({
                   }
                   disabled={loading}
                 />
-                <label className="form-check-label" htmlFor="singleChoice">
+                <label
+                  className="form-check-label text-secondary"
+                  htmlFor="singleChoice"
+                >
                   Single Choice
                 </label>
               </div>
@@ -119,7 +125,10 @@ export default function SurveyFormSection({
                   }
                   disabled={loading}
                 />
-                <label className="form-check-label" htmlFor="multipleChoice">
+                <label
+                  className="form-check-label text-secondary"
+                  htmlFor="multipleChoice"
+                >
                   Multiple Choice
                 </label>
               </div>
@@ -132,7 +141,7 @@ export default function SurveyFormSection({
               htmlFor="surveyQuestion"
               className="form-label text-secondary"
             >
-              Survey Question *
+              Survey Question
             </label>
             <input
               type="text"
@@ -155,7 +164,7 @@ export default function SurveyFormSection({
           {/* Survey Options */}
           <div className="mb-3">
             <label className="form-label text-secondary">
-              Options * (minimum 2, maximum 16)
+              Options (minimum 2, maximum 16)
             </label>
             {survey.surveyOptions.map((option, index) => (
               <div key={index} className="input-group mb-2">

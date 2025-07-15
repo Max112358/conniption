@@ -269,25 +269,26 @@ const createTables = async () => {
       CREATE INDEX IF NOT EXISTS idx_survey_response_options_option_id ON survey_response_options(option_id);
     `);
 
-    // Create view for survey results
+    // Create view for survey results - FIXED VERSION
     await pool.query(`
-      CREATE OR REPLACE VIEW survey_results AS
-      SELECT 
-        s.id as survey_id,
-        s.question,
-        s.survey_type,
-        so.id as option_id,
-        so.option_text,
-        so.option_order,
-        COUNT(DISTINCT sr.id) as vote_count,
-        ROUND((COUNT(DISTINCT sr.id)::NUMERIC / NULLIF((SELECT COUNT(DISTINCT id) FROM survey_responses WHERE survey_id = s.id), 0) * 100), 2) as percentage
-      FROM surveys s
-      LEFT JOIN survey_options so ON s.id = so.survey_id
-      LEFT JOIN survey_responses sr ON s.id = sr.survey_id
-      LEFT JOIN survey_response_options sro ON sr.id = sro.response_id AND so.id = sro.option_id
-      GROUP BY s.id, s.question, s.survey_type, so.id, so.option_text, so.option_order
-      ORDER BY s.id, so.option_order
-    `);
+    CREATE OR REPLACE VIEW survey_results AS
+    SELECT 
+      s.id as survey_id,
+      s.question,
+      s.survey_type,
+      so.id as option_id,
+      so.option_text,
+      so.option_order,
+      COUNT(sro.response_id) as vote_count,
+      ROUND((COUNT(sro.response_id)::NUMERIC / NULLIF((SELECT COUNT(DISTINCT id) FROM survey_responses WHERE survey_id = s.id), 0) * 100), 2) as percentage
+    FROM surveys s
+    CROSS JOIN survey_options so
+    LEFT JOIN survey_response_options sro ON so.id = sro.option_id
+    LEFT JOIN survey_responses sr ON sro.response_id = sr.id AND sr.survey_id = s.id
+    WHERE so.survey_id = s.id
+    GROUP BY s.id, s.question, s.survey_type, so.id, so.option_text, so.option_order
+    ORDER BY s.id, so.option_order
+  `);
 
     // ==================== ADMIN SYSTEM TABLES ====================
 
