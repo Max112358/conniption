@@ -9,7 +9,6 @@ import threadOwnershipManager from "../utils/threadOwnershipManager";
 import PreviewableTextArea from "./PreviewableTextArea";
 import SurveyFormSection, {
   validateSurveyData,
-  calculateSurveyExpiresAt,
 } from "./survey/SurveyFormSection";
 
 export default function CreateThreadPage() {
@@ -31,7 +30,6 @@ export default function CreateThreadPage() {
     surveyType: "single",
     surveyQuestion: "",
     surveyOptions: ["", ""],
-    surveyExpiresIn: "",
   });
 
   // Fetch board details on component mount
@@ -209,7 +207,7 @@ export default function CreateThreadPage() {
             survey_type: surveyData.surveyType,
             question: surveyData.surveyQuestion.trim(),
             options: validOptions,
-            expires_at: calculateSurveyExpiresAt(surveyData.surveyExpiresIn),
+            // NO expires_at field - surveys never expire
           };
 
           console.log(

@@ -14,7 +14,6 @@ export default function SurveyFormSection({
     surveyType: "single",
     surveyQuestion: "",
     surveyOptions: ["", ""],
-    // REMOVED surveyExpiresIn
   });
 
   // Use provided state or local state
@@ -206,7 +205,11 @@ export default function SurveyFormSection({
             )}
           </div>
 
-          {/* NO EXPIRATION SECTION - REMOVED */}
+          <div className="alert alert-info">
+            <i className="bi bi-info-circle me-2"></i>
+            <strong>Note:</strong> Surveys never expire and can be voted on
+            indefinitely.
+          </div>
         </div>
       )}
     </div>
@@ -226,5 +229,3 @@ export const validateSurveyData = (surveyData) => {
 
   return { valid: true, validOptions };
 };
-
-// REMOVED calculateSurveyExpiresAt function - no longer needed

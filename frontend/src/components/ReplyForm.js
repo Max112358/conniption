@@ -28,7 +28,6 @@ const ReplyForm = forwardRef(
       surveyType: "single",
       surveyQuestion: "",
       surveyOptions: ["", ""],
-      surveyExpiresIn: "",
     });
 
     const handleImageChange = (e) => {

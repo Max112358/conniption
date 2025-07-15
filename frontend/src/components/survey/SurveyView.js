@@ -259,8 +259,8 @@ export default function SurveyView({
     return null;
   }
 
-  const isExpired = surveyData.is_expired;
-  const canVote = !isExpired && (!showResults || isChangingVote);
+  // Surveys never expire now - can always vote
+  const canVote = !showResults || isChangingVote;
   const hasUserVoted = !!userResponse;
 
   return (
@@ -270,7 +270,6 @@ export default function SurveyView({
           <i className="bi bi-clipboard-check me-2 text-secondary"></i>
           {surveyData.survey_type === "single" ? "Poll" : "Multi-choice Poll"}
         </h6>
-        {isExpired && <span className="badge bg-secondary">Expired</span>}
       </div>
       <div className="card-body">
         <p className="text-light mb-3">{surveyData.question}</p>
@@ -391,8 +390,8 @@ export default function SurveyView({
               </button>
             )}
 
-            {/* Show "View Results" button if not showing results and not expired and not changing vote */}
-            {!showResults && !isExpired && !isChangingVote && (
+            {/* Show "View Results" button if not showing results and not changing vote */}
+            {!showResults && !isChangingVote && (
               <button
                 className="btn btn-sm btn-outline-secondary ms-2"
                 onClick={() => setShowResults(true)}
@@ -401,8 +400,8 @@ export default function SurveyView({
               </button>
             )}
 
-            {/* Show "Vote" button if showing results, haven't voted, not expired, and not changing vote */}
-            {showResults && !hasUserVoted && !isExpired && !isChangingVote && (
+            {/* Show "Vote" button if showing results, haven't voted, and not changing vote */}
+            {showResults && !hasUserVoted && !isChangingVote && (
               <button
                 className="btn btn-sm btn-primary ms-2"
                 onClick={handleGoToVote}
@@ -411,8 +410,8 @@ export default function SurveyView({
               </button>
             )}
 
-            {/* Show "Change Vote" button if have voted, not expired, showing results, and not changing vote */}
-            {hasUserVoted && !isExpired && showResults && !isChangingVote && (
+            {/* Show "Change Vote" button if have voted, showing results, and not changing vote */}
+            {hasUserVoted && showResults && !isChangingVote && (
               <button
                 className="btn btn-sm btn-outline-primary ms-2"
                 onClick={handleChangeVote}
@@ -421,13 +420,13 @@ export default function SurveyView({
               </button>
             )}
 
-            {/* Show "Rescind Vote" button for expired polls if user has voted */}
-            {hasUserVoted && isExpired && showResults && (
+            {/* Show "Rescind Vote" button if user has voted */}
+            {hasUserVoted && showResults && !isChangingVote && (
               <button
                 className="btn btn-sm btn-outline-danger ms-2"
                 onClick={handleRescindVote}
                 disabled={rescinding}
-                title="Remove your vote from this expired poll"
+                title="Remove your vote from this poll"
               >
                 {rescinding ? (
                   <>

@@ -23,7 +23,6 @@ import usePostOwnership from "../hooks/usePostOwnership";
 import useThreadOwnership from "../hooks/useThreadOwnership";
 import { API_BASE_URL } from "../config/api";
 import { handleApiError } from "../utils/apiErrorHandler";
-import { calculateSurveyExpiresAt } from "./survey/SurveyFormSection";
 
 function ThreadPage() {
   const { boardId, threadId } = useParams();
@@ -141,7 +140,7 @@ function ThreadPage() {
         );
 
         const response = await fetch(
-          `${API_BASE_URL}/api/boards/${boardId}/threads/${threadId}/posts`
+          `${API_BASE_URL}/api/boards/${boardId}/threads/${threadId}/posts?includeSurveys=true`
         );
 
         console.log("=== SURVEY DEBUG: Fetch URL ===");
@@ -172,9 +171,6 @@ function ThreadPage() {
             console.log(`Raw post ${index}:`, JSON.stringify(post, null, 2));
           });
         }
-
-        //const data = await response.json();
-        //console.log("Posts API response:", data);
 
         // Ensure we have an array of posts - handle both data.posts and direct array response
         let newPosts = [];
@@ -442,9 +438,7 @@ function ThreadPage() {
                   survey_type: surveyData.surveyType,
                   question: surveyData.surveyQuestion.trim(),
                   options: surveyData.surveyOptions, // Already filtered in ReplyForm
-                  expires_at: calculateSurveyExpiresAt(
-                    surveyData.surveyExpiresIn
-                  ),
+                  // NO expires_at field - surveys never expire
                 }),
               }
             );
