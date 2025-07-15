@@ -74,20 +74,9 @@ export default function SurveyView({
   }, [boardId, surveyData?.id]);
 
   useEffect(() => {
-    if (survey) {
-      // If survey data is passed as prop, use it
-      setSurveyData(survey);
-      if (survey.user_response) {
-        setUserResponse(survey.user_response);
-        setSelectedOptions(new Set(survey.user_response.selected_options));
-        setShowResults(true);
-      }
-      setLoading(false);
-    } else {
-      // Otherwise fetch it
-      fetchSurveyData();
-    }
-  }, [survey, fetchSurveyData]);
+    // Always fetch full survey data since the prop may only contain basic info
+    fetchSurveyData();
+  }, [fetchSurveyData]);
 
   // Fetch results when showing results
   useEffect(() => {
@@ -190,7 +179,7 @@ export default function SurveyView({
     );
   }
 
-  if (!surveyData) {
+  if (!surveyData || !surveyData.options) {
     return null;
   }
 
