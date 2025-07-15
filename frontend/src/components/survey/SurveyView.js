@@ -213,7 +213,7 @@ export default function SurveyView({
     <div className="card bg-mid-dark border-secondary">
       <div className="card-header border-secondary d-flex justify-content-between align-items-center">
         <h6 className="mb-0">
-          <i className="bi bi-bar-chart-fill me-2"></i>
+          <i className="bi bi-bar-chart-fill me-2 text-secondary"></i>
           {surveyData.survey_type === "single" ? "Poll" : "Multi-choice Poll"}
         </h6>
         {isExpired && <span className="badge bg-secondary">Expired</span>}
