@@ -101,7 +101,7 @@ const threadModel = {
    * @param {string} imagePath - Path to the uploaded image
    * @param {string} ipAddress - IP address of the poster
    * @param {Object} boardSettings - Board settings for thread IDs and country flags
-   * @returns {Promise<Object>} Object with threadId and boardId
+   * @returns {Promise<Object>} Object with threadId, boardId, and postId
    */
   createThread: async (
     boardId,
@@ -218,11 +218,12 @@ const threadModel = {
         countryCode = getCountryCode(ipAddress);
       }
 
-      // Create initial post with media
-      await client.query(
+      // Create initial post with media and return its ID
+      const postResult = await client.query(
         `
         INSERT INTO posts (thread_id, board_id, content, image_url, file_type, created_at, ip_address, thread_user_id, country_code, color)
         VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP, $6, $7, $8, $9)
+        RETURNING id
         `,
         [
           threadId,
@@ -236,14 +237,16 @@ const threadModel = {
           "black", // Default color
         ]
       );
+
+      const postId = postResult.rows[0].id;
       console.log(
-        `Model: Created initial post with ${fileType} for thread ${threadId}`
+        `Model: Created initial post with ID ${postId} and ${fileType} for thread ${threadId}`
       );
 
       // Commit transaction
       await client.query("COMMIT");
 
-      return { threadId, boardId };
+      return { threadId, boardId, postId };
     } catch (error) {
       await client.query("ROLLBACK");
       console.error(`Model Error - createThread:`, error);

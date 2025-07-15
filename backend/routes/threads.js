@@ -129,6 +129,7 @@ router.post(
         message: "Thread created successfully",
         threadId: result.threadId,
         boardId,
+        postId: result.postId, // <-- ADD THIS LINE
       });
     } catch (error) {
       console.error(
