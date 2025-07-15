@@ -110,6 +110,70 @@ router.post("/:surveyId/vote", checkBannedIP, async (req, res, next) => {
 });
 
 /**
+ * @route   DELETE /api/boards/:boardId/surveys/:surveyId/vote
+ * @desc    Rescind (delete) a survey response
+ * @access  Public
+ */
+router.delete("/:surveyId/vote", checkBannedIP, async (req, res, next) => {
+  const { boardId, surveyId } = req.params;
+  const ipAddress = getClientIp(req);
+
+  console.log(`Route: DELETE /api/boards/${boardId}/surveys/${surveyId}/vote`);
+
+  try {
+    // Get survey to validate it exists and belongs to this board
+    const survey = await surveyModel.getSurveyById(surveyId);
+    if (!survey) {
+      return res.status(404).json({ error: "Survey not found" });
+    }
+
+    if (survey.board_id !== boardId) {
+      return res.status(403).json({ error: "Survey not found in this board" });
+    }
+
+    // Check if survey is expired - users can still rescind votes from expired surveys
+    // This allows them to remove their data even after voting has closed
+
+    // Delete the response
+    const deleted = await surveyModel.deleteResponse({
+      survey_id: parseInt(surveyId),
+      ip_address: ipAddress,
+    });
+
+    if (!deleted) {
+      return res.status(404).json({ error: "No vote found to rescind" });
+    }
+
+    console.log(`Route: Deleted survey response for IP ${ipAddress}`);
+
+    // Notify connected clients about the vote change
+    const io = require("../utils/socketHandler").getIo;
+    const socketIo = io();
+    if (socketIo) {
+      socketIo.to(boardId).emit("survey_vote", {
+        surveyId: parseInt(surveyId),
+        boardId,
+      });
+
+      // Also emit to thread room
+      const roomId = `${boardId}-${survey.thread_id}`;
+      socketIo.to(roomId).emit("survey_vote", {
+        surveyId: parseInt(surveyId),
+        threadId: survey.thread_id,
+        boardId,
+      });
+    }
+
+    res.json({
+      message: "Vote rescinded successfully",
+    });
+  } catch (error) {
+    console.error(`Route Error - DELETE vote:`, error);
+    next(error);
+  }
+});
+
+/**
  * @route   GET /api/boards/:boardId/surveys/:surveyId/results
  * @desc    Get survey results
  * @access  Public

@@ -18,6 +18,7 @@ export default function SurveyView({
   const [showResults, setShowResults] = useState(false);
   const [showCorrelations, setShowCorrelations] = useState(false);
   const [voting, setVoting] = useState(false);
+  const [rescinding, setRescinding] = useState(false);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isChangingVote, setIsChangingVote] = useState(false); // Track if user is changing vote
@@ -196,6 +197,43 @@ export default function SurveyView({
     setSelectedOptions(new Set(userResponse.selected_options));
   };
 
+  // Handle rescind vote
+  const handleRescindVote = async () => {
+    setRescinding(true);
+    setError(null);
+
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/boards/${boardId}/surveys/${surveyData.id}/vote`,
+        {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to rescind vote");
+      }
+
+      // Reset state
+      setUserResponse(null);
+      setSelectedOptions(new Set());
+      setShowResults(false);
+      setIsChangingVote(false);
+
+      // Refresh results
+      await fetchResults();
+    } catch (err) {
+      console.error("Error rescinding vote:", err);
+      setError(err.message || "Failed to rescind vote");
+    } finally {
+      setRescinding(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="card bg-mid-dark border-secondary">
@@ -355,11 +393,53 @@ export default function SurveyView({
               </button>
             )}
             {hasUserVoted && !isExpired && showResults && !isChangingVote && (
+              <>
+                <button
+                  className="btn btn-sm btn-outline-primary ms-2"
+                  onClick={handleChangeVote}
+                >
+                  Change Vote
+                </button>
+                <button
+                  className="btn btn-sm btn-outline-danger ms-2"
+                  onClick={handleRescindVote}
+                  disabled={rescinding}
+                  title="Remove your vote from this poll"
+                >
+                  {rescinding ? (
+                    <>
+                      <span
+                        className="spinner-border spinner-border-sm me-2"
+                        role="status"
+                        aria-hidden="true"
+                      ></span>
+                      Rescinding...
+                    </>
+                  ) : (
+                    "Rescind Vote"
+                  )}
+                </button>
+              </>
+            )}
+            {hasUserVoted && isExpired && showResults && (
               <button
-                className="btn btn-sm btn-outline-primary ms-2"
-                onClick={handleChangeVote}
+                className="btn btn-sm btn-outline-danger ms-2"
+                onClick={handleRescindVote}
+                disabled={rescinding}
+                title="Remove your vote from this expired poll"
               >
-                Change Vote
+                {rescinding ? (
+                  <>
+                    <span
+                      className="spinner-border spinner-border-sm me-2"
+                      role="status"
+                      aria-hidden="true"
+                    ></span>
+                    Rescinding...
+                  </>
+                ) : (
+                  "Rescind Vote"
+                )}
               </button>
             )}
             {isChangingVote && (

@@ -487,6 +487,61 @@ const surveyModel = {
   },
 
   /**
+   * Delete a user's survey response
+   * @param {Object} responseData - Response data
+   * @param {number} responseData.survey_id - Survey ID
+   * @param {string} responseData.ip_address - User's IP address
+   * @returns {Promise<boolean>} True if deleted, false if no response found
+   */
+  deleteResponse: async (responseData) => {
+    console.log(
+      `Model: Deleting response for survey ${responseData.survey_id} from IP ${responseData.ip_address}`
+    );
+
+    const client = await pool.connect();
+
+    try {
+      await client.query("BEGIN");
+
+      // Check if response exists
+      const existingResponse = await client.query(
+        `SELECT id FROM survey_responses 
+       WHERE survey_id = $1 AND ip_address = $2`,
+        [responseData.survey_id, responseData.ip_address]
+      );
+
+      if (existingResponse.rows.length === 0) {
+        await client.query("ROLLBACK");
+        console.log(`Model: No response found to delete`);
+        return false;
+      }
+
+      const responseId = existingResponse.rows[0].id;
+
+      // Delete response options first (due to foreign key constraint)
+      await client.query(
+        `DELETE FROM survey_response_options WHERE response_id = $1`,
+        [responseId]
+      );
+
+      // Delete the response itself
+      await client.query(`DELETE FROM survey_responses WHERE id = $1`, [
+        responseId,
+      ]);
+
+      await client.query("COMMIT");
+      console.log(`Model: Successfully deleted response ${responseId}`);
+      return true;
+    } catch (error) {
+      await client.query("ROLLBACK");
+      console.error(`Model Error - deleteResponse:`, error);
+      throw error;
+    } finally {
+      client.release();
+    }
+  },
+
+  /**
    * Get all surveys for a board
    * @param {string} boardId - Board ID
    * @returns {Promise<Array>} Array of surveys
