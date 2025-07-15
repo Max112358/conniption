@@ -197,6 +197,12 @@ export default function SurveyView({
     setSelectedOptions(new Set(userResponse.selected_options));
   };
 
+  // Handle "Vote" button click (for users who haven't voted yet)
+  const handleGoToVote = () => {
+    setShowResults(false);
+    setSelectedOptions(new Set()); // Clear any selections
+  };
+
   // Handle rescind vote
   const handleRescindVote = async () => {
     setRescinding(true);
@@ -384,6 +390,8 @@ export default function SurveyView({
                 )}
               </button>
             )}
+
+            {/* Show "View Results" button if not showing results and not expired and not changing vote */}
             {!showResults && !isExpired && !isChangingVote && (
               <button
                 className="btn btn-sm btn-outline-secondary ms-2"
@@ -392,6 +400,18 @@ export default function SurveyView({
                 View Results
               </button>
             )}
+
+            {/* Show "Vote" button if showing results, haven't voted, not expired, and not changing vote */}
+            {showResults && !hasUserVoted && !isExpired && !isChangingVote && (
+              <button
+                className="btn btn-sm btn-primary ms-2"
+                onClick={handleGoToVote}
+              >
+                Vote
+              </button>
+            )}
+
+            {/* Show "Change Vote" button if have voted, not expired, showing results, and not changing vote */}
             {hasUserVoted && !isExpired && showResults && !isChangingVote && (
               <button
                 className="btn btn-sm btn-outline-primary ms-2"
@@ -400,6 +420,8 @@ export default function SurveyView({
                 Change Vote
               </button>
             )}
+
+            {/* Show "Rescind Vote" button for expired polls if user has voted */}
             {hasUserVoted && isExpired && showResults && (
               <button
                 className="btn btn-sm btn-outline-danger ms-2"
@@ -421,6 +443,8 @@ export default function SurveyView({
                 )}
               </button>
             )}
+
+            {/* Buttons for when user is changing vote */}
             {isChangingVote && (
               <>
                 <button
