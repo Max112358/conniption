@@ -204,12 +204,6 @@ export default function SurveyFormSection({
               </button>
             )}
           </div>
-
-          <div className="alert alert-info">
-            <i className="bi bi-info-circle me-2"></i>
-            <strong>Note:</strong> Surveys never expire and can be voted on
-            indefinitely.
-          </div>
         </div>
       )}
     </div>
