@@ -407,7 +407,7 @@ export default function SurveyView({
                 className="btn btn-sm btn-primary ms-2"
                 onClick={handleGoToVote}
               >
-                Vote
+                Back to Voting
               </button>
             )}
 
