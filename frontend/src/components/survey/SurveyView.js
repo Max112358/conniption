@@ -393,33 +393,12 @@ export default function SurveyView({
               </button>
             )}
             {hasUserVoted && !isExpired && showResults && !isChangingVote && (
-              <>
-                <button
-                  className="btn btn-sm btn-outline-primary ms-2"
-                  onClick={handleChangeVote}
-                >
-                  Change Vote
-                </button>
-                <button
-                  className="btn btn-sm btn-outline-danger ms-2"
-                  onClick={handleRescindVote}
-                  disabled={rescinding}
-                  title="Remove your vote from this poll"
-                >
-                  {rescinding ? (
-                    <>
-                      <span
-                        className="spinner-border spinner-border-sm me-2"
-                        role="status"
-                        aria-hidden="true"
-                      ></span>
-                      Rescinding...
-                    </>
-                  ) : (
-                    "Rescind Vote"
-                  )}
-                </button>
-              </>
+              <button
+                className="btn btn-sm btn-outline-primary ms-2"
+                onClick={handleChangeVote}
+              >
+                Change Vote
+              </button>
             )}
             {hasUserVoted && isExpired && showResults && (
               <button
@@ -443,16 +422,37 @@ export default function SurveyView({
               </button>
             )}
             {isChangingVote && (
-              <button
-                className="btn btn-sm btn-outline-secondary ms-2"
-                onClick={() => {
-                  setIsChangingVote(false);
-                  setShowResults(true);
-                  setSelectedOptions(new Set(userResponse.selected_options));
-                }}
-              >
-                Cancel
-              </button>
+              <>
+                <button
+                  className="btn btn-sm btn-outline-secondary ms-2"
+                  onClick={() => {
+                    setIsChangingVote(false);
+                    setShowResults(true);
+                    setSelectedOptions(new Set(userResponse.selected_options));
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="btn btn-sm btn-outline-danger ms-2"
+                  onClick={handleRescindVote}
+                  disabled={rescinding}
+                  title="Remove your vote from this poll"
+                >
+                  {rescinding ? (
+                    <>
+                      <span
+                        className="spinner-border spinner-border-sm me-2"
+                        role="status"
+                        aria-hidden="true"
+                      ></span>
+                      Rescinding...
+                    </>
+                  ) : (
+                    "Rescind Vote"
+                  )}
+                </button>
+              </>
             )}
           </div>
         </div>
