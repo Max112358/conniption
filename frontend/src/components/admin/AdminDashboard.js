@@ -117,7 +117,7 @@ export default function AdminDashboard() {
                       stats.byActionType.map((stat, index) => (
                         <div className="col-6 mb-3" key={index}>
                           <div className="card bg-dark border-secondary">
-                            <div className="card-body text-center py-3">
+                            <div className="card-body text-center text-light py-3">
                               <h3 className="h2 mb-1">{stat.count}</h3>
                               <p className="small text-secondary mb-0">
                                 {stat.action_type.charAt(0).toUpperCase() +
@@ -176,11 +176,11 @@ export default function AdminDashboard() {
                           {new Date(action.created_at).toLocaleString()}
                         </small>
                       </div>
-                      <div className="mt-1 small">
+                      <div className="mt-1 small text-secondary">
                         <span className="text-secondary">By: </span>
                         {action.admin_username}
                       </div>
-                      <div className="mt-1 small text-truncate">
+                      <div className="mt-1 small text-truncate text-secondary">
                         {action.reason}
                       </div>
                     </div>
