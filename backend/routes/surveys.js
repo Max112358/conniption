@@ -10,10 +10,10 @@ const checkBannedIP = require("../middleware/banCheck");
  * - Voting on surveys
  * - Getting survey results
  * - Getting correlations
- * - Listing all surveys for a board
  *
  * Survey creation/retrieval for specific posts is handled in posts.js
  * NO EXPIRATION FUNCTIONALITY - surveys never expire
+ * REMOVED: Board-wide survey listing as it's not useful for this application
  */
 
 /**
@@ -237,29 +237,6 @@ router.get("/:surveyId/correlations", async (req, res, next) => {
     });
   } catch (error) {
     console.error(`Route Error - GET correlations:`, error);
-    next(error);
-  }
-});
-
-/**
- * @route   GET /api/boards/:boardId/surveys
- * @desc    Get all surveys for a board
- * @access  Public
- */
-router.get("/", async (req, res, next) => {
-  const { boardId } = req.params;
-
-  console.log(`Route: GET /api/boards/${boardId}/surveys`);
-
-  try {
-    const surveys = await surveyModel.getSurveysByBoard(boardId);
-
-    res.json({
-      board_id: boardId,
-      surveys,
-    });
-  } catch (error) {
-    console.error(`Route Error - GET surveys by board:`, error);
     next(error);
   }
 });

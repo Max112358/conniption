@@ -4,16 +4,12 @@ const router = express.Router();
 const boardModel = require("../models/board");
 const threadRoutes = require("./threads");
 const appealRoutes = require("./appeals");
-const surveyRoutes = require("./surveys");
 
 // Use thread routes
 router.use("/:boardId/threads", threadRoutes);
 
 // Use appeal routes
 router.use("/:boardId/appeal", appealRoutes);
-
-// Survey voting routes (these don't conflict with post-level survey routes)
-router.use("/:boardId/surveys", surveyRoutes);
 
 /**
  * @route   GET /api/boards

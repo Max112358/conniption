@@ -3,6 +3,7 @@ const { pool } = require("../config/database");
 
 /**
  * Survey model functions - NO EXPIRATION FUNCTIONALITY
+ * REMOVED: Board-wide survey listing as it's not useful for this application
  */
 const surveyModel = {
   /**
@@ -535,40 +536,6 @@ const surveyModel = {
       throw error;
     } finally {
       client.release();
-    }
-  },
-
-  /**
-   * Get all surveys for a board
-   * @param {string} boardId - Board ID
-   * @returns {Promise<Array>} Array of surveys
-   */
-  getSurveysByBoard: async (boardId) => {
-    console.log(`Model: Getting surveys for board ${boardId}`);
-
-    try {
-      const result = await pool.query(
-        `SELECT s.id, s.post_id, s.thread_id, s.survey_type, s.question, 
-                s.created_at, s.is_active,
-                COUNT(DISTINCT sr.id) as response_count
-         FROM surveys s
-         LEFT JOIN survey_responses sr ON s.id = sr.survey_id
-         WHERE s.board_id = $1 AND s.is_active = TRUE
-         GROUP BY s.id
-         ORDER BY s.created_at DESC`,
-        [boardId]
-      );
-
-      console.log(
-        `Model: Found ${result.rows.length} surveys for board ${boardId}`
-      );
-      return result.rows.map((row) => ({
-        ...row,
-        response_count: parseInt(row.response_count),
-      }));
-    } catch (error) {
-      console.error(`Model Error - getSurveysByBoard(${boardId}):`, error);
-      throw error;
     }
   },
 };
