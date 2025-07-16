@@ -198,6 +198,43 @@ function BoardPage() {
     [boardId]
   );
 
+  const handleThreadStickyUpdated = useCallback(
+    (data) => {
+      if (data.boardId === boardId) {
+        // Update the sticky status and re-sort threads
+        setThreadsWithPosts((currentThreads) => {
+          const updatedThreads = currentThreads.map((thread) =>
+            thread.id === data.threadId
+              ? { ...thread, is_sticky: data.isSticky }
+              : thread
+          );
+          // Re-sort: sticky threads first, then by updated_at
+          return updatedThreads.sort((a, b) => {
+            if (a.is_sticky && !b.is_sticky) return -1;
+            if (!a.is_sticky && b.is_sticky) return 1;
+            return new Date(b.updated_at) - new Date(a.updated_at);
+          });
+        });
+      }
+    },
+    [boardId]
+  );
+
+  const handleStickyChanged = useCallback((threadId, isSticky) => {
+    // Update the sticky status locally
+    setThreadsWithPosts((currentThreads) => {
+      const updatedThreads = currentThreads.map((thread) =>
+        thread.id === threadId ? { ...thread, is_sticky: isSticky } : thread
+      );
+      // Re-sort: sticky threads first, then by updated_at
+      return updatedThreads.sort((a, b) => {
+        if (a.is_sticky && !b.is_sticky) return -1;
+        if (!a.is_sticky && b.is_sticky) return 1;
+        return new Date(b.updated_at) - new Date(a.updated_at);
+      });
+    });
+  }, []);
+
   // Socket configuration
   const socketConfig = useMemo(
     () => ({
@@ -209,6 +246,7 @@ function BoardPage() {
         post_deleted: handlePostDeleted,
         thread_deleted: handleThreadDeleted,
         post_color_changed: handlePostColorChanged,
+        thread_sticky_updated: handleThreadStickyUpdated,
       },
     }),
     [
@@ -222,6 +260,7 @@ function BoardPage() {
       handlePostDeleted,
       handleThreadDeleted,
       handlePostColorChanged,
+      handleThreadStickyUpdated,
     ]
   );
 
@@ -289,6 +328,7 @@ function BoardPage() {
                     onToggleUserHidden={toggleUserHidden}
                     hiddenPosts={hiddenPosts}
                     onTogglePostHidden={togglePostHidden}
+                    onStickyChanged={handleStickyChanged}
                   />
                 ))}
               </div>

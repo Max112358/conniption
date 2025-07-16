@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import PostPreview from "./PostPreview";
 import HideButton from "../HideButton";
 import ThreadDeleteButton from "../ThreadDeleteButton";
+import StickyToggle from "../admin/StickyToggle";
 import useThreadOwnership from "../../hooks/useThreadOwnership";
 import useAdminStatus from "../../hooks/useAdminStatus";
 import { truncateText } from "../../utils/textHelpers";
@@ -17,6 +18,7 @@ export default function ThreadCard({
   onToggleUserHidden,
   hiddenPosts,
   onTogglePostHidden,
+  onStickyChanged,
 }) {
   const hasReplies = thread.latestReplies && thread.latestReplies.length > 0;
   const opPost = thread.posts?.[0];
@@ -42,6 +44,12 @@ export default function ThreadCard({
                 className="mb-0 text-light text-break"
                 style={{ minWidth: 0 }}
               >
+                {thread.is_sticky && (
+                  <i
+                    className="bi bi-pin-fill text-warning me-2"
+                    title="Sticky thread"
+                  ></i>
+                )}
                 {thread.topic}
               </h5>
             </Link>
@@ -55,6 +63,14 @@ export default function ThreadCard({
             <small className="text-secondary text-nowrap">
               {thread.post_count} {thread.post_count === 1 ? "post" : "posts"}
             </small>
+
+            <StickyToggle
+              threadId={thread.id}
+              boardId={boardId}
+              isSticky={thread.is_sticky}
+              adminUser={adminUser}
+              onStickyChanged={onStickyChanged}
+            />
 
             <ThreadDeleteButton
               threadId={thread.id}

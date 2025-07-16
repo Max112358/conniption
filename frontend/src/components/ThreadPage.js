@@ -15,6 +15,7 @@ import ConnectionStatus from "./shared/ConnectionStatus";
 import PostCard from "./shared/PostCard";
 import ReplyForm from "./ReplyForm";
 import ThreadDeleteButton from "./ThreadDeleteButton";
+import StickyToggle from "./admin/StickyToggle";
 import useSocket from "../hooks/useSocket";
 import useHideManager from "../hooks/useHideManager";
 import useBanCheck from "../hooks/useBanCheck";
@@ -333,6 +334,31 @@ function ThreadPage() {
     [boardId, threadId]
   );
 
+  const handleThreadStickyUpdated = useCallback(
+    (data) => {
+      console.log("Thread sticky updated event received:", data);
+      if (
+        data.boardId === boardId &&
+        data.threadId === parseInt(threadId, 10)
+      ) {
+        // Update the thread sticky status
+        setThread((currentThread) =>
+          currentThread
+            ? { ...currentThread, is_sticky: data.isSticky }
+            : currentThread
+        );
+      }
+    },
+    [boardId, threadId]
+  );
+
+  const handleStickyChanged = useCallback((threadId, isSticky) => {
+    // Update the thread sticky status locally
+    setThread((currentThread) =>
+      currentThread ? { ...currentThread, is_sticky: isSticky } : currentThread
+    );
+  }, []);
+
   // Socket configuration
   const socketConfig = useMemo(
     () => ({
@@ -343,6 +369,7 @@ function ThreadPage() {
         post_deleted: handlePostDeleted,
         thread_deleted: handleThreadDeleted,
         post_color_changed: handlePostColorChanged,
+        thread_sticky_updated: handleThreadStickyUpdated,
       },
     }),
     [
@@ -356,6 +383,7 @@ function ThreadPage() {
       handlePostDeleted,
       handleThreadDeleted,
       handlePostColorChanged,
+      handleThreadStickyUpdated,
     ]
   );
 
@@ -600,7 +628,17 @@ function ThreadPage() {
           backLink={`/board/${boardId}`}
           backText={`← Back to /${boardId}/`}
           badge={`/${boardId}/`}
-          title={thread?.topic || "Loading..."}
+          title={
+            <span>
+              {thread?.is_sticky && (
+                <i
+                  className="bi bi-pin-fill text-warning me-2"
+                  title="Sticky thread"
+                ></i>
+              )}
+              {thread?.topic || "Loading..."}
+            </span>
+          }
           subtitle={
             <div className="d-flex justify-content-between align-items-center">
               <span>
@@ -630,17 +668,26 @@ function ThreadPage() {
           }
           actions={
             thread && (
-              <ThreadDeleteButton
-                threadId={parseInt(threadId)}
-                boardId={boardId}
-                isOwnThread={isOwnThread(parseInt(threadId))}
-                isModerator={isModerator}
-                adminUser={adminUser}
-                onDeleted={() => {
-                  removeOwnThread(parseInt(threadId));
-                  navigate(`/board/${boardId}`);
-                }}
-              />
+              <div className="d-flex gap-2">
+                <StickyToggle
+                  threadId={parseInt(threadId)}
+                  boardId={boardId}
+                  isSticky={thread.is_sticky}
+                  adminUser={adminUser}
+                  onStickyChanged={handleStickyChanged}
+                />
+                <ThreadDeleteButton
+                  threadId={parseInt(threadId)}
+                  boardId={boardId}
+                  isOwnThread={isOwnThread(parseInt(threadId))}
+                  isModerator={isModerator}
+                  adminUser={adminUser}
+                  onDeleted={() => {
+                    removeOwnThread(parseInt(threadId));
+                    navigate(`/board/${boardId}`);
+                  }}
+                />
+              </div>
             )
           }
         />
