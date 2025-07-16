@@ -77,6 +77,7 @@ const createTables = async () => {
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
         thread_salt TEXT,
+        is_sticky BOOLEAN DEFAULT FALSE,
         CONSTRAINT unique_thread_per_board UNIQUE (id, board_id)
       )
     `);
@@ -199,6 +200,8 @@ const createTables = async () => {
         CREATE INDEX IF NOT EXISTS idx_posts_thread_user_id ON posts(thread_user_id);
         CREATE INDEX IF NOT EXISTS idx_posts_country_code ON posts(country_code);
         CREATE INDEX IF NOT EXISTS idx_posts_color ON posts(color);
+        CREATE INDEX IF NOT EXISTS idx_threads_is_sticky ON threads(is_sticky);
+        CREATE INDEX IF NOT EXISTS idx_threads_board_sticky ON threads(board_id, is_sticky DESC);
       `);
     } catch (err) {
       console.error("Error creating indexes:", err);
@@ -360,7 +363,7 @@ const createTables = async () => {
       )
     `);
 
-    // Update moderation_actions constraint to include change_post_color
+    // Update moderation_actions constraint to include change_post_color and sticky actions
     try {
       await pool.query(`
         ALTER TABLE moderation_actions
@@ -368,7 +371,7 @@ const createTables = async () => {
         
         ALTER TABLE moderation_actions
         ADD CONSTRAINT moderation_actions_action_type_check 
-        CHECK (action_type IN ('ban', 'unban', 'delete_post', 'delete_thread', 'edit_post', 'appeal_response', 'rangeban', 'remove_rangeban', 'view_ip', 'change_post_color'))
+        CHECK (action_type IN ('ban', 'unban', 'delete_post', 'delete_thread', 'edit_post', 'appeal_response', 'rangeban', 'remove_rangeban', 'view_ip', 'change_post_color', 'sticky_thread', 'unsticky_thread'))
       `);
       console.log("Updated moderation_actions action_type constraint");
     } catch (err) {

@@ -24,6 +24,7 @@ const threadModel = {
           t.created_at,
           t.updated_at,
           t.thread_salt,
+          t.is_sticky,
           p.content,
           p.image_url,
           p.file_type,
@@ -37,6 +38,7 @@ const threadModel = {
           t.board_id = $1 
           AND p.id = (SELECT MIN(id) FROM posts WHERE thread_id = t.id)
         ORDER BY 
+          t.is_sticky DESC,
           t.updated_at DESC
         `,
         [boardId]
@@ -70,7 +72,7 @@ const threadModel = {
     try {
       const result = await pool.query(
         `
-        SELECT id, board_id, topic, created_at, updated_at, thread_salt
+        SELECT id, board_id, topic, created_at, updated_at, thread_salt, is_sticky
         FROM threads
         WHERE id = $1 AND board_id = $2
         `,
@@ -118,30 +120,30 @@ const threadModel = {
       // Start transaction
       await client.query("BEGIN");
 
-      // Count threads in this board
+      // Count non-sticky threads in this board
       const threadCountResult = await client.query(
-        "SELECT COUNT(*) FROM threads WHERE board_id = $1",
+        "SELECT COUNT(*) FROM threads WHERE board_id = $1 AND is_sticky = FALSE",
         [boardId]
       );
 
       const threadCount = parseInt(threadCountResult.rows[0].count);
       console.log(
-        `Model: Current thread count for board ${boardId}: ${threadCount}`
+        `Model: Current non-sticky thread count for board ${boardId}: ${threadCount}`
       );
 
-      // If we have 100 threads, delete the oldest one
+      // If we have 100 non-sticky threads, delete the oldest non-sticky one
       if (threadCount >= 100) {
         console.log(
-          `Model: Board ${boardId} has reached 100 threads limit, removing oldest thread`
+          `Model: Board ${boardId} has reached 100 non-sticky threads limit, removing oldest non-sticky thread`
         );
 
-        // Get the oldest thread and its image URLs before deletion
+        // Get the oldest non-sticky thread and its image URLs before deletion
         const oldestThreadResult = await client.query(
           `
           SELECT t.id, array_agg(p.image_url) as image_urls
           FROM threads t
           LEFT JOIN posts p ON p.thread_id = t.id AND p.board_id = t.board_id
-          WHERE t.board_id = $1 AND p.image_url IS NOT NULL
+          WHERE t.board_id = $1 AND t.is_sticky = FALSE AND p.image_url IS NOT NULL
           GROUP BY t.id
           ORDER BY t.updated_at ASC 
           LIMIT 1
@@ -154,7 +156,7 @@ const threadModel = {
           const imageUrls = oldestThreadResult.rows[0].image_urls || [];
 
           console.log(
-            `Model: Deleting oldest thread ${oldestThreadId} from board ${boardId} with ${imageUrls.length} images`
+            `Model: Deleting oldest non-sticky thread ${oldestThreadId} from board ${boardId} with ${imageUrls.length} images`
           );
 
           // Delete the oldest thread (posts will cascade delete)
@@ -189,8 +191,8 @@ const threadModel = {
       // Create new thread
       const threadResult = await client.query(
         `
-        INSERT INTO threads (board_id, topic, created_at, updated_at, thread_salt)
-        VALUES ($1, $2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, $3)
+        INSERT INTO threads (board_id, topic, created_at, updated_at, thread_salt, is_sticky)
+        VALUES ($1, $2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, $3, FALSE)
         RETURNING id
         `,
         [boardId, topic, threadSalt]
@@ -321,6 +323,73 @@ const threadModel = {
       throw error;
     } finally {
       client.release();
+    }
+  },
+
+  /**
+   * Toggle sticky status of a thread
+   * @param {number} threadId - The thread ID
+   * @param {string} boardId - The board ID
+   * @param {boolean} isSticky - Whether to make the thread sticky
+   * @returns {Promise<Object|null>} Updated thread object or null if not found
+   */
+  updateStickyStatus: async (threadId, boardId, isSticky) => {
+    console.log(
+      `Model: Updating sticky status for thread ${threadId} to ${isSticky}`
+    );
+
+    try {
+      const result = await pool.query(
+        `
+        UPDATE threads 
+        SET is_sticky = $1
+        WHERE id = $2 AND board_id = $3
+        RETURNING id, board_id, topic, created_at, updated_at, thread_salt, is_sticky
+        `,
+        [isSticky, threadId, boardId]
+      );
+
+      if (result.rows.length === 0) {
+        console.log(`Model: Thread not found with ID: ${threadId}`);
+        return null;
+      }
+
+      console.log(
+        `Model: Updated thread ${threadId} sticky status to ${isSticky}`
+      );
+      return result.rows[0];
+    } catch (error) {
+      console.error(`Model Error - updateStickyStatus(${threadId}):`, error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get all sticky threads for a board
+   * @param {string} boardId - The board ID
+   * @returns {Promise<Array>} Array of sticky thread objects
+   */
+  getStickyThreads: async (boardId) => {
+    console.log(`Model: Getting sticky threads for board: ${boardId}`);
+
+    try {
+      const result = await pool.query(
+        `
+        SELECT id, board_id, topic, created_at, updated_at, thread_salt, is_sticky
+        FROM threads
+        WHERE board_id = $1 AND is_sticky = TRUE
+        ORDER BY updated_at DESC
+        `,
+        [boardId]
+      );
+
+      console.log(
+        `Model: Found ${result.rows.length} sticky threads for board: ${boardId}`
+      );
+      return result.rows;
+    } catch (error) {
+      console.error(`Model Error - getStickyThreads(${boardId}):`, error);
+      throw error;
     }
   },
 };

@@ -10,6 +10,7 @@ const rangebanRoutes = require("./admin/rangebans");
 const moderationRoutes = require("./admin/moderation");
 const actionsRoutes = require("./admin/actions");
 const housekeepingRoutes = require("./admin/housekeeping");
+const stickyRoutes = require("./admin/sticky");
 
 // Authentication routes (login, logout, profile)
 router.use("/", authRoutes);
@@ -19,6 +20,9 @@ router.use("/users", usersRoutes);
 
 // Ban management routes
 router.use("/bans", bansRoutes);
+
+// Sticky thread management routes
+router.use("/boards", stickyRoutes);
 
 // Rangeban management routes
 router.use("/rangebans", rangebanRoutes);
