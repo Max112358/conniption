@@ -1,8 +1,8 @@
 // backend/routes/admin/sticky.js
 const express = require("express");
 const router = express.Router();
+const { pool } = require("../../config/database");
 const threadModel = require("../../models/thread");
-const moderationModel = require("../../models/moderation");
 const { requireAdmin } = require("../../middleware/adminAuth");
 
 /**
@@ -46,14 +46,13 @@ router.put(
           .json({ error: "Failed to update thread sticky status" });
       }
 
-      // Log the moderation action
-      await moderationModel.logAction({
-        admin_user_id: adminUserId,
-        action_type: "sticky_thread",
-        board_id: boardId,
-        thread_id: parseInt(threadId),
-        reason: "Thread made sticky",
-      });
+      // Log the moderation action directly to the database
+      await pool.query(
+        `INSERT INTO moderation_actions 
+         (admin_user_id, action_type, board_id, thread_id, reason, ip_address)
+         VALUES ($1, 'sticky_thread', $2, $3, $4, $5)`,
+        [adminUserId, boardId, parseInt(threadId), "Thread made sticky", "N/A"]
+      );
 
       // Emit socket event to update connected clients
       const io = require("../../utils/socketHandler").getIo;
@@ -118,14 +117,19 @@ router.delete(
           .json({ error: "Failed to update thread sticky status" });
       }
 
-      // Log the moderation action
-      await moderationModel.logAction({
-        admin_user_id: adminUserId,
-        action_type: "unsticky_thread",
-        board_id: boardId,
-        thread_id: parseInt(threadId),
-        reason: "Thread sticky status removed",
-      });
+      // Log the moderation action directly to the database
+      await pool.query(
+        `INSERT INTO moderation_actions 
+         (admin_user_id, action_type, board_id, thread_id, reason, ip_address)
+         VALUES ($1, 'unsticky_thread', $2, $3, $4, $5)`,
+        [
+          adminUserId,
+          boardId,
+          parseInt(threadId),
+          "Thread sticky status removed",
+          "N/A",
+        ]
+      );
 
       // Emit socket event to update connected clients
       const io = require("../../utils/socketHandler").getIo;
