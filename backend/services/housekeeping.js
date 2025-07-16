@@ -5,6 +5,7 @@ const {
   ListObjectsV2Command,
   DeleteObjectCommand,
 } = require("@aws-sdk/client-s3");
+const threadModel = require("../models/thread");
 
 /**
  * Housekeeping service for cleaning up orphaned files and old data
@@ -146,8 +147,38 @@ const housekeepingService = {
   },
 
   /**
+   * Clean up expired dead threads (older than 2 days since death)
+   * @returns {Promise<Object>} Cleanup results
+   */
+  cleanupExpiredDeadThreads: async () => {
+    console.log("Housekeeping: Starting expired dead thread cleanup");
+    const startTime = Date.now();
+
+    try {
+      const deletedCount = await threadModel.deleteExpiredDeadThreads();
+
+      const duration = Date.now() - startTime;
+      const results = {
+        threadsDeleted: deletedCount,
+        duration: duration,
+      };
+
+      console.log(
+        `Housekeeping: Expired dead thread cleanup completed in ${duration}ms. Deleted ${deletedCount} threads.`
+      );
+      return results;
+    } catch (error) {
+      console.error(
+        "Housekeeping: Error cleaning up expired dead threads:",
+        error
+      );
+      throw error;
+    }
+  },
+
+  /**
    * Clean up old threads that exceed the 100 thread limit per board
-   * This is a backup in case the real-time deletion fails
+   * This is a backup in case the real-time marking as dead fails
    * @returns {Promise<Object>} Cleanup results
    */
   cleanupExcessThreads: async () => {
@@ -157,30 +188,32 @@ const housekeepingService = {
     try {
       await client.query("BEGIN");
 
-      // Get boards that have more than 100 threads
+      // Get boards that have more than 100 active (non-dead) threads
       const boardsResult = await client.query(`
         SELECT board_id, COUNT(*) as thread_count
         FROM threads
+        WHERE is_dead = FALSE
         GROUP BY board_id
         HAVING COUNT(*) > 100
       `);
 
-      let totalDeleted = 0;
+      let totalMarkedDead = 0;
 
       for (const board of boardsResult.rows) {
         const excessCount = board.thread_count - 100;
         console.log(
-          `Housekeeping: Board ${board.board_id} has ${board.thread_count} threads, deleting ${excessCount} oldest`
+          `Housekeeping: Board ${board.board_id} has ${board.thread_count} active threads, marking ${excessCount} oldest as dead`
         );
 
-        // Delete oldest threads beyond 100
-        const deleteResult = await client.query(
+        // Mark oldest threads as dead beyond 100
+        const markDeadResult = await client.query(
           `
-          DELETE FROM threads
+          UPDATE threads
+          SET is_dead = TRUE, died_at = CURRENT_TIMESTAMP
           WHERE id IN (
             SELECT id
             FROM threads
-            WHERE board_id = $1
+            WHERE board_id = $1 AND is_dead = FALSE AND is_sticky = FALSE
             ORDER BY updated_at ASC
             LIMIT $2
           )
@@ -188,19 +221,55 @@ const housekeepingService = {
           [board.board_id, excessCount]
         );
 
-        totalDeleted += deleteResult.rowCount;
+        totalMarkedDead += markDeadResult.rowCount;
       }
 
       await client.query("COMMIT");
-      console.log(`Housekeeping: Deleted ${totalDeleted} excess threads`);
+      console.log(
+        `Housekeeping: Marked ${totalMarkedDead} excess threads as dead`
+      );
 
       return {
         boardsChecked: boardsResult.rows.length,
-        threadsDeleted: totalDeleted,
+        threadsMarkedDead: totalMarkedDead,
       };
     } catch (error) {
       await client.query("ROLLBACK");
       console.error("Housekeeping: Error cleaning up excess threads:", error);
+      throw error;
+    } finally {
+      client.release();
+    }
+  },
+
+  /**
+   * Clean up orphaned surveys (surveys where the post has been deleted)
+   * @returns {Promise<Object>} Cleanup results
+   */
+  cleanupOrphanedSurveys: async () => {
+    console.log("Housekeeping: Starting orphaned survey cleanup");
+    const client = await pool.connect();
+
+    try {
+      await client.query("BEGIN");
+
+      // Find and delete orphaned surveys
+      const deleteResult = await client.query(`
+        DELETE FROM surveys
+        WHERE post_id NOT IN (SELECT id FROM posts)
+      `);
+
+      const deletedCount = deleteResult.rowCount;
+
+      await client.query("COMMIT");
+      console.log(`Housekeeping: Deleted ${deletedCount} orphaned surveys`);
+
+      return {
+        surveysDeleted: deletedCount,
+      };
+    } catch (error) {
+      await client.query("ROLLBACK");
+      console.error("Housekeeping: Error cleaning up orphaned surveys:", error);
       throw error;
     } finally {
       client.release();
@@ -218,12 +287,28 @@ const housekeepingService = {
       tasks: {},
     };
 
-    // Run thread cleanup
+    // Run thread cleanup (mark excess as dead)
     try {
       results.tasks.threadCleanup =
         await housekeepingService.cleanupExcessThreads();
     } catch (error) {
       results.tasks.threadCleanup = { error: error.message };
+    }
+
+    // Run expired dead thread cleanup
+    try {
+      results.tasks.expiredDeadThreadCleanup =
+        await housekeepingService.cleanupExpiredDeadThreads();
+    } catch (error) {
+      results.tasks.expiredDeadThreadCleanup = { error: error.message };
+    }
+
+    // Run orphaned survey cleanup
+    try {
+      results.tasks.orphanedSurveyCleanup =
+        await housekeepingService.cleanupOrphanedSurveys();
+    } catch (error) {
+      results.tasks.orphanedSurveyCleanup = { error: error.message };
     }
 
     // Run file cleanup

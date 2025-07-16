@@ -58,6 +58,7 @@ const postModel = {
    * @param {string} ipAddress - IP address of the poster
    * @param {Object} boardSettings - Board settings for thread IDs and country flags
    * @param {string} threadSalt - The thread's salt for generating thread IDs
+   * @param {boolean} isDead - Whether the thread is dead
    * @returns {Promise<Object>} Object with postId, threadId, and boardId
    */
   createPost: async (
@@ -67,14 +68,36 @@ const postModel = {
     imagePath,
     ipAddress,
     boardSettings,
-    threadSalt
+    threadSalt,
+    isDead = false
   ) => {
     console.log(`Model: Creating post in thread ${threadId}, board ${boardId}`);
+
+    // Check if thread is dead
+    if (isDead) {
+      console.log(`Model: Cannot create post - thread ${threadId} is dead`);
+      throw new Error("Cannot post to a dead thread");
+    }
+
     const client = await pool.connect();
 
     try {
       // Start transaction
       await client.query("BEGIN");
+
+      // Double-check thread is not dead (in case it changed)
+      const threadCheck = await client.query(
+        `SELECT is_dead FROM threads WHERE id = $1 AND board_id = $2`,
+        [threadId, boardId]
+      );
+
+      if (threadCheck.rows.length === 0) {
+        throw new Error("Thread not found");
+      }
+
+      if (threadCheck.rows[0].is_dead) {
+        throw new Error("Cannot post to a dead thread");
+      }
 
       // Generate thread user ID if enabled
       let threadUserId = null;
@@ -136,12 +159,12 @@ const postModel = {
       const postId = postResult.rows[0].id;
       console.log(`Model: Created post with ID: ${postId}`);
 
-      // Update thread's updated_at timestamp
+      // Update thread's updated_at timestamp (this will bump it to the top)
       await client.query(
         `
         UPDATE threads
         SET updated_at = CURRENT_TIMESTAMP
-        WHERE id = $1 AND board_id = $2
+        WHERE id = $1 AND board_id = $2 AND is_dead = FALSE
         `,
         [threadId, boardId]
       );

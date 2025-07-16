@@ -70,7 +70,14 @@ router.get("/", async (req, res, next) => {
       });
     }
 
-    res.json({ posts: finalPosts });
+    // Include thread dead status in response
+    res.json({
+      posts: finalPosts,
+      thread: {
+        is_dead: thread.is_dead,
+        died_at: thread.died_at,
+      },
+    });
   } catch (error) {
     console.error(
       `Route Error - GET /api/boards/${boardId}/threads/${threadId}/posts:`,
@@ -119,6 +126,15 @@ router.post(
         return res.status(404).json({ error: "Thread not found" });
       }
 
+      // Check if thread is dead
+      if (thread.is_dead) {
+        console.log(`Route: Thread ${threadId} is dead - rejecting post`);
+        return res.status(403).json({
+          error:
+            "This thread has been archived and no longer accepts new posts",
+        });
+      }
+
       // Get board settings
       const board = await boardModel.getBoardById(boardId);
       if (!board) {
@@ -153,7 +169,8 @@ router.post(
         imageUrl,
         ipAddress,
         boardSettings,
-        thread.thread_salt
+        thread.thread_salt,
+        thread.is_dead // Pass dead status to model
       );
 
       // Notify connected clients about the new post
@@ -191,6 +208,15 @@ router.post(
         `Route Error - POST /api/boards/${boardId}/threads/${threadId}/posts:`,
         error
       );
+
+      // Handle specific error for dead threads
+      if (error.message === "Cannot post to a dead thread") {
+        return res.status(403).json({
+          error:
+            "This thread has been archived and no longer accepts new posts",
+        });
+      }
+
       next(error);
     }
   }
@@ -257,7 +283,7 @@ router.delete("/:postId", async (req, res, next) => {
       }
     }
 
-    // FIXED: Check if this is a moderation action (has reason in body) or user self-deletion
+    // Check if this is a moderation action (has reason in body) or user self-deletion
     const isModerationAction =
       isAdmin && req.body && req.body.reason !== undefined;
 
@@ -377,6 +403,21 @@ router.post("/:postId/survey", checkBannedIP, async (req, res, next) => {
   );
 
   try {
+    // Check if thread is dead
+    const thread = await threadModel.getThreadById(threadId, boardId);
+    if (!thread) {
+      return res.status(404).json({ error: "Thread not found" });
+    }
+
+    if (thread.is_dead) {
+      console.log(
+        `Route: Thread ${threadId} is dead - rejecting survey creation`
+      );
+      return res.status(403).json({
+        error: "Cannot create surveys in archived threads",
+      });
+    }
+
     // Validate input
     if (!survey_type || !question || !options) {
       return res.status(400).json({

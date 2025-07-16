@@ -78,6 +78,8 @@ const createTables = async () => {
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
         thread_salt TEXT,
         is_sticky BOOLEAN DEFAULT FALSE,
+        is_dead BOOLEAN DEFAULT FALSE,
+        died_at TIMESTAMP WITH TIME ZONE,
         CONSTRAINT unique_thread_per_board UNIQUE (id, board_id)
       )
     `);
@@ -202,6 +204,8 @@ const createTables = async () => {
         CREATE INDEX IF NOT EXISTS idx_posts_color ON posts(color);
         CREATE INDEX IF NOT EXISTS idx_threads_is_sticky ON threads(is_sticky);
         CREATE INDEX IF NOT EXISTS idx_threads_board_sticky ON threads(board_id, is_sticky DESC);
+        CREATE INDEX IF NOT EXISTS idx_threads_is_dead ON threads(is_dead);
+        CREATE INDEX IF NOT EXISTS idx_threads_died_at ON threads(died_at);
       `);
     } catch (err) {
       console.error("Error creating indexes:", err);

@@ -9,7 +9,7 @@ const { generateThreadSalt } = require("../utils/threadIdGenerator");
  */
 const threadModel = {
   /**
-   * Get threads for a board
+   * Get threads for a board (excluding dead threads)
    * @param {string} boardId - The board ID
    * @returns {Promise<Array>} Array of thread objects
    */
@@ -25,6 +25,8 @@ const threadModel = {
           t.updated_at,
           t.thread_salt,
           t.is_sticky,
+          t.is_dead,
+          t.died_at,
           p.content,
           p.image_url,
           p.file_type,
@@ -36,6 +38,7 @@ const threadModel = {
           posts p ON p.thread_id = t.id
         WHERE 
           t.board_id = $1 
+          AND t.is_dead = FALSE
           AND p.id = (SELECT MIN(id) FROM posts WHERE thread_id = t.id)
         ORDER BY 
           t.is_sticky DESC,
@@ -45,7 +48,7 @@ const threadModel = {
       );
 
       console.log(
-        `Model: Found ${result.rows.length} threads for board: ${boardId}`
+        `Model: Found ${result.rows.length} active threads for board: ${boardId}`
       );
 
       // Transform image URLs to use custom domain
@@ -62,7 +65,7 @@ const threadModel = {
   },
 
   /**
-   * Get a thread by ID
+   * Get a thread by ID (including dead threads)
    * @param {number} threadId - The thread ID
    * @param {string} boardId - The board ID
    * @returns {Promise<Object>} Thread object
@@ -72,7 +75,7 @@ const threadModel = {
     try {
       const result = await pool.query(
         `
-        SELECT id, board_id, topic, created_at, updated_at, thread_salt, is_sticky
+        SELECT id, board_id, topic, created_at, updated_at, thread_salt, is_sticky, is_dead, died_at
         FROM threads
         WHERE id = $1 AND board_id = $2
         `,
@@ -84,7 +87,9 @@ const threadModel = {
         return null;
       }
 
-      console.log(`Model: Found thread: ${result.rows[0].topic}`);
+      console.log(
+        `Model: Found thread: ${result.rows[0].topic} (dead: ${result.rows[0].is_dead})`
+      );
       return result.rows[0];
     } catch (error) {
       console.error(
@@ -120,68 +125,44 @@ const threadModel = {
       // Start transaction
       await client.query("BEGIN");
 
-      // Count non-sticky threads in this board
+      // Count non-sticky, non-dead threads in this board
       const threadCountResult = await client.query(
-        "SELECT COUNT(*) FROM threads WHERE board_id = $1 AND is_sticky = FALSE",
+        "SELECT COUNT(*) FROM threads WHERE board_id = $1 AND is_sticky = FALSE AND is_dead = FALSE",
         [boardId]
       );
 
       const threadCount = parseInt(threadCountResult.rows[0].count);
       console.log(
-        `Model: Current non-sticky thread count for board ${boardId}: ${threadCount}`
+        `Model: Current active non-sticky thread count for board ${boardId}: ${threadCount}`
       );
 
-      // If we have 100 non-sticky threads, delete the oldest non-sticky one
+      // If we have 100 active non-sticky threads, mark the oldest one as dead
       if (threadCount >= 100) {
         console.log(
-          `Model: Board ${boardId} has reached 100 non-sticky threads limit, removing oldest non-sticky thread`
+          `Model: Board ${boardId} has reached 100 active non-sticky threads limit, marking oldest as dead`
         );
 
-        // Get the oldest non-sticky thread and its image URLs before deletion
-        const oldestThreadResult = await client.query(
+        // Mark the oldest non-sticky, non-dead thread as dead
+        const markDeadResult = await client.query(
           `
-          SELECT t.id, array_agg(p.image_url) as image_urls
-          FROM threads t
-          LEFT JOIN posts p ON p.thread_id = t.id AND p.board_id = t.board_id
-          WHERE t.board_id = $1 AND t.is_sticky = FALSE AND p.image_url IS NOT NULL
-          GROUP BY t.id
-          ORDER BY t.updated_at ASC 
-          LIMIT 1
+          UPDATE threads 
+          SET is_dead = TRUE, died_at = CURRENT_TIMESTAMP
+          WHERE id = (
+            SELECT id 
+            FROM threads 
+            WHERE board_id = $1 AND is_sticky = FALSE AND is_dead = FALSE
+            ORDER BY updated_at ASC 
+            LIMIT 1
+          )
+          RETURNING id
           `,
           [boardId]
         );
 
-        if (oldestThreadResult.rows.length > 0) {
-          const oldestThreadId = oldestThreadResult.rows[0].id;
-          const imageUrls = oldestThreadResult.rows[0].image_urls || [];
-
+        if (markDeadResult.rows.length > 0) {
           console.log(
-            `Model: Deleting oldest non-sticky thread ${oldestThreadId} from board ${boardId} with ${imageUrls.length} images`
+            `Model: Marked thread ${markDeadResult.rows[0].id} as dead`
           );
-
-          // Delete the oldest thread (posts will cascade delete)
-          await client.query(
-            "DELETE FROM threads WHERE id = $1 AND board_id = $2",
-            [oldestThreadId, boardId]
-          );
-
-          // Delete images from R2 after transaction commits
-          // We'll do this outside the transaction to avoid blocking
-          setImmediate(async () => {
-            for (const imageUrl of imageUrls) {
-              if (imageUrl) {
-                try {
-                  await fileUtils.deleteFile(imageUrl);
-                  console.log(`Model: Deleted image from R2: ${imageUrl}`);
-                } catch (err) {
-                  console.error(
-                    `Model: Failed to delete image from R2: ${imageUrl}`,
-                    err
-                  );
-                }
-              }
-            }
-          });
         }
       }
 
@@ -191,8 +172,8 @@ const threadModel = {
       // Create new thread
       const threadResult = await client.query(
         `
-        INSERT INTO threads (board_id, topic, created_at, updated_at, thread_salt, is_sticky)
-        VALUES ($1, $2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, $3, FALSE)
+        INSERT INTO threads (board_id, topic, created_at, updated_at, thread_salt, is_sticky, is_dead, died_at)
+        VALUES ($1, $2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, $3, FALSE, FALSE, NULL)
         RETURNING id
         `,
         [boardId, topic, threadSalt]
@@ -344,7 +325,7 @@ const threadModel = {
         UPDATE threads 
         SET is_sticky = $1
         WHERE id = $2 AND board_id = $3
-        RETURNING id, board_id, topic, created_at, updated_at, thread_salt, is_sticky
+        RETURNING id, board_id, topic, created_at, updated_at, thread_salt, is_sticky, is_dead, died_at
         `,
         [isSticky, threadId, boardId]
       );
@@ -375,7 +356,7 @@ const threadModel = {
     try {
       const result = await pool.query(
         `
-        SELECT id, board_id, topic, created_at, updated_at, thread_salt, is_sticky
+        SELECT id, board_id, topic, created_at, updated_at, thread_salt, is_sticky, is_dead, died_at
         FROM threads
         WHERE board_id = $1 AND is_sticky = TRUE
         ORDER BY updated_at DESC
@@ -390,6 +371,104 @@ const threadModel = {
     } catch (error) {
       console.error(`Model Error - getStickyThreads(${boardId}):`, error);
       throw error;
+    }
+  },
+
+  /**
+   * Get dead threads that have expired (older than 2 days)
+   * @returns {Promise<Array>} Array of expired dead thread objects
+   */
+  getExpiredDeadThreads: async () => {
+    console.log(`Model: Getting expired dead threads`);
+
+    try {
+      const result = await pool.query(
+        `
+        SELECT t.id, t.board_id, array_agg(p.image_url) as image_urls
+        FROM threads t
+        LEFT JOIN posts p ON p.thread_id = t.id AND p.board_id = t.board_id
+        WHERE t.is_dead = TRUE 
+        AND t.died_at < NOW() - INTERVAL '2 days'
+        AND p.image_url IS NOT NULL
+        GROUP BY t.id, t.board_id
+        `,
+        []
+      );
+
+      console.log(`Model: Found ${result.rows.length} expired dead threads`);
+      return result.rows;
+    } catch (error) {
+      console.error(`Model Error - getExpiredDeadThreads:`, error);
+      throw error;
+    }
+  },
+
+  /**
+   * Delete expired dead threads
+   * @returns {Promise<number>} Number of threads deleted
+   */
+  deleteExpiredDeadThreads: async () => {
+    console.log(`Model: Deleting expired dead threads`);
+    const client = await pool.connect();
+
+    try {
+      await client.query("BEGIN");
+
+      // Get all expired dead threads with their images
+      const expiredThreads = await threadModel.getExpiredDeadThreads();
+
+      if (expiredThreads.length === 0) {
+        await client.query("COMMIT");
+        return 0;
+      }
+
+      // Collect all image URLs
+      const allImageUrls = [];
+      for (const thread of expiredThreads) {
+        if (thread.image_urls) {
+          allImageUrls.push(...thread.image_urls.filter((url) => url !== null));
+        }
+      }
+
+      // Delete the threads (posts and surveys will cascade delete)
+      const deleteResult = await client.query(
+        `
+        DELETE FROM threads
+        WHERE is_dead = TRUE 
+        AND died_at < NOW() - INTERVAL '2 days'
+        `,
+        []
+      );
+
+      await client.query("COMMIT");
+
+      const deletedCount = deleteResult.rowCount;
+      console.log(`Model: Deleted ${deletedCount} expired dead threads`);
+
+      // Delete images from R2 (do this after commit to avoid blocking)
+      if (allImageUrls.length > 0) {
+        setImmediate(async () => {
+          for (const imageUrl of allImageUrls) {
+            try {
+              await fileUtils.deleteFile(imageUrl);
+              console.log(`Model: Deleted media from R2: ${imageUrl}`);
+            } catch (err) {
+              console.error(
+                `Model: Failed to delete media from R2: ${imageUrl}`,
+                err
+              );
+            }
+          }
+        });
+      }
+
+      return deletedCount;
+    } catch (error) {
+      await client.query("ROLLBACK");
+      console.error(`Model Error - deleteExpiredDeadThreads:`, error);
+      throw error;
+    } finally {
+      client.release();
     }
   },
 };
