@@ -12,8 +12,11 @@ export default function StickyToggle({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Only show for admins
-  if (!adminUser || adminUser.role !== "admin") {
+  // Show for admins and moderators (not janitors)
+  if (
+    !adminUser ||
+    (adminUser.role !== "admin" && adminUser.role !== "moderator")
+  ) {
     return null;
   }
 
