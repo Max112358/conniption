@@ -40,10 +40,14 @@ export default function useAdminStatus() {
 
   const isAdmin = adminUser?.role === "admin";
   const isModerator = adminUser?.role === "moderator" || isAdmin;
+  const isJanitor = adminUser?.role === "janitor";
+  const hasAnyAdminRole = isAdmin || isModerator || isJanitor;
 
   return {
     adminUser,
     isAdmin,
     isModerator,
+    isJanitor,
+    hasAnyAdminRole,
   };
 }

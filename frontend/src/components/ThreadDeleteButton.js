@@ -18,14 +18,21 @@ export default function ThreadDeleteButton({
   const [error, setError] = useState(null);
   const navigate = useNavigate();
 
+  // Check if user has moderation privileges (admin, moderator, or janitor)
+  const hasModPrivileges =
+    adminUser && ["admin", "moderator", "janitor"].includes(adminUser.role);
+
   // Don't show button if user can't delete
-  if (!isOwnThread && !isModerator) {
+  if (!isOwnThread && !hasModPrivileges) {
     return null;
   }
 
+  // Check if this is a moderation action (admin/mod/janitor deleting someone else's thread)
+  const isModerationAction = hasModPrivileges && !isOwnThread;
+
   const handleDelete = async () => {
-    // Validate reason for moderator deletion
-    if (isModerator && !isOwnThread && !deleteReason.trim()) {
+    // Validate reason for moderation actions
+    if (isModerationAction && !deleteReason.trim()) {
       setError("Please provide a reason for deletion");
       return;
     }
@@ -42,7 +49,7 @@ export default function ThreadDeleteButton({
       };
 
       // Add credentials for admin users
-      if (isModerator) {
+      if (hasModPrivileges) {
         options.credentials = "include";
       }
 
@@ -79,9 +86,7 @@ export default function ThreadDeleteButton({
     <>
       <button
         className={`btn btn-sm ${
-          isModerator && !isOwnThread
-            ? "btn-outline-danger"
-            : "btn-outline-secondary"
+          isModerationAction ? "btn-outline-danger" : "btn-outline-secondary"
         }`}
         onClick={() => setShowConfirm(true)}
         title={
@@ -128,8 +133,8 @@ export default function ThreadDeleteButton({
                   thread and all posts within it.
                 </p>
 
-                {/* Show reason field for moderators */}
-                {isModerator && !isOwnThread && (
+                {/* Show reason field for moderation actions */}
+                {isModerationAction && (
                   <div className="mb-3">
                     <label
                       htmlFor="deleteReason"
