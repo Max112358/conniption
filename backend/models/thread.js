@@ -163,6 +163,28 @@ const threadModel = {
           console.log(
             `Model: Marked thread ${markDeadResult.rows[0].id} as dead`
           );
+
+          // Emit thread_died event
+          const io = require("../utils/socketHandler").getIo;
+          const socketIo = io();
+          if (socketIo) {
+            const deadThreadId = markDeadResult.rows[0].id;
+            const roomId = `${boardId}-${deadThreadId}`;
+            console.log(`Emitting thread_died event to room ${roomId}`);
+
+            socketIo.to(roomId).emit("thread_died", {
+              threadId: deadThreadId,
+              boardId: boardId,
+              diedAt: new Date().toISOString(),
+            });
+
+            // Also emit to board room so board page can update
+            socketIo.to(boardId).emit("thread_died", {
+              threadId: deadThreadId,
+              boardId: boardId,
+              diedAt: new Date().toISOString(),
+            });
+          }
         }
       }
 
