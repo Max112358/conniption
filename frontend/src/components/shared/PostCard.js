@@ -28,19 +28,22 @@ export default function PostCard({
   isThreadPage = false,
   onPostDeleted,
   onPostColorChanged,
+  isThreadDead = false,
 }) {
   const { isOwnPost, removeOwnPost } = usePostOwnership();
   const [postColor, setPostColor] = useState(post.color || "black");
   const isModerator =
     adminUser?.role === "moderator" || adminUser?.role === "admin";
 
-  const showModMenu = isModerator && !isHidden && !isUserHidden;
+  const showModMenu =
+    isModerator && !isHidden && !isUserHidden && !isThreadDead;
   const isUserOwnPost = isOwnPost(post.id);
 
   // Debug survey data
   console.log(`=== SURVEY DEBUG: PostCard for post ${post.id} ===`);
   console.log("Post object:", post);
   console.log("Has survey:", !!post.survey);
+  console.log("Is Thread Dead:", isThreadDead);
   if (post.survey) {
     console.log("Survey data:", post.survey);
   }
@@ -120,7 +123,7 @@ export default function PostCard({
             />
           )}
 
-          {isUserOwnPost && !isHidden && !isUserHidden && (
+          {isUserOwnPost && !isHidden && !isUserHidden && !isThreadDead && (
             <PostDeleteButton
               post={post}
               boardId={boardId}
@@ -176,6 +179,7 @@ export default function PostCard({
                   threadId={thread?.id || post.thread_id}
                   boardId={boardId}
                   isPostOwner={isUserOwnPost}
+                  isThreadDead={isThreadDead}
                 />
               </div>
             )}

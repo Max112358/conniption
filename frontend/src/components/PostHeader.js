@@ -98,6 +98,7 @@ const ReplyLinkPreview = ({ postId, posts, x, y }) => {
 export default function PostHeader({
   post,
   posts = [], // All posts in the thread
+  isOP,
   onPostNumberClick,
   onPostLinkClick,
   showThreadId = false,
@@ -106,6 +107,7 @@ export default function PostHeader({
   isUserHidden = false,
   onTogglePostHidden,
   onToggleUserHidden,
+  isThreadDead = false,
 }) {
   const [showTimeAgo, setShowTimeAgo] = useState(false);
   const [hoveredReplyId, setHoveredReplyId] = useState(null);
@@ -161,6 +163,13 @@ export default function PostHeader({
 
   const replies = getReplies();
 
+  const handlePostNumberClick = () => {
+    if (isThreadDead) return; // Don't allow quoting in dead threads
+    if (onPostNumberClick) {
+      onPostNumberClick(post.id);
+    }
+  };
+
   return (
     <div className="d-flex align-items-center gap-2 flex-wrap">
       {/* Post hide button */}
@@ -172,13 +181,20 @@ export default function PostHeader({
         />
       )}
 
+      {/* OP badge */}
+      {isOP && <span className="badge bg-primary">OP</span>}
+
       <div>
         <span className="text-secondary">Post #</span>
         <span
-          className="text-primary"
-          style={{ cursor: "pointer" }}
-          onClick={() => onPostNumberClick(post.id)}
-          title="Click to reply to this post"
+          className={`${isThreadDead ? "text-secondary" : "text-primary"}`}
+          style={{ cursor: isThreadDead ? "default" : "pointer" }}
+          onClick={handlePostNumberClick}
+          title={
+            isThreadDead
+              ? "Cannot quote posts in archived threads"
+              : "Click to reply to this post"
+          }
         >
           {post.id}
         </span>
@@ -268,7 +284,7 @@ export default function PostHeader({
                   onMouseLeave={() => setHoveredReplyId(null)}
                 >
                   &gt;&gt;{replyId}
-                  {isYou && "(You)"}
+                  {isYou && " (You)"}
                 </span>
                 {index < replies.length - 1 && (
                   <span className="text-secondary">, </span>

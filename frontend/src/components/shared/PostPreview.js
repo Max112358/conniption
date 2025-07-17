@@ -3,7 +3,6 @@ import { useState } from "react";
 import PostHeader from "../PostHeader";
 import PostContent from "../PostContent";
 import MediaThumbnail from "./MediaThumbnail";
-//import usePostOwnership from "../../hooks/usePostOwnership";
 
 export default function PostPreview({
   post,
@@ -21,10 +20,9 @@ export default function PostPreview({
   posts = [],
   allThreadsWithPosts = [],
   compact = false,
+  isThreadDead = false,
 }) {
-  //const { isOwnPost } = usePostOwnership();
   const [postColor] = useState(post.color || "black");
-  //const isUserOwnPost = isOwnPost(post.id);
 
   const containerClass = compact
     ? "border border-secondary rounded p-2 mb-2"
@@ -52,6 +50,7 @@ export default function PostPreview({
             isUserHidden={isUserHidden}
             onTogglePostHidden={onToggleHidden}
             onToggleUserHidden={onToggleUserHidden}
+            isThreadDead={isThreadDead}
           />
         </div>
       )}
@@ -72,6 +71,7 @@ export default function PostPreview({
               isUserHidden={isUserHidden}
               onTogglePostHidden={onToggleHidden}
               onToggleUserHidden={onToggleUserHidden}
+              isThreadDead={isThreadDead}
             />
           </div>
         )}
@@ -121,13 +121,20 @@ export default function PostPreview({
             {/* Survey Component - Compact version for previews */}
             {post.survey && (
               <div className={`mt-2 ${compact ? "small" : ""}`}>
-                <div className="alert alert-info py-1 px-2 mb-0">
+                <div
+                  className={`alert alert-info py-1 px-2 mb-0 ${
+                    isThreadDead ? "opacity-50" : ""
+                  }`}
+                >
                   <i className="bi bi-bar-chart-fill me-1 text-secondary"></i>
                   <strong>Poll:</strong> {post.survey.question}
                   {post.survey.response_count > 0 && (
                     <span className="ms-2 badge bg-primary">
                       {post.survey.response_count} votes
                     </span>
+                  )}
+                  {isThreadDead && (
+                    <span className="ms-2 badge bg-secondary">Archived</span>
                   )}
                 </div>
               </div>

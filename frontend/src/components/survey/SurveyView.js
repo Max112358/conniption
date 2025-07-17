@@ -10,6 +10,7 @@ export default function SurveyView({
   threadId,
   boardId,
   isPostOwner,
+  isThreadDead = false,
 }) {
   const [surveyData, setSurveyData] = useState(null);
   const [userResponse, setUserResponse] = useState(null);
@@ -27,6 +28,7 @@ export default function SurveyView({
   console.log("Survey prop received:", survey);
   console.log("Thread ID:", threadId);
   console.log("Board ID:", boardId);
+  console.log("Is Thread Dead:", isThreadDead);
 
   // Fetch survey data and user's response
   const fetchSurveyData = useCallback(async () => {
@@ -123,7 +125,7 @@ export default function SurveyView({
   // Socket configuration
   const { isConnected } = useSocket({
     room: `${boardId}-${threadId}`,
-    enabled: !!surveyData,
+    enabled: !!surveyData && !isThreadDead, // Disable socket for dead threads
     events: {
       survey_vote: handleSurveyVote,
     },
@@ -131,6 +133,8 @@ export default function SurveyView({
 
   // Handle option selection
   const handleOptionToggle = (optionId) => {
+    if (isThreadDead) return; // Don't allow selection in dead threads
+
     const newSelected = new Set(selectedOptions);
 
     if (surveyData.survey_type === "single") {
@@ -151,6 +155,11 @@ export default function SurveyView({
 
   // Submit vote
   const handleSubmitVote = async () => {
+    if (isThreadDead) {
+      setError("Cannot vote in archived threads");
+      return;
+    }
+
     if (selectedOptions.size === 0) {
       setError("Please select at least one option");
       return;
@@ -192,6 +201,7 @@ export default function SurveyView({
 
   // Handle change vote button click
   const handleChangeVote = () => {
+    if (isThreadDead) return;
     setShowResults(false);
     setIsChangingVote(true);
     setSelectedOptions(new Set(userResponse.selected_options));
@@ -199,12 +209,18 @@ export default function SurveyView({
 
   // Handle "Vote" button click (for users who haven't voted yet)
   const handleGoToVote = () => {
+    if (isThreadDead) return;
     setShowResults(false);
     setSelectedOptions(new Set()); // Clear any selections
   };
 
   // Handle rescind vote
   const handleRescindVote = async () => {
+    if (isThreadDead) {
+      setError("Cannot change votes in archived threads");
+      return;
+    }
+
     setRescinding(true);
     setError(null);
 
@@ -259,16 +275,21 @@ export default function SurveyView({
     return null;
   }
 
-  // Surveys never expire now - can always vote
-  const canVote = !showResults || isChangingVote;
+  // Surveys never expire, but voting is disabled in dead threads
+  const canVote = !isThreadDead && (!showResults || isChangingVote);
   const hasUserVoted = !!userResponse;
 
   return (
-    <div className="card bg-mid-dark border-secondary">
+    <div
+      className={`card bg-mid-dark border-secondary ${
+        isThreadDead ? "dead-thread-disabled" : ""
+      }`}
+    >
       <div className="card-header border-secondary d-flex justify-content-between align-items-center">
         <h6 className="mb-0 text-secondary">
           <i className="bi bi-clipboard-check me-2 text-secondary"></i>
           {surveyData.survey_type === "single" ? "Poll" : "Multi-choice Poll"}
+          {isThreadDead && <span className="text-danger ms-2">(Archived)</span>}
         </h6>
       </div>
       <div className="card-body">
@@ -326,7 +347,7 @@ export default function SurveyView({
                   <div
                     className={`form-check p-2 rounded border ${
                       isSelected ? "border-primary bg-dark" : "border-secondary"
-                    }`}
+                    } ${isThreadDead ? "opacity-50" : ""}`}
                     style={{ cursor: canVote ? "pointer" : "default" }}
                     onClick={() => canVote && handleOptionToggle(option.id)}
                   >
@@ -341,7 +362,7 @@ export default function SurveyView({
                       id={`option-${option.id}`}
                       checked={isSelected}
                       onChange={() => {}}
-                      disabled={!canVote}
+                      disabled={!canVote || isThreadDead}
                     />
                     <label
                       className="form-check-label text-light"
@@ -367,7 +388,7 @@ export default function SurveyView({
             )}
           </div>
           <div>
-            {canVote && (
+            {canVote && !isThreadDead && (
               <button
                 className="btn btn-sm btn-primary"
                 onClick={handleSubmitVote}
@@ -391,7 +412,7 @@ export default function SurveyView({
             )}
 
             {/* Show "View Results" button if not showing results and not changing vote */}
-            {!showResults && !isChangingVote && (
+            {!showResults && !isChangingVote && !isThreadDead && (
               <button
                 className="btn btn-sm btn-outline-secondary ms-2"
                 onClick={() => setShowResults(true)}
@@ -400,51 +421,70 @@ export default function SurveyView({
               </button>
             )}
 
-            {/* Show "Vote" button if showing results, haven't voted, and not changing vote */}
-            {showResults && !hasUserVoted && !isChangingVote && (
+            {/* Always show View Results for dead threads */}
+            {!showResults && isThreadDead && (
               <button
-                className="btn btn-sm btn-primary ms-2"
-                onClick={handleGoToVote}
+                className="btn btn-sm btn-outline-secondary"
+                onClick={() => setShowResults(true)}
               >
-                Back to Voting
+                View Results
               </button>
             )}
+
+            {/* Show "Vote" button if showing results, haven't voted, and not changing vote */}
+            {showResults &&
+              !hasUserVoted &&
+              !isChangingVote &&
+              !isThreadDead && (
+                <button
+                  className="btn btn-sm btn-primary ms-2"
+                  onClick={handleGoToVote}
+                >
+                  Back to Voting
+                </button>
+              )}
 
             {/* Show "Change Vote" button if have voted, showing results, and not changing vote */}
-            {hasUserVoted && showResults && !isChangingVote && (
-              <button
-                className="btn btn-sm btn-outline-primary ms-2"
-                onClick={handleChangeVote}
-              >
-                Change Vote
-              </button>
-            )}
+            {hasUserVoted &&
+              showResults &&
+              !isChangingVote &&
+              !isThreadDead && (
+                <button
+                  className="btn btn-sm btn-outline-primary ms-2"
+                  onClick={handleChangeVote}
+                >
+                  Change Vote
+                </button>
+              )}
 
             {/* Show "Rescind Vote" button if user has voted */}
-            {hasUserVoted && showResults && !isChangingVote && (
-              <button
-                className="btn btn-sm btn-outline-danger ms-2"
-                onClick={handleRescindVote}
-                disabled={rescinding}
-                title="Remove your vote from this poll"
-              >
-                {rescinding ? (
-                  <>
-                    <span
-                      className="spinner-border spinner-border-sm me-2"
-                      role="status"
-                      aria-hidden="true"
-                    ></span>
-                    Rescinding...
-                  </>
-                ) : (
-                  "Rescind Vote"
-                )}
-              </button>
-            )}
+            {hasUserVoted &&
+              showResults &&
+              !isChangingVote &&
+              !isThreadDead && (
+                <button
+                  className="btn btn-sm btn-outline-danger ms-2"
+                  onClick={handleRescindVote}
+                  disabled={rescinding}
+                  title="Remove your vote from this poll"
+                >
+                  {rescinding ? (
+                    <>
+                      <span
+                        className="spinner-border spinner-border-sm me-2"
+                        role="status"
+                        aria-hidden="true"
+                      ></span>
+                      Rescinding...
+                    </>
+                  ) : (
+                    "Rescind Vote"
+                  )}
+                </button>
+              )}
 
             {/* Buttons for when user is changing vote */}
-            {isChangingVote && (
+            {isChangingVote && !isThreadDead && (
               <>
                 <button
                   className="btn btn-sm btn-outline-secondary ms-2"
@@ -481,7 +521,7 @@ export default function SurveyView({
         </div>
 
         {/* Connection status */}
-        {isConnected && showResults && !isChangingVote && (
+        {isConnected && showResults && !isChangingVote && !isThreadDead && (
           <div className="text-center mt-2">
             <small className="text-success">
               <i

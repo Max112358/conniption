@@ -36,6 +36,8 @@ function ThreadPage() {
   const [showReplyForm, setShowReplyForm] = useState(false);
   const [board, setBoard] = useState(null);
   const [newPostsAvailable, setNewPostsAvailable] = useState(false);
+  const [threadDead, setThreadDead] = useState(false);
+  const [threadDiedAt, setThreadDiedAt] = useState(null);
 
   // Reply form state
   const [content, setContent] = useState("");
@@ -60,8 +62,14 @@ function ThreadPage() {
     postsRef.current = posts;
   }, [posts]);
 
-  // Add custom CSS for highlight animation
+  // Add custom CSS for highlight animation and import dead thread styles
   useEffect(() => {
+    // Import dead thread styles
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = "/styles/deadThread.css";
+    document.head.appendChild(link);
+
     const style = document.createElement("style");
     style.textContent = `
       @keyframes postHighlight {
@@ -88,6 +96,7 @@ function ThreadPage() {
     document.head.appendChild(style);
 
     return () => {
+      document.head.removeChild(link);
       document.head.removeChild(style);
     };
   }, []);
@@ -123,6 +132,8 @@ function ThreadPage() {
 
       const data = await response.json();
       setThread(data.thread);
+      setThreadDead(data.thread.is_dead);
+      setThreadDiedAt(data.thread.died_at);
       setThreadNotFound(false);
       return true;
     } catch (err) {
@@ -171,6 +182,12 @@ function ThreadPage() {
           data.posts.forEach((post, index) => {
             console.log(`Raw post ${index}:`, JSON.stringify(post, null, 2));
           });
+        }
+
+        // Check thread dead status from response
+        if (data.thread) {
+          setThreadDead(data.thread.is_dead);
+          setThreadDiedAt(data.thread.died_at);
         }
 
         // Ensure we have an array of posts - handle both data.posts and direct array response
@@ -352,6 +369,28 @@ function ThreadPage() {
     [boardId, threadId]
   );
 
+  const handleThreadDied = useCallback(
+    (data) => {
+      console.log("Thread died event received:", data);
+      if (
+        data.boardId === boardId &&
+        data.threadId === parseInt(threadId, 10)
+      ) {
+        // Mark the thread as dead
+        setThreadDead(true);
+        setThreadDiedAt(data.diedAt);
+        setThread((currentThread) =>
+          currentThread
+            ? { ...currentThread, is_dead: true, died_at: data.diedAt }
+            : currentThread
+        );
+        // Hide reply form if it's open
+        setShowReplyForm(false);
+      }
+    },
+    [boardId, threadId]
+  );
+
   const handleStickyChanged = useCallback((threadId, isSticky) => {
     // Update the thread sticky status locally
     setThread((currentThread) =>
@@ -370,6 +409,7 @@ function ThreadPage() {
         thread_deleted: handleThreadDeleted,
         post_color_changed: handlePostColorChanged,
         thread_sticky_updated: handleThreadStickyUpdated,
+        thread_died: handleThreadDied,
       },
     }),
     [
@@ -384,6 +424,7 @@ function ThreadPage() {
       handleThreadDeleted,
       handlePostColorChanged,
       handleThreadStickyUpdated,
+      handleThreadDied,
     ]
   );
 
@@ -407,6 +448,14 @@ function ThreadPage() {
   // Handle post submission
   const handleSubmitPost = useCallback(
     async (submitData) => {
+      // Check if thread is dead
+      if (threadDead) {
+        setPostError(
+          "This thread has been archived and no longer accepts new posts"
+        );
+        return;
+      }
+
       // Extract data from the submit object
       const {
         content: submitContent,
@@ -452,8 +501,8 @@ function ThreadPage() {
           addOwnPost(data.postId);
         }
 
-        // Create survey if requested
-        if (includeSurvey && data.postId && surveyData) {
+        // Create survey if requested (but not if thread is dead)
+        if (includeSurvey && data.postId && surveyData && !threadDead) {
           try {
             const surveyResponse = await fetch(
               `${API_BASE_URL}/api/boards/${boardId}/threads/${threadId}/posts/${data.postId}/survey`,
@@ -505,12 +554,17 @@ function ThreadPage() {
         setPostLoading(false);
       }
     },
-    [boardId, threadId, fetchPosts, addOwnPost]
+    [boardId, threadId, fetchPosts, addOwnPost, threadDead]
   );
 
   // Handle clicking on a post number to quote it
   const handlePostNumberClick = useCallback(
     (postId) => {
+      // Don't allow quoting in dead threads
+      if (threadDead) {
+        return;
+      }
+
       const textarea = contentTextareaRef.current;
       if (!textarea) {
         // If reply form is not open, open it first
@@ -539,7 +593,7 @@ function ThreadPage() {
         }
       }, 100);
     },
-    [content]
+    [content, threadDead]
   );
 
   // Handle clicking on a post link to scroll to that post
@@ -596,6 +650,28 @@ function ThreadPage() {
     setNewPostsAvailable(false);
   }, []);
 
+  // Format time remaining for dead thread
+  const getTimeRemaining = useCallback(() => {
+    if (!threadDiedAt) return null;
+
+    const diedAt = new Date(threadDiedAt);
+    const expiresAt = new Date(diedAt.getTime() + 2 * 24 * 60 * 60 * 1000); // 2 days
+    const now = new Date();
+    const remaining = expiresAt - now;
+
+    if (remaining <= 0) return "Expired";
+
+    const hours = Math.floor(remaining / (1000 * 60 * 60));
+    const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
+
+    if (hours > 0) {
+      return `${hours} hour${hours !== 1 ? "s" : ""} ${minutes} minute${
+        minutes !== 1 ? "s" : ""
+      }`;
+    }
+    return `${minutes} minute${minutes !== 1 ? "s" : ""}`;
+  }, [threadDiedAt]);
+
   if (banned && banInfo) {
     return <BanNotification ban={banInfo} boardId={boardId} />;
   }
@@ -622,8 +698,26 @@ function ThreadPage() {
   console.log("Rendering ThreadPage with posts:", posts);
 
   return (
-    <div className="container-fluid min-vh-100 bg-dark text-light py-4">
+    <div
+      className={`container-fluid min-vh-100 bg-dark text-light py-4 ${
+        threadDead ? "dead-thread" : ""
+      }`}
+    >
+      {threadDead && <div className="dead-thread-overlay"></div>}
+
       <div className="container">
+        {threadDead && (
+          <div className="dead-thread-banner">
+            <i className="bi bi-exclamation-triangle-fill"></i>
+            This thread has been archived and is now read-only.
+            {threadDiedAt && (
+              <div className="mt-2 small">
+                Time remaining before deletion: {getTimeRemaining()}
+              </div>
+            )}
+          </div>
+        )}
+
         <PageHeader
           backLink={`/board/${boardId}`}
           backText={`← Back to /${boardId}/`}
@@ -634,6 +728,12 @@ function ThreadPage() {
                 <i
                   className="bi bi-pin-fill text-warning me-2"
                   title="Sticky thread"
+                ></i>
+              )}
+              {threadDead && (
+                <i
+                  className="bi bi-archive-fill text-danger me-2"
+                  title="Archived thread"
                 ></i>
               )}
               {thread?.topic || "Loading..."}
@@ -667,7 +767,8 @@ function ThreadPage() {
             </div>
           }
           actions={
-            thread && (
+            thread &&
+            !threadDead && (
               <div className="d-flex gap-2">
                 <StickyToggle
                   threadId={parseInt(threadId)}
@@ -693,7 +794,7 @@ function ThreadPage() {
         />
 
         {/* New posts notification */}
-        {newPostsAvailable && (
+        {newPostsAvailable && !threadDead && (
           <div
             className="position-fixed bottom-0 start-50 translate-middle-x mb-3"
             style={{ zIndex: 1000 }}
@@ -744,6 +845,7 @@ function ThreadPage() {
                       isThreadPage={true}
                       onPostDeleted={handlePostDeletedByUser}
                       onPostColorChanged={handlePostColorChangedByUser}
+                      isThreadDead={threadDead}
                     />
                   </div>
                 ))}
@@ -763,7 +865,7 @@ function ThreadPage() {
         </div>
 
         {/* Reply Form */}
-        {!showReplyForm && posts.length > 0 && (
+        {!threadDead && !showReplyForm && posts.length > 0 && (
           <div className="text-center mb-4">
             <button
               className="btn btn-primary"
@@ -775,7 +877,7 @@ function ThreadPage() {
           </div>
         )}
 
-        {showReplyForm && (
+        {!threadDead && showReplyForm && (
           <ReplyForm
             ref={contentTextareaRef}
             content={content}
@@ -788,6 +890,17 @@ function ThreadPage() {
             loading={postLoading}
             error={postError}
           />
+        )}
+
+        {threadDead && posts.length > 0 && (
+          <div className="card bg-dark border-danger reply-form-disabled">
+            <div className="card-body text-center py-5">
+              <div className="reply-form-disabled-message">
+                <i className="bi bi-lock-fill me-2"></i>
+                This thread is archived. No new posts allowed.
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </div>

@@ -19,6 +19,7 @@ import RangebanManagement from "./components/admin/RangebanManagement";
 
 import "./styles/colors.css";
 import "./styles/spoilers.css"; //spoiler text styles
+import "./styles/deadThread.css"; // dead thread styles
 
 // Main app with routing
 export default function App() {
