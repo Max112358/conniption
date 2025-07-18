@@ -1,7 +1,6 @@
 // backend/utils/dbInit.js
 const { pool } = require("../config/database");
 const boards = require("../config/boards");
-const threadConfig = require("../config/threads");
 
 /**
  * Initialize database tables and seed with initial boards
@@ -42,33 +41,6 @@ const createTables = async () => {
       )
     `);
 
-    // Add nsfw column if it doesn't exist
-    try {
-      await pool.query(`
-        ALTER TABLE boards
-        ADD COLUMN IF NOT EXISTS nsfw BOOLEAN DEFAULT FALSE
-      `);
-      console.log("Added NSFW column to boards table");
-    } catch (err) {
-      console.error("Error adding NSFW column:", err);
-      // Continue with initialization even if this fails
-    }
-
-    // Add new columns to boards table if they don't exist
-    try {
-      await pool.query(`
-        ALTER TABLE boards
-        ADD COLUMN IF NOT EXISTS thread_ids_enabled BOOLEAN DEFAULT FALSE,
-        ADD COLUMN IF NOT EXISTS country_flags_enabled BOOLEAN DEFAULT FALSE
-      `);
-      console.log(
-        "Added thread_ids_enabled and country_flags_enabled columns to boards table"
-      );
-    } catch (err) {
-      console.error("Error adding new columns to boards:", err);
-      // Continue with initialization even if this fails
-    }
-
     // Create threads table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS threads (
@@ -85,17 +57,6 @@ const createTables = async () => {
         CONSTRAINT unique_thread_per_board UNIQUE (id, board_id)
       )
     `);
-
-    // Add thread_salt column to threads if it doesn't exist
-    try {
-      await pool.query(`
-        ALTER TABLE threads
-        ADD COLUMN IF NOT EXISTS thread_salt TEXT
-      `);
-      console.log("Added thread_salt column to threads table");
-    } catch (err) {
-      console.error("Error adding thread_salt column:", err);
-    }
 
     // Create posts table
     await pool.query(`
@@ -116,110 +77,9 @@ const createTables = async () => {
       )
     `);
 
-    // Add ip_address column to posts if it doesn't exist
-    try {
-      await pool.query(`
-        ALTER TABLE posts
-        ADD COLUMN IF NOT EXISTS ip_address TEXT
-      `);
-      console.log("Added ip_address column to posts table");
-    } catch (err) {
-      console.error("Error adding ip_address column:", err);
-      // Continue with initialization even if this fails
-    }
+    // ==================== SURVEY SYSTEM TABLES ====================
 
-    // Add file_type column to posts if it doesn't exist
-    try {
-      await pool.query(`
-        ALTER TABLE posts
-        ADD COLUMN IF NOT EXISTS file_type TEXT
-      `);
-      console.log("Added file_type column to posts table");
-
-      // Update existing posts to set file_type
-      await pool.query(`
-        UPDATE posts
-        SET file_type = 
-          CASE 
-            WHEN image_url LIKE '%.mp4' THEN 'video'
-            WHEN image_url LIKE '%.webm' THEN 'video'
-            WHEN image_url LIKE '%.mp3' THEN 'audio'
-            WHEN image_url IS NOT NULL THEN 'image'
-            ELSE NULL
-          END
-        WHERE image_url IS NOT NULL AND file_type IS NULL
-      `);
-      console.log("Updated file_type for existing posts including audio");
-    } catch (err) {
-      console.error("Error adding file_type column:", err);
-      // Continue with initialization even if this fails
-    }
-
-    // Add new columns to posts if they don't exist
-    try {
-      await pool.query(`
-        ALTER TABLE posts
-        ADD COLUMN IF NOT EXISTS thread_user_id TEXT,
-        ADD COLUMN IF NOT EXISTS country_code VARCHAR(2)
-      `);
-      console.log(
-        "Added thread_user_id and country_code columns to posts table"
-      );
-    } catch (err) {
-      console.error("Error adding new columns to posts:", err);
-    }
-
-    // Add color column to posts if it doesn't exist
-    try {
-      await pool.query(`
-        ALTER TABLE posts
-        ADD COLUMN IF NOT EXISTS color VARCHAR(20) DEFAULT 'black'
-      `);
-      console.log("Added color column to posts table");
-
-      // Add constraint for color values
-      await pool.query(`
-        ALTER TABLE posts
-        DROP CONSTRAINT IF EXISTS posts_color_check;
-        
-        ALTER TABLE posts
-        ADD CONSTRAINT posts_color_check 
-        CHECK (color IN ('black', 'red', 'orange', 'yellow', 'green', 'blue', 'purple', 'brown'))
-      `);
-      console.log("Added color constraint to posts table");
-    } catch (err) {
-      console.error("Error adding color column:", err);
-    }
-
-    // Create index for file_type
-    try {
-      await pool.query(`
-        CREATE INDEX IF NOT EXISTS idx_posts_file_type ON posts(file_type)
-      `);
-    } catch (err) {
-      console.error("Error creating file_type index:", err);
-    }
-
-    // Create indexes for new columns
-    try {
-      await pool.query(`
-        CREATE INDEX IF NOT EXISTS idx_posts_thread_user_id ON posts(thread_user_id);
-        CREATE INDEX IF NOT EXISTS idx_posts_country_code ON posts(country_code);
-        CREATE INDEX IF NOT EXISTS idx_posts_color ON posts(color);
-        CREATE INDEX IF NOT EXISTS idx_posts_dont_bump ON posts(dont_bump);
-        CREATE INDEX IF NOT EXISTS idx_threads_is_sticky ON threads(is_sticky);
-        CREATE INDEX IF NOT EXISTS idx_threads_board_sticky ON threads(board_id, is_sticky DESC);
-        CREATE INDEX IF NOT EXISTS idx_threads_is_dead ON threads(is_dead);
-        CREATE INDEX IF NOT EXISTS idx_threads_died_at ON threads(died_at);
-        CREATE INDEX IF NOT EXISTS idx_threads_post_count ON threads(post_count);
-      `);
-    } catch (err) {
-      console.error("Error creating indexes:", err);
-    }
-
-    // ==================== SURVEY SYSTEM TABLES (NO EXPIRATION) ====================
-
-    // Create surveys table WITHOUT expires_at column
+    // Create surveys table (no expiration)
     await pool.query(`
       CREATE TABLE IF NOT EXISTS surveys (
         id SERIAL PRIMARY KEY,
@@ -268,39 +128,6 @@ const createTables = async () => {
         CONSTRAINT unique_response_option UNIQUE (response_id, option_id)
       )
     `);
-
-    // Create indexes for survey tables
-    await pool.query(`
-      CREATE INDEX IF NOT EXISTS idx_surveys_post_id ON surveys(post_id);
-      CREATE INDEX IF NOT EXISTS idx_surveys_board_id ON surveys(board_id);
-      CREATE INDEX IF NOT EXISTS idx_surveys_thread_id ON surveys(thread_id);
-      CREATE INDEX IF NOT EXISTS idx_survey_options_survey_id ON survey_options(survey_id);
-      CREATE INDEX IF NOT EXISTS idx_survey_responses_survey_id ON survey_responses(survey_id);
-      CREATE INDEX IF NOT EXISTS idx_survey_responses_ip ON survey_responses(ip_address);
-      CREATE INDEX IF NOT EXISTS idx_survey_response_options_response_id ON survey_response_options(response_id);
-      CREATE INDEX IF NOT EXISTS idx_survey_response_options_option_id ON survey_response_options(option_id);
-    `);
-
-    // Create view for survey results - WITHOUT expiration checks
-    await pool.query(`
-    CREATE OR REPLACE VIEW survey_results AS
-    SELECT 
-      s.id as survey_id,
-      s.question,
-      s.survey_type,
-      so.id as option_id,
-      so.option_text,
-      so.option_order,
-      COUNT(sro.response_id) as vote_count,
-      ROUND((COUNT(sro.response_id)::NUMERIC / NULLIF((SELECT COUNT(DISTINCT id) FROM survey_responses WHERE survey_id = s.id), 0) * 100), 2) as percentage
-    FROM surveys s
-    CROSS JOIN survey_options so
-    LEFT JOIN survey_response_options sro ON so.id = sro.option_id
-    LEFT JOIN survey_responses sr ON sro.response_id = sr.id AND sr.survey_id = s.id
-    WHERE so.survey_id = s.id
-    GROUP BY s.id, s.question, s.survey_type, so.id, so.option_text, so.option_order
-    ORDER BY s.id, so.option_order
-  `);
 
     // ==================== ADMIN SYSTEM TABLES ====================
 
@@ -361,7 +188,7 @@ const createTables = async () => {
       CREATE TABLE IF NOT EXISTS moderation_actions (
         id SERIAL PRIMARY KEY,
         admin_user_id INTEGER REFERENCES admin_users(id) ON DELETE SET NULL,
-        action_type TEXT NOT NULL,
+        action_type TEXT NOT NULL CHECK (action_type IN ('ban', 'unban', 'delete_post', 'delete_thread', 'edit_post', 'appeal_response', 'rangeban', 'remove_rangeban', 'view_ip', 'change_post_color', 'sticky_thread', 'unsticky_thread')),
         board_id TEXT REFERENCES boards(id) ON DELETE CASCADE,
         thread_id INTEGER,
         post_id INTEGER,
@@ -373,21 +200,6 @@ const createTables = async () => {
       )
     `);
 
-    // Update moderation_actions constraint to include change_post_color and sticky actions
-    try {
-      await pool.query(`
-        ALTER TABLE moderation_actions
-        DROP CONSTRAINT IF EXISTS moderation_actions_action_type_check;
-        
-        ALTER TABLE moderation_actions
-        ADD CONSTRAINT moderation_actions_action_type_check 
-        CHECK (action_type IN ('ban', 'unban', 'delete_post', 'delete_thread', 'edit_post', 'appeal_response', 'rangeban', 'remove_rangeban', 'view_ip', 'change_post_color', 'sticky_thread', 'unsticky_thread'))
-      `);
-      console.log("Updated moderation_actions action_type constraint");
-    } catch (err) {
-      console.error("Error updating moderation_actions constraint:", err);
-    }
-
     // Create admin sessions table for express-session
     await pool.query(`
       CREATE TABLE IF NOT EXISTS admin_sessions (
@@ -398,10 +210,58 @@ const createTables = async () => {
       )
     `);
 
-    // Create indexes for admin tables
+    // ==================== CREATE ALL INDEXES ====================
+
+    // Indexes for boards table
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_boards_nsfw ON boards(nsfw);
+      CREATE INDEX IF NOT EXISTS idx_boards_thread_ids_enabled ON boards(thread_ids_enabled);
+      CREATE INDEX IF NOT EXISTS idx_boards_country_flags_enabled ON boards(country_flags_enabled);
+    `);
+
+    // Indexes for threads table
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_threads_board_id ON threads(board_id);
+      CREATE INDEX IF NOT EXISTS idx_threads_created_at ON threads(created_at);
+      CREATE INDEX IF NOT EXISTS idx_threads_updated_at ON threads(updated_at);
+      CREATE INDEX IF NOT EXISTS idx_threads_is_sticky ON threads(is_sticky);
+      CREATE INDEX IF NOT EXISTS idx_threads_board_sticky ON threads(board_id, is_sticky DESC);
+      CREATE INDEX IF NOT EXISTS idx_threads_is_dead ON threads(is_dead);
+      CREATE INDEX IF NOT EXISTS idx_threads_died_at ON threads(died_at);
+      CREATE INDEX IF NOT EXISTS idx_threads_post_count ON threads(post_count);
+    `);
+
+    // Indexes for posts table
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_posts_thread_id ON posts(thread_id);
+      CREATE INDEX IF NOT EXISTS idx_posts_board_id ON posts(board_id);
+      CREATE INDEX IF NOT EXISTS idx_posts_created_at ON posts(created_at);
+      CREATE INDEX IF NOT EXISTS idx_posts_ip_address ON posts(ip_address);
+      CREATE INDEX IF NOT EXISTS idx_posts_file_type ON posts(file_type);
+      CREATE INDEX IF NOT EXISTS idx_posts_thread_user_id ON posts(thread_user_id);
+      CREATE INDEX IF NOT EXISTS idx_posts_country_code ON posts(country_code);
+      CREATE INDEX IF NOT EXISTS idx_posts_color ON posts(color);
+      CREATE INDEX IF NOT EXISTS idx_posts_dont_bump ON posts(dont_bump);
+    `);
+
+    // Indexes for survey tables
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_surveys_post_id ON surveys(post_id);
+      CREATE INDEX IF NOT EXISTS idx_surveys_board_id ON surveys(board_id);
+      CREATE INDEX IF NOT EXISTS idx_surveys_thread_id ON surveys(thread_id);
+      CREATE INDEX IF NOT EXISTS idx_surveys_is_active ON surveys(is_active);
+      CREATE INDEX IF NOT EXISTS idx_survey_options_survey_id ON survey_options(survey_id);
+      CREATE INDEX IF NOT EXISTS idx_survey_responses_survey_id ON survey_responses(survey_id);
+      CREATE INDEX IF NOT EXISTS idx_survey_responses_ip ON survey_responses(ip_address);
+      CREATE INDEX IF NOT EXISTS idx_survey_response_options_response_id ON survey_response_options(response_id);
+      CREATE INDEX IF NOT EXISTS idx_survey_response_options_option_id ON survey_response_options(option_id);
+    `);
+
+    // Indexes for admin tables
     await pool.query(`
       CREATE INDEX IF NOT EXISTS idx_admin_users_role ON admin_users(role);
       CREATE INDEX IF NOT EXISTS idx_admin_users_boards ON admin_users USING GIN(boards);
+      CREATE INDEX IF NOT EXISTS idx_admin_users_is_active ON admin_users(is_active);
       CREATE INDEX IF NOT EXISTS idx_rangebans_ban_type ON rangebans(ban_type);
       CREATE INDEX IF NOT EXISTS idx_rangebans_ban_value ON rangebans(ban_value);
       CREATE INDEX IF NOT EXISTS idx_rangebans_board_id ON rangebans(board_id);
@@ -410,10 +270,36 @@ const createTables = async () => {
       CREATE INDEX IF NOT EXISTS idx_bans_ip_address ON bans(ip_address);
       CREATE INDEX IF NOT EXISTS idx_bans_board_id ON bans(board_id);
       CREATE INDEX IF NOT EXISTS idx_bans_is_active ON bans(is_active);
+      CREATE INDEX IF NOT EXISTS idx_bans_expires_at ON bans(expires_at);
+      CREATE INDEX IF NOT EXISTS idx_bans_appeal_status ON bans(appeal_status);
       CREATE INDEX IF NOT EXISTS idx_moderation_actions_admin_user_id ON moderation_actions(admin_user_id);
       CREATE INDEX IF NOT EXISTS idx_moderation_actions_board_id ON moderation_actions(board_id);
       CREATE INDEX IF NOT EXISTS idx_moderation_actions_action_type ON moderation_actions(action_type);
+      CREATE INDEX IF NOT EXISTS idx_moderation_actions_created_at ON moderation_actions(created_at);
       CREATE INDEX IF NOT EXISTS idx_admin_sessions_expire ON admin_sessions(expire);
+    `);
+
+    // ==================== CREATE VIEWS ====================
+
+    // Create view for survey results (without expiration checks)
+    await pool.query(`
+      CREATE OR REPLACE VIEW survey_results AS
+      SELECT 
+        s.id as survey_id,
+        s.question,
+        s.survey_type,
+        so.id as option_id,
+        so.option_text,
+        so.option_order,
+        COUNT(sro.response_id) as vote_count,
+        ROUND((COUNT(sro.response_id)::NUMERIC / NULLIF((SELECT COUNT(DISTINCT id) FROM survey_responses WHERE survey_id = s.id), 0) * 100), 2) as percentage
+      FROM surveys s
+      CROSS JOIN survey_options so
+      LEFT JOIN survey_response_options sro ON so.id = sro.option_id
+      LEFT JOIN survey_responses sr ON sro.response_id = sr.id AND sr.survey_id = s.id
+      WHERE so.survey_id = s.id
+      GROUP BY s.id, s.question, s.survey_type, so.id, so.option_text, so.option_order
+      ORDER BY s.id, so.option_order
     `);
 
     console.log("Database tables created successfully");
