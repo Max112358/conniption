@@ -421,11 +421,11 @@ const threadModel = {
         FROM threads t
         LEFT JOIN posts p ON p.thread_id = t.id AND p.board_id = t.board_id
         WHERE t.is_dead = TRUE 
-        AND t.died_at < NOW() - INTERVAL '${retentionDays} days'
+        AND t.died_at < NOW() - INTERVAL $1
         AND p.image_url IS NOT NULL
         GROUP BY t.id, t.board_id
         `,
-        []
+        [`${retentionDays} days`]
       );
 
       console.log(
@@ -471,9 +471,9 @@ const threadModel = {
         `
         DELETE FROM threads
         WHERE is_dead = TRUE 
-        AND died_at < NOW() - INTERVAL '${retentionDays} days'
+        AND died_at < NOW() - INTERVAL $1
         `,
-        []
+        [`${retentionDays} days`]
       );
 
       await client.query("COMMIT");
