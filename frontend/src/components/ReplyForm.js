@@ -178,7 +178,7 @@ const ReplyForm = forwardRef(
                 type="file"
                 className="form-control bg-dark text-light border-secondary"
                 id="image"
-                accept={acceptedFormats}
+                accept="image/png,image/jpeg,image/webp,image/gif,video/mp4,video/webm,audio/mpeg"
                 onChange={handleImageChange}
                 disabled={loading}
               />
