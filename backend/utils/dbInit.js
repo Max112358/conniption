@@ -143,12 +143,13 @@ const createTables = async () => {
           CASE 
             WHEN image_url LIKE '%.mp4' THEN 'video'
             WHEN image_url LIKE '%.webm' THEN 'video'
+            WHEN image_url LIKE '%.mp3' THEN 'audio'
             WHEN image_url IS NOT NULL THEN 'image'
             ELSE NULL
           END
         WHERE image_url IS NOT NULL AND file_type IS NULL
       `);
-      console.log("Updated file_type for existing posts");
+      console.log("Updated file_type for existing posts including audio");
     } catch (err) {
       console.error("Error adding file_type column:", err);
       // Continue with initialization even if this fails

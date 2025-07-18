@@ -70,10 +70,11 @@ export default function CreateThreadPage() {
         "image/gif",
         "video/mp4",
         "video/webm",
+        "audio/mpeg",
       ];
       if (!allowedTypes.includes(file.type)) {
         setError(
-          "Invalid file type. Only PNG, JPG, WebP, GIF, MP4, and WebM files are allowed."
+          "Invalid file type. Only PNG, JPG, WebP, GIF, MP4, WebM, and MP3 files are allowed."
         );
         e.target.value = null;
         setImage(null);
@@ -346,20 +347,20 @@ export default function CreateThreadPage() {
 
               <div className="mb-3">
                 <label htmlFor="image" className="form-label text-secondary">
-                  Image or Video (Required)
+                  Image, Video, or Audio (Required)
                 </label>
                 <input
                   type="file"
                   className="form-control bg-dark text-light border-secondary"
                   id="image"
-                  accept="image/png,image/jpeg,image/webp,image/gif,video/mp4,video/webm"
+                  accept="image/png,image/jpeg,image/webp,image/gif,video/mp4,video/webm,audio/mpeg"
                   onChange={handleImageChange}
                   required
                   disabled={loading}
                 />
                 <div className="text-secondary mt-1 small">
-                  Supported formats: PNG, JPG, WebP, GIF, MP4, WebM (Max size:
-                  4MB)
+                  Supported formats: PNG, JPG, WebP, GIF, MP4, WebM, MP3 (Max
+                  size: 4MB)
                 </div>
               </div>
 
@@ -377,6 +378,8 @@ export default function CreateThreadPage() {
                         controls
                         muted
                       />
+                    ) : image && image.type.startsWith("audio/") ? (
+                      <audio src={imagePreview} controls className="w-100" />
                     ) : (
                       <img
                         src={imagePreview}

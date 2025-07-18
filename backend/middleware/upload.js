@@ -34,6 +34,7 @@ const upload = multer({
         ".gif": "image/gif",
         ".mp4": "video/mp4",
         ".webm": "video/webm",
+        ".mp3": "audio/mpeg",
       };
 
       const ext = path.extname(file.originalname).toLowerCase();
@@ -62,6 +63,7 @@ const upload = multer({
       "image/gif",
       "video/mp4",
       "video/webm",
+      "audio/mpeg",
     ];
 
     // Allowed extensions
@@ -73,6 +75,7 @@ const upload = multer({
       ".gif",
       ".mp4",
       ".webm",
+      ".mp3",
     ];
     const ext = path.extname(file.originalname).toLowerCase();
 
@@ -83,7 +86,7 @@ const upload = multer({
       );
       return cb(
         new Error(
-          "Invalid file type. Only PNG, JPG, WebP, GIF, MP4, and WebM files are allowed."
+          "Invalid file type. Only PNG, JPG, WebP, GIF, MP4, WebM, and MP3 files are allowed."
         ),
         false
       );
@@ -132,7 +135,11 @@ const processUploadResult = async (req, res, next) => {
 
     // Add file type for frontend use
     const ext = path.extname(req.file.originalname).toLowerCase();
-    req.file.fileType = [".mp4", ".webm"].includes(ext) ? "video" : "image";
+    req.file.fileType = [".mp4", ".webm"].includes(ext)
+      ? "video"
+      : ext === ".mp3"
+      ? "audio"
+      : "image";
 
     console.log(`File uploaded to R2: ${req.file.originalLocation}`);
     console.log(`Public URL: ${req.file.publicUrl}`);

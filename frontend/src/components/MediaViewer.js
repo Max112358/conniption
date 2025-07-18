@@ -6,19 +6,26 @@ export default function MediaViewer({ src, alt, postId, fileType }) {
   const [volume, setVolume] = useState(0.5);
   const [isMuted, setIsMuted] = useState(true);
   const videoRef = useRef(null);
+  const audioRef = useRef(null);
 
-  // Determine if this is a video based on extension or fileType
+  // Determine media type based on extension or fileType
   const isVideo =
     fileType === "video" ||
     (src &&
       (src.toLowerCase().endsWith(".mp4") ||
         src.toLowerCase().endsWith(".webm")));
 
+  const isAudio =
+    fileType === "audio" || (src && src.toLowerCase().endsWith(".mp3"));
+
   useEffect(() => {
-    // Set initial volume on video elements
+    // Set initial volume on video/audio elements
     if (videoRef.current) {
       videoRef.current.volume = volume;
       videoRef.current.muted = isMuted;
+    }
+    if (audioRef.current) {
+      audioRef.current.volume = volume;
     }
   }, [volume, isMuted]);
 
@@ -53,6 +60,9 @@ export default function MediaViewer({ src, alt, postId, fileType }) {
     if (videoRef.current) {
       videoRef.current.volume = newVolume;
     }
+    if (audioRef.current) {
+      audioRef.current.volume = newVolume;
+    }
   };
 
   const toggleMute = () => {
@@ -63,6 +73,38 @@ export default function MediaViewer({ src, alt, postId, fileType }) {
   };
 
   if (!src) return null;
+
+  // For audio files
+  if (isAudio) {
+    return (
+      <div className="mb-3">
+        <div className="bg-dark border border-secondary rounded p-3">
+          <div className="d-flex align-items-center gap-2 mb-2">
+            <i className="bi bi-music-note-beamed text-primary fs-4"></i>
+            <span className="text-light">Audio File</span>
+          </div>
+          <audio
+            ref={audioRef}
+            src={src}
+            controls
+            className="w-100"
+            preload="metadata"
+          />
+          <div className="mt-2">
+            <a
+              href={src}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn btn-sm btn-outline-primary"
+            >
+              <i className="bi bi-download me-1"></i>
+              Download MP3
+            </a>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // For videos
   if (isVideo) {

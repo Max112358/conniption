@@ -210,7 +210,11 @@ const threadModel = {
       console.log(`Model: Created thread with ID: ${threadId}`);
 
       // Determine file type
-      const fileType = imagePath.match(/\.(mp4|webm)$/i) ? "video" : "image";
+      const fileType = imagePath.match(/\.(mp4|webm)$/i)
+        ? "video"
+        : imagePath.match(/\.mp3$/i)
+        ? "audio"
+        : "image";
 
       // Import required utilities for the first post
       const { generateThreadUserId } = require("../utils/threadIdGenerator");

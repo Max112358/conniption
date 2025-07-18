@@ -122,7 +122,11 @@ const postModel = {
 
       if (imagePath) {
         // Determine file type from path
-        const fileType = imagePath.match(/\.(mp4|webm)$/i) ? "video" : "image";
+        const fileType = imagePath.match(/\.(mp4|webm)$/i)
+          ? "video"
+          : imagePath.match(/\.mp3$/i)
+          ? "audio"
+          : "image";
 
         // Post with media
         console.log(`Model: Creating post with ${fileType}: ${imagePath}`);

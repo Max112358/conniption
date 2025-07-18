@@ -10,12 +10,15 @@ export default function MediaThumbnail({
   linkTo,
   onClick,
 }) {
-  // Determine if this is a video
+  // Determine media type
   const isVideo =
     fileType === "video" ||
     (src &&
       (src.toLowerCase().endsWith(".mp4") ||
         src.toLowerCase().endsWith(".webm")));
+
+  const isAudio =
+    fileType === "audio" || (src && src.toLowerCase().endsWith(".mp3"));
 
   if (!src) return null;
 
@@ -28,7 +31,23 @@ export default function MediaThumbnail({
     if (onClick) onClick(e);
   };
 
-  const mediaElement = isVideo ? (
+  const mediaElement = isAudio ? (
+    <div
+      className="d-flex align-items-center justify-content-center bg-dark border border-secondary rounded"
+      style={{
+        width: size,
+        height: size,
+      }}
+    >
+      <div className="text-center">
+        <i
+          className="bi bi-music-note-beamed text-primary"
+          style={{ fontSize: "3rem" }}
+        ></i>
+        <div className="text-light small mt-1">MP3</div>
+      </div>
+    </div>
+  ) : isVideo ? (
     <div className="position-relative d-inline-block">
       <video
         src={src}

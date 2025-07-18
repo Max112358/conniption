@@ -30,12 +30,16 @@ const PostLinkPreview = ({
 
   if (!post) return null;
 
-  // Determine if the media is a video
+  // Determine if the media is a video or audio
   const isVideo =
     post.file_type === "video" ||
     (post.image_url &&
       (post.image_url.toLowerCase().endsWith(".mp4") ||
         post.image_url.toLowerCase().endsWith(".webm")));
+
+  const isAudio =
+    post.file_type === "audio" ||
+    (post.image_url && post.image_url.toLowerCase().endsWith(".mp3"));
 
   return (
     <div
@@ -61,7 +65,12 @@ const PostLinkPreview = ({
       </div>
       {post.image_url && (
         <div className="mb-2">
-          {isVideo ? (
+          {isAudio ? (
+            <div className="d-flex align-items-center gap-2">
+              <i className="bi bi-music-note-beamed text-primary fs-4"></i>
+              <span className="text-light small">Audio File</span>
+            </div>
+          ) : isVideo ? (
             <div className="position-relative d-inline-block">
               <video
                 src={post.image_url}

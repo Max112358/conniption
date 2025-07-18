@@ -18,7 +18,7 @@ const ReplyForm = forwardRef(
       loading,
       error,
       maxImageSize = "4MB",
-      acceptedFormats = ".jpg, .jpeg, .png, .gif, .webp, .mp4, .webm",
+      acceptedFormats = ".jpg, .jpeg, .png, .gif, .webp, .mp4, .webm, .mp3",
       currentPostCount = 0,
       bumpLimit = null,
     },
@@ -172,7 +172,7 @@ const ReplyForm = forwardRef(
 
             <div className="mb-3">
               <label htmlFor="image" className="form-label text-secondary">
-                Attach Image/Video (optional)
+                Attach Image/Video/Audio (optional)
               </label>
               <input
                 type="file"
@@ -184,7 +184,7 @@ const ReplyForm = forwardRef(
               />
               <small className="form-text text-secondary">
                 Max size: {maxImageSize}. Supported formats: JPG, PNG, GIF,
-                WEBP, MP4, WEBM
+                WEBP, MP4, WEBM, MP3
               </small>
             </div>
 
@@ -199,6 +199,19 @@ const ReplyForm = forwardRef(
                       style={{ maxWidth: "200px", maxHeight: "200px" }}
                       controls
                     />
+                  ) : image?.type?.startsWith("audio/") ? (
+                    <div className="p-3 bg-dark border border-secondary rounded">
+                      <div className="d-flex align-items-center gap-2 mb-2">
+                        <i className="bi bi-music-note-beamed text-primary fs-4"></i>
+                        <span className="text-light">{image.name}</span>
+                      </div>
+                      <audio
+                        src={imagePreview}
+                        controls
+                        className="w-100"
+                        style={{ minWidth: "250px" }}
+                      />
+                    </div>
                   ) : (
                     <img
                       src={imagePreview}
