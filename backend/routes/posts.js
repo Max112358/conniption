@@ -11,6 +11,7 @@ const { uploadWithUrlTransform } = require("../middleware/upload");
 const io = require("../utils/socketHandler").getIo;
 const getClientIp = require("../utils/getClientIp"); // Import the new utility
 const checkBannedIP = require("../middleware/banCheck"); // Import ban check middleware
+const postsConfig = require("../config/posts"); // Import posts config
 
 /**
  * @route   GET /api/boards/:boardId/threads/:threadId/posts
@@ -119,6 +120,24 @@ router.post(
         return res
           .status(400)
           .json({ error: "Either content or an image/video is required" });
+      }
+
+      // Check character limit if content is provided
+      if (
+        content &&
+        postsConfig.characterLimit &&
+        postsConfig.characterLimit > 0
+      ) {
+        if (content.length > postsConfig.characterLimit) {
+          console.log(
+            `Route: Post content exceeds character limit - ${content.length} characters (limit: ${postsConfig.characterLimit})`
+          );
+          return res.status(400).json({
+            error: `Post content exceeds the maximum character limit of ${postsConfig.characterLimit} characters`,
+            currentLength: content.length,
+            maxLength: postsConfig.characterLimit,
+          });
+        }
       }
 
       // Check if thread exists and get thread salt

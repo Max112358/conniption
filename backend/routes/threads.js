@@ -11,6 +11,7 @@ const checkBannedIP = require("../middleware/banCheck"); // Import ban check mid
 const { pool } = require("../config/database");
 const adminAuth = require("../middleware/adminAuth");
 const threadConfig = require("../config/threads");
+const postsConfig = require("../config/posts"); // Import posts config
 
 // Use post routes
 router.use("/:threadId/posts", postRoutes);
@@ -86,6 +87,20 @@ router.post(
       if (!req.file) {
         console.log(`Route: Invalid request - missing media file`);
         return res.status(400).json({ error: "Image or video is required" });
+      }
+
+      // Check character limit for initial post content
+      if (postsConfig.characterLimit && postsConfig.characterLimit > 0) {
+        if (content.length > postsConfig.characterLimit) {
+          console.log(
+            `Route: Thread content exceeds character limit - ${content.length} characters (limit: ${postsConfig.characterLimit})`
+          );
+          return res.status(400).json({
+            error: `Thread content exceeds the maximum character limit of ${postsConfig.characterLimit} characters`,
+            currentLength: content.length,
+            maxLength: postsConfig.characterLimit,
+          });
+        }
       }
 
       // Check if board exists and get board settings
