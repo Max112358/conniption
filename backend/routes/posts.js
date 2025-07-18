@@ -13,6 +13,11 @@ const getClientIp = require("../utils/getClientIp"); // Import the new utility
 const checkBannedIP = require("../middleware/banCheck"); // Import ban check middleware
 const postsConfig = require("../config/posts"); // Import posts config
 const surveysConfig = require("../config/surveys"); // Import surveys config
+const {
+  postCreationLimiter,
+  uploadLimiter,
+  validateContent,
+} = require("../middleware/security");
 
 /**
  * @route   GET /api/boards/:boardId/threads/:threadId/posts
@@ -98,7 +103,10 @@ router.get("/", async (req, res, next) => {
 router.post(
   "/",
   checkBannedIP,
+  postCreationLimiter, // Add rate limiting
+  uploadLimiter, // Add upload rate limiting if file present
   uploadWithUrlTransform("image"),
+  validateContent, // Add content validation
   async (req, res, next) => {
     const { boardId, threadId } = req.params;
     const { content, dont_bump } = req.body;

@@ -147,7 +147,7 @@ const housekeepingService = {
   },
 
   /**
-   * Clean up expired dead threads (older than 2 days since death)
+   * Clean up expired dead threads (older than configured retention days)
    * @returns {Promise<Object>} Cleanup results
    */
   cleanupExpiredDeadThreads: async () => {
@@ -277,14 +277,90 @@ const housekeepingService = {
   },
 
   /**
+   * Clean up old admin sessions
+   * @returns {Promise<Object>} Cleanup results
+   */
+  cleanupExpiredSessions: async () => {
+    console.log("Housekeeping: Starting expired session cleanup");
+    const client = await pool.connect();
+
+    try {
+      await client.query("BEGIN");
+
+      // Delete expired sessions
+      const deleteResult = await client.query(`
+        DELETE FROM admin_sessions
+        WHERE expire < NOW()
+      `);
+
+      const deletedCount = deleteResult.rowCount;
+
+      await client.query("COMMIT");
+      console.log(`Housekeeping: Deleted ${deletedCount} expired sessions`);
+
+      return {
+        sessionsDeleted: deletedCount,
+      };
+    } catch (error) {
+      await client.query("ROLLBACK");
+      console.error("Housekeeping: Error cleaning up expired sessions:", error);
+      throw error;
+    } finally {
+      client.release();
+    }
+  },
+
+  /**
+   * Clean up old moderation logs (older than 90 days)
+   * @returns {Promise<Object>} Cleanup results
+   */
+  cleanupOldModerationLogs: async () => {
+    console.log("Housekeeping: Starting old moderation log cleanup");
+    const client = await pool.connect();
+
+    try {
+      await client.query("BEGIN");
+
+      // Delete old moderation logs
+      const deleteResult = await client.query(
+        `
+        DELETE FROM moderation_actions
+        WHERE created_at < NOW() - INTERVAL $1
+      `,
+        ["90 days"]
+      );
+
+      const deletedCount = deleteResult.rowCount;
+
+      await client.query("COMMIT");
+      console.log(`Housekeeping: Deleted ${deletedCount} old moderation logs`);
+
+      return {
+        logsDeleted: deletedCount,
+      };
+    } catch (error) {
+      await client.query("ROLLBACK");
+      console.error(
+        "Housekeeping: Error cleaning up old moderation logs:",
+        error
+      );
+      throw error;
+    } finally {
+      client.release();
+    }
+  },
+
+  /**
    * Run all housekeeping tasks
    * @returns {Promise<Object>} Combined results
    */
   runAllTasks: async () => {
     console.log("Housekeeping: Running all housekeeping tasks");
+    const startTime = Date.now();
     const results = {
       timestamp: new Date().toISOString(),
       tasks: {},
+      totalDuration: 0,
     };
 
     // Run thread cleanup (mark excess as dead)
@@ -292,6 +368,7 @@ const housekeepingService = {
       results.tasks.threadCleanup =
         await housekeepingService.cleanupExcessThreads();
     } catch (error) {
+      console.error("Housekeeping: Thread cleanup failed:", error);
       results.tasks.threadCleanup = { error: error.message };
     }
 
@@ -300,6 +377,7 @@ const housekeepingService = {
       results.tasks.expiredDeadThreadCleanup =
         await housekeepingService.cleanupExpiredDeadThreads();
     } catch (error) {
+      console.error("Housekeeping: Expired dead thread cleanup failed:", error);
       results.tasks.expiredDeadThreadCleanup = { error: error.message };
     }
 
@@ -308,18 +386,101 @@ const housekeepingService = {
       results.tasks.orphanedSurveyCleanup =
         await housekeepingService.cleanupOrphanedSurveys();
     } catch (error) {
+      console.error("Housekeeping: Orphaned survey cleanup failed:", error);
       results.tasks.orphanedSurveyCleanup = { error: error.message };
     }
 
-    // Run file cleanup
+    // Run expired session cleanup
+    try {
+      results.tasks.expiredSessionCleanup =
+        await housekeepingService.cleanupExpiredSessions();
+    } catch (error) {
+      console.error("Housekeeping: Expired session cleanup failed:", error);
+      results.tasks.expiredSessionCleanup = { error: error.message };
+    }
+
+    // Run old moderation log cleanup
+    try {
+      results.tasks.oldModerationLogCleanup =
+        await housekeepingService.cleanupOldModerationLogs();
+    } catch (error) {
+      console.error("Housekeeping: Old moderation log cleanup failed:", error);
+      results.tasks.oldModerationLogCleanup = { error: error.message };
+    }
+
+    // Run file cleanup last (it's the most resource intensive)
     try {
       results.tasks.fileCleanup =
         await housekeepingService.cleanupOrphanedFiles();
     } catch (error) {
+      console.error("Housekeeping: File cleanup failed:", error);
       results.tasks.fileCleanup = { error: error.message };
     }
 
+    results.totalDuration = Date.now() - startTime;
+    console.log(
+      `Housekeeping: All tasks completed in ${results.totalDuration}ms`
+    );
+
     return results;
+  },
+
+  /**
+   * Get housekeeping statistics
+   * @returns {Promise<Object>} Statistics about the current state
+   */
+  getStatistics: async () => {
+    console.log("Housekeeping: Gathering statistics");
+
+    try {
+      const stats = {};
+
+      // Count active threads per board
+      const activeThreadsResult = await pool.query(`
+        SELECT board_id, COUNT(*) as count
+        FROM threads
+        WHERE is_dead = FALSE
+        GROUP BY board_id
+        ORDER BY count DESC
+      `);
+      stats.activeThreadsPerBoard = activeThreadsResult.rows;
+
+      // Count dead threads awaiting cleanup
+      const deadThreadsResult = await pool.query(`
+        SELECT COUNT(*) as count
+        FROM threads
+        WHERE is_dead = TRUE
+      `);
+      stats.deadThreadsCount = parseInt(deadThreadsResult.rows[0].count);
+
+      // Count total posts
+      const postsResult = await pool.query(`
+        SELECT COUNT(*) as count
+        FROM posts
+      `);
+      stats.totalPosts = parseInt(postsResult.rows[0].count);
+
+      // Count files in database
+      const filesResult = await pool.query(`
+        SELECT COUNT(*) as count
+        FROM posts
+        WHERE image_url IS NOT NULL
+      `);
+      stats.filesInDatabase = parseInt(filesResult.rows[0].count);
+
+      // Count active surveys
+      const surveysResult = await pool.query(`
+        SELECT COUNT(*) as count
+        FROM surveys
+        WHERE is_active = TRUE
+      `);
+      stats.activeSurveys = parseInt(surveysResult.rows[0].count);
+
+      return stats;
+    } catch (error) {
+      console.error("Housekeeping: Error gathering statistics:", error);
+      throw error;
+    }
   },
 };
 

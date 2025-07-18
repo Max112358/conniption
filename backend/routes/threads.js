@@ -12,6 +12,11 @@ const { pool } = require("../config/database");
 const adminAuth = require("../middleware/adminAuth");
 const threadConfig = require("../config/threads");
 const postsConfig = require("../config/posts"); // Import posts config
+const {
+  postCreationLimiter,
+  uploadLimiter,
+  validateContent,
+} = require("../middleware/security");
 
 // Use post routes
 router.use("/:threadId/posts", postRoutes);

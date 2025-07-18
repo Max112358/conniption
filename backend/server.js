@@ -5,6 +5,7 @@ const socketIo = require("socket.io");
 const path = require("path");
 const session = require("express-session");
 const PgSession = require("connect-pg-simple")(session);
+const helmet = require("helmet");
 const { pool } = require("./config/database");
 
 // Import configuration
@@ -14,6 +15,10 @@ const corsConfig = require("./config/cors");
 const logger = require("./middleware/logger");
 const errorHandler = require("./middleware/errorHandler");
 const { checkBanned, enforceBan } = require("./middleware/adminAuth");
+const securityHeaders = require("./middleware/securityHeaders");
+
+// Import security middleware
+const rateLimit = require("express-rate-limit");
 
 // Import route handlers
 const boardRoutes = require("./routes/boards");
@@ -28,8 +33,8 @@ const { initDatabase } = require("./utils/dbInit");
 // Import scheduled jobs
 const scheduledJobs = require("./utils/scheduledJobs");
 
-// Import the security headers middleware
-const securityHeaders = require("./middleware/securityHeaders");
+// Import utility functions
+const getClientIp = require("./utils/getClientIp");
 
 // Create housekeeping service directory if needed
 const fs = require("fs");
@@ -50,30 +55,122 @@ app.set("trust proxy", 1);
 // Apply CORS configuration
 app.use(corsConfig);
 
-// Apply security headers
+// Enhanced security headers with helmet
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        imgSrc: [
+          "'self'",
+          "https://*.r2.dev",
+          "https://conniption.xyz",
+          "blob:",
+          "data:",
+        ],
+        mediaSrc: [
+          "'self'",
+          "https://*.r2.dev",
+          "https://conniption.xyz",
+          "blob:",
+        ],
+        scriptSrc: [
+          "'self'",
+          "'unsafe-inline'",
+          "'unsafe-eval'",
+          "https://cdn.jsdelivr.net",
+        ],
+        styleSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net"],
+        fontSrc: ["'self'", "data:"],
+        connectSrc: [
+          "'self'",
+          "https://conniption.onrender.com",
+          "wss://conniption.onrender.com",
+        ],
+        frameAncestors: ["'none'"],
+        baseUri: ["'self'"],
+        formAction: ["'self'"],
+      },
+    },
+    crossOriginEmbedderPolicy: false, // May need to disable for media embedding
+  })
+);
+
+// Apply custom security headers
 app.use(securityHeaders);
+
+// General rate limiter
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each IP to 100 requests per windowMs
+  message: "Too many requests from this IP, please try again later",
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Apply general rate limiting to API routes
+app.use("/api/", generalLimiter);
 
 // Add JSON body parser with size limit
 app.use(express.json({ limit: "10mb" })); // Slightly higher than 4MB to account for base64 encoding
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
-// Add JSON body parser
-app.use(express.json());
+// Input sanitization middleware
+app.use((req, res, next) => {
+  // Sanitize request body
+  if (req.body) {
+    Object.keys(req.body).forEach((key) => {
+      if (typeof req.body[key] === "string") {
+        // Remove any HTML tags and trim whitespace
+        req.body[key] = req.body[key].trim();
 
-// Set up session middleware
+        // For content fields, preserve line breaks but remove HTML
+        if (key === "content" || key === "topic" || key === "question") {
+          req.body[key] = req.body[key]
+            .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
+            .replace(/<[^>]+>/g, "");
+        }
+      }
+    });
+  }
+
+  // Sanitize query parameters
+  if (req.query) {
+    Object.keys(req.query).forEach((key) => {
+      if (typeof req.query[key] === "string") {
+        req.query[key] = req.query[key].trim();
+      }
+    });
+  }
+
+  next();
+});
+
+// Session configuration with enhanced security
+const sessionSecret =
+  process.env.SESSION_SECRET ||
+  (() => {
+    if (process.env.NODE_ENV === "production") {
+      console.error("FATAL: SESSION_SECRET must be set in production");
+      process.exit(1);
+    }
+    console.warn("WARNING: Using default session secret in development");
+    return "development_secret_change_in_production";
+  })();
+
 app.use(
   session({
     store: new PgSession({
       pool,
-      tableName: "admin_sessions", // Table name for sessions
-      createTableIfMissing: true, // Create table if it doesn't exist
+      tableName: "admin_sessions",
+      createTableIfMissing: true,
     }),
-    secret:
-      process.env.SESSION_SECRET || "development_secret_change_in_production",
+    secret: sessionSecret,
     resave: false,
     saveUninitialized: false,
+    name: "sessionId", // Change default session name
     cookie: {
-      secure: process.env.NODE_ENV === "production", // secure in production
+      secure: process.env.NODE_ENV === "production",
       httpOnly: true,
       maxAge: 24 * 60 * 60 * 1000, // 24 hours
       sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
@@ -84,6 +181,40 @@ app.use(
 // Add request logger middleware
 app.use(logger);
 
+// Security monitoring middleware
+app.use((req, res, next) => {
+  // Log suspicious activities
+  const suspiciousPatterns = [
+    /\.\.\//g, // Directory traversal
+    /<script/i, // Script injection attempts
+    /union.*select/i, // SQL injection attempts
+    /exec\s*\(/i, // Code execution attempts
+    /eval\s*\(/i, // Eval attempts
+    /on\w+\s*=/i, // Event handler injection
+  ];
+
+  const url = req.url + (req.body ? JSON.stringify(req.body) : "");
+  const isSuspicious = suspiciousPatterns.some((pattern) => pattern.test(url));
+
+  if (isSuspicious) {
+    const clientIp = getClientIp(req);
+    console.warn(
+      `SECURITY: Suspicious request detected from ${clientIp}: ${req.method} ${req.url}`
+    );
+
+    // Log to database for tracking
+    pool
+      .query(
+        `INSERT INTO security_incidents (ip_address, method, url, user_agent, created_at)
+       VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)`,
+        [clientIp, req.method, req.url, req.headers["user-agent"]]
+      )
+      .catch((err) => console.error("Failed to log security incident:", err));
+  }
+
+  next();
+});
+
 // Check if user is banned - this just adds ban info to req object
 app.use(checkBanned);
 
@@ -93,20 +224,36 @@ app.use("/api/admin", adminRoutes);
 // Apply ban enforcement to content routes only (not admin routes)
 app.use("/api/boards", enforceBan);
 app.use("/api/boards", boardRoutes);
-// The threads and posts routes are configured in the boards.js route file
 
-// Add health check endpoint
+// Health check endpoint with limited information
 app.get("/health", (req, res) => {
+  res.json({
+    status: "ok",
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || "development",
+  });
+});
+
+// Detailed health check for internal monitoring (protected)
+app.get("/health/detailed", (req, res) => {
+  // Simple API key check for monitoring services
+  const apiKey = req.headers["x-health-check-key"];
+  if (apiKey !== process.env.HEALTH_CHECK_KEY) {
+    return res.status(403).json({ error: "Forbidden" });
+  }
+
   res.json({
     status: "ok",
     timestamp: new Date().toISOString(),
     socketio: io ? "initialized" : "not initialized",
     environment: process.env.NODE_ENV || "development",
     housekeeping: scheduledJobs.getStatus(),
+    uptime: process.uptime(),
+    memory: process.memoryUsage(),
   });
 });
 
-// Add Socket.io specific health check
+// Socket.io specific health check
 app.get("/socket.io/health", (req, res) => {
   const engineIO = io && io.engine;
   res.json({
@@ -117,8 +264,55 @@ app.get("/socket.io/health", (req, res) => {
   });
 });
 
-// Add error handler middleware (should be last)
-app.use(errorHandler);
+// 404 handler
+app.use((req, res) => {
+  res.status(404).json({ error: "Not found" });
+});
+
+// Enhanced error handler middleware (should be last)
+app.use((err, req, res, next) => {
+  // Log the error with context
+  console.error("Error caught by error handler:");
+  console.error({
+    error: err.message,
+    stack: err.stack,
+    url: req.url,
+    method: req.method,
+    ip: getClientIp(req),
+    userAgent: req.headers["user-agent"],
+  });
+
+  // Determine status code
+  const statusCode = err.statusCode || err.status || 500;
+
+  // In production, send generic error messages
+  if (process.env.NODE_ENV === "production") {
+    const genericMessages = {
+      400: "Bad Request",
+      401: "Unauthorized",
+      403: "Forbidden",
+      404: "Not Found",
+      409: "Conflict",
+      413: "Payload Too Large",
+      429: "Too Many Requests",
+      500: "Internal Server Error",
+      503: "Service Unavailable",
+    };
+
+    res.status(statusCode).json({
+      error: genericMessages[statusCode] || "An error occurred",
+      // Include request ID if available for tracking
+      requestId: req.id,
+    });
+  } else {
+    // In development, include error details
+    res.status(statusCode).json({
+      error: err.message || "An unexpected error occurred",
+      stack: err.stack,
+      details: err.details || null,
+    });
+  }
+});
 
 // Set up HTTP server and Socket.io
 const server = http.createServer(app);
@@ -178,6 +372,12 @@ const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`Socket.io server ready for connections`);
+  console.log(`Environment: ${process.env.NODE_ENV || "development"}`);
+
+  if (process.env.NODE_ENV === "production" && !process.env.SESSION_SECRET) {
+    console.error("FATAL: SESSION_SECRET not set in production!");
+    process.exit(1);
+  }
 
   // Start scheduled jobs after server is running
   scheduledJobs.start();
@@ -240,12 +440,30 @@ process.on("SIGINT", () => gracefulShutdown("SIGINT"));
 // Handle uncaught exceptions
 process.on("uncaughtException", (err) => {
   console.error("Uncaught exception:", err);
+  // Log to database if possible
+  pool
+    .query(
+      `INSERT INTO application_errors (error_type, message, stack, created_at)
+     VALUES ($1, $2, $3, CURRENT_TIMESTAMP)`,
+      ["uncaught_exception", err.message, err.stack]
+    )
+    .catch((e) => console.error("Failed to log error:", e));
+
   gracefulShutdown("uncaughtException");
 });
 
 // Handle unhandled promise rejections
 process.on("unhandledRejection", (reason, promise) => {
   console.error("Unhandled promise rejection:", reason);
+  // Log to database if possible
+  pool
+    .query(
+      `INSERT INTO application_errors (error_type, message, stack, created_at)
+     VALUES ($1, $2, $3, CURRENT_TIMESTAMP)`,
+      ["unhandled_rejection", String(reason), new Error().stack]
+    )
+    .catch((e) => console.error("Failed to log error:", e));
+
   gracefulShutdown("unhandledRejection");
 });
 

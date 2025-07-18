@@ -8,7 +8,7 @@ const boards = require("../config/boards");
 const initDatabase = async () => {
   console.log("Initializing database...");
   try {
-    // Create tables if they don't exist
+    // Create tables
     await createTables();
 
     // Seed boards
@@ -25,7 +25,7 @@ const initDatabase = async () => {
 };
 
 /**
- * Create database tables if they don't exist
+ * Create database tables
  */
 const createTables = async () => {
   try {
@@ -79,7 +79,7 @@ const createTables = async () => {
 
     // ==================== SURVEY SYSTEM TABLES ====================
 
-    // Create surveys table (no expiration)
+    // Create surveys table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS surveys (
         id SERIAL PRIMARY KEY,
@@ -131,7 +131,7 @@ const createTables = async () => {
 
     // ==================== ADMIN SYSTEM TABLES ====================
 
-    // Create admin_users table
+    // Create admin_users table with security enhancements
     await pool.query(`
       CREATE TABLE IF NOT EXISTS admin_users (
         id SERIAL PRIMARY KEY,
@@ -141,8 +141,12 @@ const createTables = async () => {
         role TEXT NOT NULL CHECK (role IN ('janitor', 'moderator', 'admin')),
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
         last_login TIMESTAMP WITH TIME ZONE,
-        boards TEXT[], -- Array of board IDs this user can moderate (empty means all boards)
-        is_active BOOLEAN DEFAULT TRUE
+        boards TEXT[],
+        is_active BOOLEAN DEFAULT TRUE,
+        is_locked BOOLEAN DEFAULT FALSE,
+        locked_at TIMESTAMP WITH TIME ZONE,
+        failed_login_count INTEGER DEFAULT 0,
+        last_failed_login TIMESTAMP WITH TIME ZONE
       )
     `);
 
@@ -196,7 +200,7 @@ const createTables = async () => {
         rangeban_id INTEGER REFERENCES rangebans(id) ON DELETE CASCADE,
         reason TEXT NOT NULL,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-        ip_address TEXT -- IP address that was moderated (for reference)
+        ip_address TEXT
       )
     `);
 
@@ -207,6 +211,63 @@ const createTables = async () => {
         sess json NOT NULL,
         expire timestamp(6) NOT NULL,
         CONSTRAINT admin_sessions_pkey PRIMARY KEY (sid)
+      )
+    `);
+
+    // ==================== SECURITY TRACKING TABLES ====================
+
+    // Create admin access logs table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS admin_access_logs (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES admin_users(id) ON DELETE SET NULL,
+        username TEXT NOT NULL,
+        method TEXT NOT NULL,
+        path TEXT NOT NULL,
+        ip_address TEXT NOT NULL,
+        user_agent TEXT,
+        status_code INTEGER,
+        duration_ms INTEGER,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Create failed login attempts table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS failed_login_attempts (
+        id SERIAL PRIMARY KEY,
+        username TEXT NOT NULL,
+        ip_address TEXT NOT NULL,
+        user_agent TEXT,
+        attempted_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Create security incidents table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS security_incidents (
+        id SERIAL PRIMARY KEY,
+        ip_address TEXT NOT NULL,
+        method TEXT NOT NULL,
+        url TEXT NOT NULL,
+        user_agent TEXT,
+        incident_type TEXT,
+        details JSONB,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Create application errors table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS application_errors (
+        id SERIAL PRIMARY KEY,
+        error_type TEXT NOT NULL,
+        message TEXT NOT NULL,
+        stack TEXT,
+        user_id INTEGER REFERENCES admin_users(id) ON DELETE SET NULL,
+        ip_address TEXT,
+        url TEXT,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       )
     `);
 
@@ -262,6 +323,7 @@ const createTables = async () => {
       CREATE INDEX IF NOT EXISTS idx_admin_users_role ON admin_users(role);
       CREATE INDEX IF NOT EXISTS idx_admin_users_boards ON admin_users USING GIN(boards);
       CREATE INDEX IF NOT EXISTS idx_admin_users_is_active ON admin_users(is_active);
+      CREATE INDEX IF NOT EXISTS idx_admin_users_is_locked ON admin_users(is_locked);
       CREATE INDEX IF NOT EXISTS idx_rangebans_ban_type ON rangebans(ban_type);
       CREATE INDEX IF NOT EXISTS idx_rangebans_ban_value ON rangebans(ban_value);
       CREATE INDEX IF NOT EXISTS idx_rangebans_board_id ON rangebans(board_id);
@@ -279,9 +341,25 @@ const createTables = async () => {
       CREATE INDEX IF NOT EXISTS idx_admin_sessions_expire ON admin_sessions(expire);
     `);
 
+    // Indexes for security tracking tables
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_admin_access_logs_user_id ON admin_access_logs(user_id);
+      CREATE INDEX IF NOT EXISTS idx_admin_access_logs_username ON admin_access_logs(username);
+      CREATE INDEX IF NOT EXISTS idx_admin_access_logs_created_at ON admin_access_logs(created_at);
+      CREATE INDEX IF NOT EXISTS idx_admin_access_logs_ip_address ON admin_access_logs(ip_address);
+      CREATE INDEX IF NOT EXISTS idx_admin_access_logs_path ON admin_access_logs(path);
+      CREATE INDEX IF NOT EXISTS idx_failed_login_username ON failed_login_attempts(username);
+      CREATE INDEX IF NOT EXISTS idx_failed_login_ip ON failed_login_attempts(ip_address);
+      CREATE INDEX IF NOT EXISTS idx_failed_login_attempted_at ON failed_login_attempts(attempted_at);
+      CREATE INDEX IF NOT EXISTS idx_security_incidents_ip ON security_incidents(ip_address);
+      CREATE INDEX IF NOT EXISTS idx_security_incidents_created ON security_incidents(created_at);
+      CREATE INDEX IF NOT EXISTS idx_application_errors_created ON application_errors(created_at);
+      CREATE INDEX IF NOT EXISTS idx_application_errors_type ON application_errors(error_type);
+    `);
+
     // ==================== CREATE VIEWS ====================
 
-    // Create view for survey results (without expiration checks)
+    // Create view for survey results
     await pool.query(`
       CREATE OR REPLACE VIEW survey_results AS
       SELECT 
@@ -300,6 +378,36 @@ const createTables = async () => {
       WHERE so.survey_id = s.id
       GROUP BY s.id, s.question, s.survey_type, so.id, so.option_text, so.option_order
       ORDER BY s.id, so.option_order
+    `);
+
+    // Create view for active bans
+    await pool.query(`
+      CREATE OR REPLACE VIEW active_bans AS
+      SELECT 
+        b.*,
+        au.username as banned_by_username
+      FROM bans b
+      LEFT JOIN admin_users au ON b.admin_user_id = au.id
+      WHERE b.is_active = TRUE
+        AND (b.expires_at IS NULL OR b.expires_at > CURRENT_TIMESTAMP)
+    `);
+
+    // Create view for admin activity summary
+    await pool.query(`
+      CREATE OR REPLACE VIEW admin_activity_summary AS
+      SELECT 
+        au.id as user_id,
+        au.username,
+        au.role,
+        COUNT(DISTINCT aal.id) as total_accesses,
+        COUNT(DISTINCT ma.id) as total_mod_actions,
+        MAX(aal.created_at) as last_access,
+        MAX(au.last_login) as last_login
+      FROM admin_users au
+      LEFT JOIN admin_access_logs aal ON au.id = aal.user_id
+      LEFT JOIN moderation_actions ma ON au.id = ma.admin_user_id
+      WHERE au.is_active = TRUE
+      GROUP BY au.id, au.username, au.role
     `);
 
     console.log("Database tables created successfully");
