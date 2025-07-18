@@ -1,4 +1,4 @@
-// backend/routes/posts.js
+// backend/routes/posts.js - Updated survey creation endpoint
 const express = require("express");
 const router = express.Router({ mergeParams: true }); // mergeParams to access boardId and threadId
 const { pool } = require("../config/database");
@@ -12,6 +12,7 @@ const io = require("../utils/socketHandler").getIo;
 const getClientIp = require("../utils/getClientIp"); // Import the new utility
 const checkBannedIP = require("../middleware/banCheck"); // Import ban check middleware
 const postsConfig = require("../config/posts"); // Import posts config
+const surveysConfig = require("../config/surveys"); // Import surveys config
 
 /**
  * @route   GET /api/boards/:boardId/threads/:threadId/posts
@@ -464,10 +465,47 @@ router.post("/:postId/survey", checkBannedIP, async (req, res, next) => {
       });
     }
 
-    if (!Array.isArray(options) || options.length < 2 || options.length > 16) {
+    if (
+      !Array.isArray(options) ||
+      options.length < surveysConfig.minOptions ||
+      options.length > surveysConfig.maxOptions
+    ) {
       return res.status(400).json({
-        error: "Options must be an array with 2-16 items",
+        error: `Options must be an array with ${surveysConfig.minOptions}-${surveysConfig.maxOptions} items`,
       });
+    }
+
+    // Validate question length
+    if (question.length > surveysConfig.questionCharacterLimit) {
+      console.log(
+        `Route: Survey question exceeds character limit - ${question.length} characters (limit: ${surveysConfig.questionCharacterLimit})`
+      );
+      return res.status(400).json({
+        error: `Survey question exceeds the maximum character limit of ${surveysConfig.questionCharacterLimit} characters`,
+        currentLength: question.length,
+        maxLength: surveysConfig.questionCharacterLimit,
+      });
+    }
+
+    // Validate each option length
+    for (let i = 0; i < options.length; i++) {
+      if (options[i].length > surveysConfig.optionCharacterLimit) {
+        console.log(
+          `Route: Survey option ${i + 1} exceeds character limit - ${
+            options[i].length
+          } characters (limit: ${surveysConfig.optionCharacterLimit})`
+        );
+        return res.status(400).json({
+          error: `Survey option ${
+            i + 1
+          } exceeds the maximum character limit of ${
+            surveysConfig.optionCharacterLimit
+          } characters`,
+          option: options[i],
+          currentLength: options[i].length,
+          maxLength: surveysConfig.optionCharacterLimit,
+        });
+      }
     }
 
     // Check if user is the post owner

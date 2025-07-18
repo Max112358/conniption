@@ -1,5 +1,6 @@
 // backend/models/survey.js
 const { pool } = require("../config/database");
+const surveysConfig = require("../config/surveys");
 
 /**
  * Survey model functions - NO EXPIRATION FUNCTIONALITY
@@ -59,13 +60,31 @@ const surveyModel = {
     try {
       await client.query("BEGIN");
 
-      // Validate that options array has 2-16 entries
+      // Validate options array size
       if (
         !surveyData.options ||
-        surveyData.options.length < 2 ||
-        surveyData.options.length > 16
+        surveyData.options.length < surveysConfig.minOptions ||
+        surveyData.options.length > surveysConfig.maxOptions
       ) {
-        throw new Error("Survey must have between 2 and 16 options");
+        throw new Error(
+          `Survey must have between ${surveysConfig.minOptions} and ${surveysConfig.maxOptions} options`
+        );
+      }
+
+      // Validate question length
+      if (surveyData.question.length > surveysConfig.questionCharacterLimit) {
+        throw new Error(
+          `Survey question exceeds the maximum character limit of ${surveysConfig.questionCharacterLimit} characters`
+        );
+      }
+
+      // Validate each option length
+      for (const option of surveyData.options) {
+        if (option.length > surveysConfig.optionCharacterLimit) {
+          throw new Error(
+            `Survey option "${option}" exceeds the maximum character limit of ${surveysConfig.optionCharacterLimit} characters`
+          );
+        }
       }
 
       // Insert survey WITHOUT expires_at
@@ -238,8 +257,10 @@ const surveyModel = {
         throw new Error("At least one option must be selected");
       }
 
-      if (responseData.option_ids.length > 16) {
-        throw new Error("Maximum 16 options can be selected");
+      if (responseData.option_ids.length > surveysConfig.maxOptions) {
+        throw new Error(
+          `Maximum ${surveysConfig.maxOptions} options can be selected`
+        );
       }
 
       // Check if response already exists
