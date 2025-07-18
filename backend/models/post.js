@@ -3,6 +3,7 @@ const { pool } = require("../config/database");
 const transformImageUrl = require("../utils/transformImageUrl");
 const { generateThreadUserId } = require("../utils/threadIdGenerator");
 const { getCountryCode } = require("../utils/countryLookup");
+const threadConfig = require("../config/threads");
 
 /**
  * Post model functions
@@ -21,7 +22,7 @@ const postModel = {
     try {
       const result = await pool.query(
         `
-        SELECT id, content, image_url, file_type, created_at, thread_user_id, country_code, color
+        SELECT id, content, image_url, file_type, created_at, thread_user_id, country_code, color, dont_bump
         FROM posts
         WHERE thread_id = $1 AND board_id = $2
         ORDER BY created_at ASC
@@ -59,6 +60,7 @@ const postModel = {
    * @param {Object} boardSettings - Board settings for thread IDs and country flags
    * @param {string} threadSalt - The thread's salt for generating thread IDs
    * @param {boolean} isDead - Whether the thread is dead
+   * @param {boolean} dontBump - Whether to bump the thread
    * @returns {Promise<Object>} Object with postId, threadId, and boardId
    */
   createPost: async (
@@ -69,9 +71,11 @@ const postModel = {
     ipAddress,
     boardSettings,
     threadSalt,
-    isDead = false
+    isDead = false,
+    dontBump = false
   ) => {
     console.log(`Model: Creating post in thread ${threadId}, board ${boardId}`);
+    console.log(`Model: Don't bump: ${dontBump}`);
 
     // Check if thread is dead
     if (isDead) {
@@ -85,9 +89,9 @@ const postModel = {
       // Start transaction
       await client.query("BEGIN");
 
-      // Double-check thread is not dead (in case it changed)
+      // Double-check thread is not dead and get current post count
       const threadCheck = await client.query(
-        `SELECT is_dead FROM threads WHERE id = $1 AND board_id = $2`,
+        `SELECT is_dead, post_count FROM threads WHERE id = $1 AND board_id = $2`,
         [threadId, boardId]
       );
 
@@ -98,6 +102,8 @@ const postModel = {
       if (threadCheck.rows[0].is_dead) {
         throw new Error("Cannot post to a dead thread");
       }
+
+      const currentPostCount = threadCheck.rows[0].post_count || 0;
 
       // Generate thread user ID if enabled
       let threadUserId = null;
@@ -121,8 +127,8 @@ const postModel = {
         // Post with media
         console.log(`Model: Creating post with ${fileType}: ${imagePath}`);
         postQuery = `
-          INSERT INTO posts (thread_id, board_id, content, image_url, file_type, created_at, ip_address, thread_user_id, country_code, color)
-          VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP, $6, $7, $8, $9)
+          INSERT INTO posts (thread_id, board_id, content, image_url, file_type, created_at, ip_address, thread_user_id, country_code, color, dont_bump)
+          VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP, $6, $7, $8, $9, $10)
           RETURNING id
         `;
         postParams = [
@@ -135,13 +141,14 @@ const postModel = {
           threadUserId,
           countryCode,
           "black", // Default color
+          dontBump,
         ];
       } else {
         // Post without media
         console.log(`Model: Creating post without media`);
         postQuery = `
-          INSERT INTO posts (thread_id, board_id, content, created_at, ip_address, thread_user_id, country_code, color)
-          VALUES ($1, $2, $3, CURRENT_TIMESTAMP, $4, $5, $6, $7)
+          INSERT INTO posts (thread_id, board_id, content, created_at, ip_address, thread_user_id, country_code, color, dont_bump)
+          VALUES ($1, $2, $3, CURRENT_TIMESTAMP, $4, $5, $6, $7, $8)
           RETURNING id
         `;
         postParams = [
@@ -152,6 +159,7 @@ const postModel = {
           threadUserId,
           countryCode,
           "black", // Default color
+          dontBump,
         ];
       }
 
@@ -159,16 +167,43 @@ const postModel = {
       const postId = postResult.rows[0].id;
       console.log(`Model: Created post with ID: ${postId}`);
 
-      // Update thread's updated_at timestamp (this will bump it to the top)
+      // Update post count
       await client.query(
         `
         UPDATE threads
-        SET updated_at = CURRENT_TIMESTAMP
-        WHERE id = $1 AND board_id = $2 AND is_dead = FALSE
+        SET post_count = post_count + 1
+        WHERE id = $1 AND board_id = $2
         `,
         [threadId, boardId]
       );
-      console.log(`Model: Updated thread ${threadId} timestamp`);
+
+      // Determine if we should bump the thread
+      const shouldBump =
+        !dontBump &&
+        (!threadConfig.bumpLimit || currentPostCount < threadConfig.bumpLimit);
+
+      if (shouldBump) {
+        // Update thread's updated_at timestamp (this will bump it to the top)
+        await client.query(
+          `
+          UPDATE threads
+          SET updated_at = CURRENT_TIMESTAMP
+          WHERE id = $1 AND board_id = $2 AND is_dead = FALSE
+          `,
+          [threadId, boardId]
+        );
+        console.log(`Model: Bumped thread ${threadId} to top`);
+      } else {
+        if (dontBump) {
+          console.log(
+            `Model: Thread ${threadId} not bumped due to dont_bump flag`
+          );
+        } else {
+          console.log(
+            `Model: Thread ${threadId} not bumped due to bump limit (${currentPostCount} >= ${threadConfig.bumpLimit})`
+          );
+        }
+      }
 
       // Commit transaction
       await client.query("COMMIT");
@@ -196,7 +231,7 @@ const postModel = {
       const result = await pool.query(
         `
         SELECT id, thread_id, board_id, content, image_url, file_type, created_at, 
-               ip_address, thread_user_id, country_code, color
+               ip_address, thread_user_id, country_code, color, dont_bump
         FROM posts
         WHERE id = $1 AND board_id = $2
         `,
@@ -236,7 +271,7 @@ const postModel = {
         SET color = $1
         WHERE id = $2 AND board_id = $3
         RETURNING id, thread_id, board_id, content, image_url, file_type, created_at, 
-                  ip_address, thread_user_id, country_code, color
+                  ip_address, thread_user_id, country_code, color, dont_bump
         `,
         [color, postId, boardId]
       );

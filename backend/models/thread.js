@@ -3,6 +3,7 @@ const { pool } = require("../config/database");
 const transformImageUrl = require("../utils/transformImageUrl");
 const fileUtils = require("../utils/fileUtils");
 const { generateThreadSalt } = require("../utils/threadIdGenerator");
+const threadConfig = require("../config/threads");
 
 /**
  * Thread model functions
@@ -27,6 +28,7 @@ const threadModel = {
           t.is_sticky,
           t.is_dead,
           t.died_at,
+          t.post_count,
           p.content,
           p.image_url,
           p.file_type,
@@ -75,7 +77,7 @@ const threadModel = {
     try {
       const result = await pool.query(
         `
-        SELECT id, board_id, topic, created_at, updated_at, thread_salt, is_sticky, is_dead, died_at
+        SELECT id, board_id, topic, created_at, updated_at, thread_salt, is_sticky, is_dead, died_at, post_count
         FROM threads
         WHERE id = $1 AND board_id = $2
         `,
@@ -136,10 +138,13 @@ const threadModel = {
         `Model: Current active non-sticky thread count for board ${boardId}: ${threadCount}`
       );
 
-      // If we have 100 active non-sticky threads, mark the oldest one as dead
-      if (threadCount >= 100) {
+      // Use configurable thread limit
+      const maxThreads = threadConfig.maxThreadsPerBoard || 100;
+
+      // If we have reached the thread limit, mark the oldest one as dead
+      if (threadCount >= maxThreads) {
         console.log(
-          `Model: Board ${boardId} has reached 100 active non-sticky threads limit, marking oldest as dead`
+          `Model: Board ${boardId} has reached ${maxThreads} active non-sticky threads limit, marking oldest as dead`
         );
 
         // Mark the oldest non-sticky, non-dead thread as dead
@@ -191,11 +196,11 @@ const threadModel = {
       // Generate thread salt for thread IDs
       const threadSalt = generateThreadSalt();
 
-      // Create new thread
+      // Create new thread with initial post count of 1
       const threadResult = await client.query(
         `
-        INSERT INTO threads (board_id, topic, created_at, updated_at, thread_salt, is_sticky, is_dead, died_at)
-        VALUES ($1, $2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, $3, FALSE, FALSE, NULL)
+        INSERT INTO threads (board_id, topic, created_at, updated_at, thread_salt, is_sticky, is_dead, died_at, post_count)
+        VALUES ($1, $2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, $3, FALSE, FALSE, NULL, 1)
         RETURNING id
         `,
         [boardId, topic, threadSalt]
@@ -226,8 +231,8 @@ const threadModel = {
       // Create initial post with media and return its ID
       const postResult = await client.query(
         `
-        INSERT INTO posts (thread_id, board_id, content, image_url, file_type, created_at, ip_address, thread_user_id, country_code, color)
-        VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP, $6, $7, $8, $9)
+        INSERT INTO posts (thread_id, board_id, content, image_url, file_type, created_at, ip_address, thread_user_id, country_code, color, dont_bump)
+        VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP, $6, $7, $8, $9, $10)
         RETURNING id
         `,
         [
@@ -240,6 +245,7 @@ const threadModel = {
           threadUserId,
           countryCode,
           "black", // Default color
+          false, // First post always bumps (creates the thread)
         ]
       );
 
@@ -347,7 +353,7 @@ const threadModel = {
         UPDATE threads 
         SET is_sticky = $1
         WHERE id = $2 AND board_id = $3
-        RETURNING id, board_id, topic, created_at, updated_at, thread_salt, is_sticky, is_dead, died_at
+        RETURNING id, board_id, topic, created_at, updated_at, thread_salt, is_sticky, is_dead, died_at, post_count
         `,
         [isSticky, threadId, boardId]
       );
@@ -378,7 +384,7 @@ const threadModel = {
     try {
       const result = await pool.query(
         `
-        SELECT id, board_id, topic, created_at, updated_at, thread_salt, is_sticky, is_dead, died_at
+        SELECT id, board_id, topic, created_at, updated_at, thread_salt, is_sticky, is_dead, died_at, post_count
         FROM threads
         WHERE board_id = $1 AND is_sticky = TRUE
         ORDER BY updated_at DESC
@@ -397,27 +403,30 @@ const threadModel = {
   },
 
   /**
-   * Get dead threads that have expired (older than 2 days)
+   * Get dead threads that have expired (using configurable retention period)
    * @returns {Promise<Array>} Array of expired dead thread objects
    */
   getExpiredDeadThreads: async () => {
     console.log(`Model: Getting expired dead threads`);
 
     try {
+      const retentionDays = threadConfig.deadThreadRetentionDays || 2;
       const result = await pool.query(
         `
         SELECT t.id, t.board_id, array_agg(p.image_url) as image_urls
         FROM threads t
         LEFT JOIN posts p ON p.thread_id = t.id AND p.board_id = t.board_id
         WHERE t.is_dead = TRUE 
-        AND t.died_at < NOW() - INTERVAL '2 days'
+        AND t.died_at < NOW() - INTERVAL '${retentionDays} days'
         AND p.image_url IS NOT NULL
         GROUP BY t.id, t.board_id
         `,
         []
       );
 
-      console.log(`Model: Found ${result.rows.length} expired dead threads`);
+      console.log(
+        `Model: Found ${result.rows.length} expired dead threads (older than ${retentionDays} days)`
+      );
       return result.rows;
     } catch (error) {
       console.error(`Model Error - getExpiredDeadThreads:`, error);
@@ -453,11 +462,12 @@ const threadModel = {
       }
 
       // Delete the threads (posts and surveys will cascade delete)
+      const retentionDays = threadConfig.deadThreadRetentionDays || 2;
       const deleteResult = await client.query(
         `
         DELETE FROM threads
         WHERE is_dead = TRUE 
-        AND died_at < NOW() - INTERVAL '2 days'
+        AND died_at < NOW() - INTERVAL '${retentionDays} days'
         `,
         []
       );

@@ -1,6 +1,7 @@
 // backend/utils/dbInit.js
 const { pool } = require("../config/database");
 const boards = require("../config/boards");
+const threadConfig = require("../config/threads");
 
 /**
  * Initialize database tables and seed with initial boards
@@ -80,6 +81,7 @@ const createTables = async () => {
         is_sticky BOOLEAN DEFAULT FALSE,
         is_dead BOOLEAN DEFAULT FALSE,
         died_at TIMESTAMP WITH TIME ZONE,
+        post_count INTEGER DEFAULT 0,
         CONSTRAINT unique_thread_per_board UNIQUE (id, board_id)
       )
     `);
@@ -109,6 +111,7 @@ const createTables = async () => {
         thread_user_id TEXT,
         country_code VARCHAR(2),
         color VARCHAR(20) DEFAULT 'black' CHECK (color IN ('black', 'red', 'orange', 'yellow', 'green', 'blue', 'purple', 'brown')),
+        dont_bump BOOLEAN DEFAULT FALSE,
         FOREIGN KEY (thread_id, board_id) REFERENCES threads(id, board_id) ON DELETE CASCADE
       )
     `);
@@ -202,10 +205,12 @@ const createTables = async () => {
         CREATE INDEX IF NOT EXISTS idx_posts_thread_user_id ON posts(thread_user_id);
         CREATE INDEX IF NOT EXISTS idx_posts_country_code ON posts(country_code);
         CREATE INDEX IF NOT EXISTS idx_posts_color ON posts(color);
+        CREATE INDEX IF NOT EXISTS idx_posts_dont_bump ON posts(dont_bump);
         CREATE INDEX IF NOT EXISTS idx_threads_is_sticky ON threads(is_sticky);
         CREATE INDEX IF NOT EXISTS idx_threads_board_sticky ON threads(board_id, is_sticky DESC);
         CREATE INDEX IF NOT EXISTS idx_threads_is_dead ON threads(is_dead);
         CREATE INDEX IF NOT EXISTS idx_threads_died_at ON threads(died_at);
+        CREATE INDEX IF NOT EXISTS idx_threads_post_count ON threads(post_count);
       `);
     } catch (err) {
       console.error("Error creating indexes:", err);

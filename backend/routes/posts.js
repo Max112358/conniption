@@ -76,6 +76,7 @@ router.get("/", async (req, res, next) => {
       thread: {
         is_dead: thread.is_dead,
         died_at: thread.died_at,
+        post_count: thread.post_count,
       },
     });
   } catch (error) {
@@ -98,11 +99,12 @@ router.post(
   uploadWithUrlTransform("image"),
   async (req, res, next) => {
     const { boardId, threadId } = req.params;
-    const { content } = req.body;
+    const { content, dont_bump } = req.body;
     const ipAddress = getClientIp(req); // Use the new utility
 
     console.log(`Route: POST /api/boards/${boardId}/threads/${threadId}/posts`);
     console.log(`IP Address: ${ipAddress}`);
+    console.log(`Don't bump: ${dont_bump}`);
     console.log(`Request headers:`, {
       "cf-connecting-ip": req.headers["cf-connecting-ip"],
       "x-forwarded-for": req.headers["x-forwarded-for"],
@@ -162,6 +164,9 @@ router.post(
       // If no content provided, use empty string
       const postContent = content || "";
 
+      // Convert dont_bump to boolean
+      const dontBump = dont_bump === "true" || dont_bump === true;
+
       const result = await postModel.createPost(
         threadId,
         boardId,
@@ -170,7 +175,8 @@ router.post(
         ipAddress,
         boardSettings,
         thread.thread_salt,
-        thread.is_dead // Pass dead status to model
+        thread.is_dead, // Pass dead status to model
+        dontBump // Pass dont_bump flag to model
       );
 
       // Notify connected clients about the new post
@@ -304,6 +310,12 @@ router.delete("/:postId", async (req, res, next) => {
         await client.query(
           `DELETE FROM posts WHERE id = $1 AND thread_id = $2 AND board_id = $3`,
           [postId, threadId, boardId]
+        );
+
+        // Update post count
+        await client.query(
+          `UPDATE threads SET post_count = post_count - 1 WHERE id = $1 AND board_id = $2`,
+          [threadId, boardId]
         );
 
         // Delete image from R2 if exists

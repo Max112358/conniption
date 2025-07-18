@@ -10,6 +10,7 @@ const getClientIp = require("../utils/getClientIp"); // Import the new utility
 const checkBannedIP = require("../middleware/banCheck"); // Import ban check middleware
 const { pool } = require("../config/database");
 const adminAuth = require("../middleware/adminAuth");
+const threadConfig = require("../config/threads");
 
 // Use post routes
 router.use("/:threadId/posts", postRoutes);
@@ -36,7 +37,13 @@ router.get("/", async (req, res, next) => {
     // In the updated version, image_path from the database is actually the full R2 URL
     // We don't need to modify it here as the model will now return the full URL
 
-    res.json({ threads: threads });
+    res.json({
+      threads: threads,
+      config: {
+        bumpLimit: threadConfig.bumpLimit,
+        maxThreadsPerBoard: threadConfig.maxThreadsPerBoard,
+      },
+    });
   } catch (error) {
     console.error(`Route Error - GET /api/boards/${boardId}/threads:`, error);
     next(error);
@@ -157,7 +164,12 @@ router.get("/:threadId", async (req, res, next) => {
       return res.status(404).json({ error: "Thread not found" });
     }
 
-    res.json({ thread });
+    res.json({
+      thread,
+      config: {
+        bumpLimit: threadConfig.bumpLimit,
+      },
+    });
   } catch (error) {
     console.error(
       `Route Error - GET /api/boards/${boardId}/threads/${threadId}:`,
