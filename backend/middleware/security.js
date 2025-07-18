@@ -1,7 +1,6 @@
 // backend/middleware/security.js
 
 const rateLimit = require("express-rate-limit");
-const mongoSanitize = require("express-mongo-sanitize");
 const xss = require("xss-clean");
 const hpp = require("hpp");
 
@@ -162,5 +161,5 @@ module.exports = {
   // Export individual middleware
   preventXSS: xss(),
   preventParameterPollution: hpp(),
-  preventNoSQLInjection: mongoSanitize(),
+  // REMOVED: preventNoSQLInjection - not applicable to PostgreSQL
 };
