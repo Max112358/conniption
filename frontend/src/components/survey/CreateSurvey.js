@@ -16,6 +16,11 @@ export default function CreateSurvey({
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState(null);
 
+  // Character limits
+  const QUESTION_LIMIT = 280;
+  const OPTION_LIMIT = 280;
+  const SHOW_COUNTER_THRESHOLD = 50;
+
   // Add a new option
   const addOption = () => {
     if (options.length < 16) {
@@ -35,6 +40,23 @@ export default function CreateSurvey({
     const newOptions = [...options];
     newOptions[index] = value;
     setOptions(newOptions);
+  };
+
+  // Helper to get remaining characters
+  const getRemainingChars = (text, limit) => {
+    return limit - (text?.length || 0);
+  };
+
+  // Helper to determine if counter should be shown
+  const shouldShowCounter = (text, limit) => {
+    return getRemainingChars(text, limit) <= SHOW_COUNTER_THRESHOLD;
+  };
+
+  // Helper to get counter color class
+  const getCounterColorClass = (remaining) => {
+    if (remaining < 10) return "danger";
+    if (remaining < 25) return "warning";
+    return "secondary";
   };
 
   // Calculate expiration date
@@ -174,9 +196,21 @@ export default function CreateSurvey({
               value={question}
               onChange={(e) => setQuestion(e.target.value)}
               placeholder="What would you like to ask?"
-              maxLength="200"
+              maxLength={QUESTION_LIMIT}
               required
             />
+            {shouldShowCounter(question, QUESTION_LIMIT) && (
+              <div className="text-end mt-1">
+                <small
+                  className={`text-${getCounterColorClass(
+                    getRemainingChars(question, QUESTION_LIMIT)
+                  )}`}
+                >
+                  {getRemainingChars(question, QUESTION_LIMIT)} characters
+                  remaining
+                </small>
+              </div>
+            )}
           </div>
 
           {/* Options */}
@@ -185,26 +219,40 @@ export default function CreateSurvey({
               Options * (minimum 2, maximum 16)
             </label>
             {options.map((option, index) => (
-              <div key={index} className="input-group mb-2">
-                <span className="input-group-text bg-dark text-secondary border-secondary">
-                  {index + 1}
-                </span>
-                <input
-                  type="text"
-                  className="form-control bg-dark text-light border-secondary"
-                  value={option}
-                  onChange={(e) => updateOption(index, e.target.value)}
-                  placeholder={`Option ${index + 1}`}
-                  maxLength="100"
-                />
-                {options.length > 2 && (
-                  <button
-                    type="button"
-                    className="btn btn-outline-danger"
-                    onClick={() => removeOption(index)}
-                  >
-                    <i className="bi bi-trash"></i>
-                  </button>
+              <div key={index} className="mb-2">
+                <div className="input-group">
+                  <span className="input-group-text bg-dark text-secondary border-secondary">
+                    {index + 1}
+                  </span>
+                  <input
+                    type="text"
+                    className="form-control bg-dark text-light border-secondary"
+                    value={option}
+                    onChange={(e) => updateOption(index, e.target.value)}
+                    placeholder={`Option ${index + 1}`}
+                    maxLength={OPTION_LIMIT}
+                  />
+                  {options.length > 2 && (
+                    <button
+                      type="button"
+                      className="btn btn-outline-danger"
+                      onClick={() => removeOption(index)}
+                    >
+                      <i className="bi bi-trash"></i>
+                    </button>
+                  )}
+                </div>
+                {shouldShowCounter(option, OPTION_LIMIT) && (
+                  <div className="text-end mt-1">
+                    <small
+                      className={`text-${getCounterColorClass(
+                        getRemainingChars(option, OPTION_LIMIT)
+                      )}`}
+                    >
+                      {getRemainingChars(option, OPTION_LIMIT)} characters
+                      remaining
+                    </small>
+                  </div>
                 )}
               </div>
             ))}

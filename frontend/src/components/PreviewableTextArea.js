@@ -1,70 +1,88 @@
 // frontend/src/components/PreviewableTextArea.js
-import { useState } from "react";
+import { forwardRef, useState } from "react";
 import PostContent from "./PostContent";
 
-export default function PreviewableTextArea({
-  value,
-  onChange,
-  placeholder,
-  rows = 5,
-  maxLength,
-  disabled,
-  className = "",
-  id,
-}) {
-  const [showPreview, setShowPreview] = useState(false);
+const PreviewableTextArea = forwardRef(
+  (
+    {
+      id,
+      rows = 5,
+      value,
+      onChange,
+      placeholder,
+      disabled,
+      maxLength = 4000,
+      showCharacterLimit = 200, // Show counter when remaining chars drop below this
+    },
+    ref
+  ) => {
+    const [showPreview, setShowPreview] = useState(false);
 
-  return (
-    <div>
-      <div className="mb-2">
-        <textarea
-          className={`form-control bg-dark text-light border-secondary ${className}`}
-          id={id}
-          rows={rows}
-          value={value}
-          onChange={onChange}
-          placeholder={placeholder}
-          disabled={disabled}
-          maxLength={maxLength}
-        />
-      </div>
+    // Calculate remaining characters
+    const remainingChars = maxLength - (value?.length || 0);
+    const showCounter = remainingChars <= showCharacterLimit;
 
-      {/* Preview toggle */}
-      {value && value.includes("[spoiler]") && (
-        <div className="mb-2">
+    return (
+      <div>
+        <div className="position-relative">
+          <textarea
+            ref={ref}
+            className="form-control bg-dark text-light border-secondary"
+            id={id}
+            rows={rows}
+            value={value}
+            onChange={onChange}
+            placeholder={placeholder}
+            disabled={disabled}
+            maxLength={maxLength}
+            style={{ resize: "vertical" }}
+          />
+
+          {/* Character counter */}
+          {showCounter && (
+            <div className="text-end mt-1">
+              <small
+                className={`text-${
+                  remainingChars < 50
+                    ? "danger"
+                    : remainingChars < 100
+                    ? "warning"
+                    : "secondary"
+                }`}
+              >
+                {remainingChars} characters remaining
+              </small>
+            </div>
+          )}
+        </div>
+
+        <div className="mt-2">
           <button
             type="button"
             className="btn btn-sm btn-outline-secondary"
             onClick={() => setShowPreview(!showPreview)}
+            disabled={!value || value.trim() === ""}
           >
-            <i className={`bi bi-eye${showPreview ? "-slash" : ""} me-1`}></i>
-            {showPreview ? "Hide" : "Show"} Preview
+            {showPreview ? "Hide Preview" : "Show Preview"}
           </button>
         </div>
-      )}
 
-      {/* Preview panel */}
-      {showPreview && value && (
-        <div className="card bg-mid-dark border-secondary mb-3">
-          <div className="card-header border-secondary py-2">
-            <small className="text-secondary">Preview</small>
-          </div>
-          <div className="card-body">
+        {showPreview && value && (
+          <div className="mt-3 p-3 border border-secondary rounded bg-dark">
+            <small className="text-secondary d-block mb-2">Preview:</small>
             <PostContent
               content={value}
-              posts={[]}
-              allThreadsWithPosts={[]}
+              isPreview={true}
               boardId=""
               onPostLinkClick={() => {}}
-              isPreview={true}
             />
           </div>
-        </div>
-      )}
+        )}
+      </div>
+    );
+  }
+);
 
-      <small className="form-text text-secondary">
-        Use [spoiler]text[/spoiler] to hide text until hovered
-      </small>
-    </div>
-  );
-}
+PreviewableTextArea.displayName = "PreviewableTextArea";
+
+export default PreviewableTextArea;
