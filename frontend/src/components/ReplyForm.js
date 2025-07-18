@@ -19,6 +19,8 @@ const ReplyForm = forwardRef(
       error,
       maxImageSize = "4MB",
       acceptedFormats = ".jpg, .jpeg, .png, .gif, .webp, .mp4, .webm",
+      currentPostCount = 0,
+      bumpLimit = null,
     },
     ref
   ) => {
@@ -29,6 +31,12 @@ const ReplyForm = forwardRef(
       surveyQuestion: "",
       surveyOptions: ["", ""],
     });
+
+    // Don't bump state
+    const [dontBump, setDontBump] = useState(false);
+
+    // Check if thread has reached bump limit
+    const hasReachedBumpLimit = bumpLimit && currentPostCount >= bumpLimit;
 
     const handleImageChange = (e) => {
       const file = e.target.files[0];
@@ -66,6 +74,8 @@ const ReplyForm = forwardRef(
       console.log("Content:", content);
       console.log("Has image:", !!image);
       console.log("Include survey:", includeSurvey);
+      console.log("Don't bump:", dontBump);
+      console.log("Has reached bump limit:", hasReachedBumpLimit);
       console.log("Raw survey data:", JSON.stringify(surveyData, null, 2));
 
       // Validate survey if enabled
@@ -100,6 +110,7 @@ const ReplyForm = forwardRef(
         image,
         includeSurvey,
         surveyData: processedSurveyData,
+        dontBump: dontBump || hasReachedBumpLimit, // Force don't bump if bump limit reached
       };
 
       console.log("=== REPLY FORM DEBUG: Final submit data ===");
@@ -128,6 +139,14 @@ const ReplyForm = forwardRef(
           {error && (
             <div className="alert alert-danger" role="alert">
               {error}
+            </div>
+          )}
+
+          {hasReachedBumpLimit && (
+            <div className="alert alert-warning" role="alert">
+              <i className="bi bi-info-circle me-2"></i>
+              This thread has reached the bump limit ({bumpLimit} posts) and
+              will no longer be bumped to the top.
             </div>
           )}
 
@@ -196,6 +215,31 @@ const ReplyForm = forwardRef(
                   >
                     <i className="bi bi-x"></i>
                   </button>
+                </div>
+              </div>
+            )}
+
+            {/* Don't Bump Checkbox - Only show if not at bump limit */}
+            {!hasReachedBumpLimit && (
+              <div className="mb-3">
+                <div className="form-check">
+                  <input
+                    className="form-check-input"
+                    type="checkbox"
+                    id="dontBump"
+                    checked={dontBump}
+                    onChange={(e) => setDontBump(e.target.checked)}
+                    disabled={loading}
+                  />
+                  <label
+                    className="form-check-label text-secondary"
+                    htmlFor="dontBump"
+                  >
+                    Don't bump thread (sage)
+                  </label>
+                  <small className="form-text text-secondary d-block">
+                    Post without bumping the thread to the top of the board
+                  </small>
                 </div>
               </div>
             )}

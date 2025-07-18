@@ -38,6 +38,7 @@ function ThreadPage() {
   const [newPostsAvailable, setNewPostsAvailable] = useState(false);
   const [threadDead, setThreadDead] = useState(false);
   const [threadDiedAt, setThreadDiedAt] = useState(null);
+  const [bumpLimit, setBumpLimit] = useState(null);
 
   // Reply form state
   const [content, setContent] = useState("");
@@ -134,6 +135,12 @@ function ThreadPage() {
       setThread(data.thread);
       setThreadDead(data.thread.is_dead);
       setThreadDiedAt(data.thread.died_at);
+
+      // Set bump limit from config
+      if (data.config && data.config.bumpLimit) {
+        setBumpLimit(data.config.bumpLimit);
+      }
+
       setThreadNotFound(false);
       return true;
     } catch (err) {
@@ -462,6 +469,7 @@ function ThreadPage() {
         image: submitImage,
         includeSurvey,
         surveyData,
+        dontBump,
       } = submitData;
 
       // Validation
@@ -478,6 +486,8 @@ function ThreadPage() {
       if (submitImage) {
         formData.append("image", submitImage);
       }
+      // Add don't bump flag
+      formData.append("dont_bump", dontBump ? "true" : "false");
 
       try {
         const response = await fetch(
@@ -697,6 +707,10 @@ function ThreadPage() {
   // Debug logging
   console.log("Rendering ThreadPage with posts:", posts);
 
+  // Check if thread has reached bump limit
+  const hasReachedBumpLimit =
+    bumpLimit && thread && thread.post_count >= bumpLimit;
+
   return (
     <div
       className={`container-fluid min-vh-100 bg-dark text-light py-4 ${
@@ -746,6 +760,11 @@ function ThreadPage() {
                   `Thread created: ${new Date(
                     thread.created_at
                   ).toLocaleString()}`}
+                {hasReachedBumpLimit && (
+                  <span className="badge bg-secondary ms-2">
+                    Bump limit reached ({bumpLimit} posts)
+                  </span>
+                )}
               </span>
               <div className="d-flex align-items-center gap-2">
                 <ConnectionStatus connected={isConnected} />
@@ -889,6 +908,8 @@ function ThreadPage() {
             onSubmit={handleSubmitPost}
             loading={postLoading}
             error={postError}
+            currentPostCount={thread?.post_count || posts.length}
+            bumpLimit={bumpLimit}
           />
         )}
 
