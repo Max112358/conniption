@@ -50,7 +50,7 @@ export default function ThreadCard({
   };
 
   return (
-    <div className="card bg-high-dark border-secondary mb-4 position-relative">
+    <div className="card bg-high-dark border-secondary mb-4 thread-card-hover position-relative">
       {/* Invisible clickable overlay */}
       <div
         className="position-absolute top-0 start-0 w-100 h-100"

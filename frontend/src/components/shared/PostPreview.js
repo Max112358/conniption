@@ -28,6 +28,11 @@ export default function PostPreview({
     ? "border border-secondary rounded p-2 mb-2"
     : "card bg-dark border-secondary mb-3 shadow";
 
+  // Handle clicks on the post preview to prevent navigation
+  const handleContainerClick = (e) => {
+    e.stopPropagation();
+  };
+
   return (
     <div
       id={`post-${post.id}`}
@@ -35,6 +40,7 @@ export default function PostPreview({
         postColor !== "black" ? `post-color-${postColor}` : ""
       }`}
       style={{ position: "relative", zIndex: 2 }}
+      onClick={handleContainerClick}
     >
       {!compact && (
         <div

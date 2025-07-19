@@ -95,3 +95,15 @@
   border-color: #868e96 !important;
   text-decoration: none !important;
 }
+
+/* Thread card hover effects */
+.thread-card-hover {
+  transition: all 0.2s ease;
+  border-color: #6c757d !important;
+}
+
+.thread-card-hover:hover {
+  border-color: #adb5bd !important;
+  box-shadow: 0 0 0 1px rgba(173, 181, 189, 0.5) !important;
+  transform: translateY(-1px);
+}

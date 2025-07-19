@@ -172,7 +172,12 @@ export default function PostHeader({
 
   const replies = getReplies();
 
-  const handlePostNumberClick = () => {
+  const handlePostNumberClick = (e) => {
+    // Prevent event from bubbling to thread card
+    if (e) {
+      e.stopPropagation();
+    }
+
     if (isThreadDead) return; // Don't allow quoting in dead threads
     if (onPostNumberClick) {
       onPostNumberClick(post.id);
@@ -197,7 +202,7 @@ export default function PostHeader({
         <span className="text-secondary">Post #</span>
         <span
           className={`${isThreadDead ? "text-secondary" : "text-primary"}`}
-          style={{ cursor: isThreadDead ? "default" : "pointer" }}
+          style={{ cursor: isThreadDead ? "default" : "pointer", zIndex: 10 }}
           onClick={handlePostNumberClick}
           title={
             isThreadDead
@@ -281,7 +286,10 @@ export default function PostHeader({
                 <span
                   className="text-info small"
                   style={{ cursor: "pointer", textDecoration: "underline" }}
-                  onClick={() => onPostLinkClick(replyId, post.thread_id)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onPostLinkClick(replyId, post.thread_id);
+                  }}
                   onMouseEnter={(e) => {
                     setHoveredReplyId(replyId);
                     const rect = e.target.getBoundingClientRect();
