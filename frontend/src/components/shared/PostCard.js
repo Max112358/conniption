@@ -39,15 +39,6 @@ export default function PostCard({
     isModerator && !isHidden && !isUserHidden && !isThreadDead;
   const isUserOwnPost = isOwnPost(post.id);
 
-  // Debug survey data
-  console.log(`=== SURVEY DEBUG: PostCard for post ${post.id} ===`);
-  console.log("Post object:", post);
-  console.log("Has survey:", !!post.survey);
-  console.log("Is Thread Dead:", isThreadDead);
-  if (post.survey) {
-    console.log("Survey data:", post.survey);
-  }
-
   const handlePostDeleted = (postId) => {
     removeOwnPost(postId);
     if (onPostDeleted) {
