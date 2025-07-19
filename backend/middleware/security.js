@@ -1,13 +1,61 @@
 // backend/middleware/security.js
 
 const rateLimit = require("express-rate-limit");
-const xss = require("xss-clean");
 const hpp = require("hpp");
 const csrf = require("csurf");
 
 // Import the content sanitizer and validators
 const contentSanitizer = require("./contentSanitizer");
 const { validateContentLength } = require("./validators");
+
+// Custom XSS prevention middleware to replace xss-clean
+const preventXSS = (req, res, next) => {
+  // Helper function to clean strings
+  const cleanString = (str) => {
+    if (typeof str !== "string") return str;
+
+    // Basic XSS pattern removal
+    return str
+      .replace(/[<>]/g, "") // Remove < and >
+      .replace(/javascript:/gi, "") // Remove javascript: protocol
+      .replace(/on\w+\s*=/gi, "") // Remove event handlers like onclick=
+      .replace(/script/gi, "scr1pt") // Neutralize script tags
+      .trim();
+  };
+
+  // Clean request body
+  if (req.body && typeof req.body === "object") {
+    Object.keys(req.body).forEach((key) => {
+      if (typeof req.body[key] === "string") {
+        req.body[key] = cleanString(req.body[key]);
+      } else if (Array.isArray(req.body[key])) {
+        req.body[key] = req.body[key].map((item) =>
+          typeof item === "string" ? cleanString(item) : item
+        );
+      }
+    });
+  }
+
+  // Clean query parameters
+  if (req.query && typeof req.query === "object") {
+    Object.keys(req.query).forEach((key) => {
+      if (typeof req.query[key] === "string") {
+        req.query[key] = cleanString(req.query[key]);
+      }
+    });
+  }
+
+  // Clean params
+  if (req.params && typeof req.params === "object") {
+    Object.keys(req.params).forEach((key) => {
+      if (typeof req.params[key] === "string") {
+        req.params[key] = cleanString(req.params[key]);
+      }
+    });
+  }
+
+  next();
+};
 
 // Rate limiting configurations
 const createAccountLimiter = rateLimit({
@@ -220,6 +268,6 @@ module.exports = {
   csrfProtection,
   validatePassword,
   // Export individual middleware
-  preventXSS: xss(),
+  preventXSS: preventXSS, // Use our custom implementation
   preventParameterPollution: hpp(),
 };
