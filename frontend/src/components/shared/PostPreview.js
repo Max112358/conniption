@@ -34,9 +34,13 @@ export default function PostPreview({
       className={`${containerClass} ${
         postColor !== "black" ? `post-color-${postColor}` : ""
       }`}
+      style={{ position: "relative", zIndex: 2 }}
     >
       {!compact && (
-        <div className="card-header border-secondary">
+        <div
+          className="card-header border-secondary"
+          style={{ position: "relative", zIndex: 3 }}
+        >
           <PostHeader
             post={post}
             posts={posts}
@@ -55,7 +59,10 @@ export default function PostPreview({
         </div>
       )}
 
-      <div className={compact ? "" : "card-body"}>
+      <div
+        className={compact ? "" : "card-body"}
+        style={{ position: "relative", zIndex: 3 }}
+      >
         {compact && (
           <div className="mb-2">
             <PostHeader

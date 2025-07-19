@@ -6,7 +6,7 @@ import React, {
   useMemo,
   useRef,
 } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import BanNotification from "./BanNotification";
 import LoadingSpinner from "./LoadingSpinner";
 import PageHeader from "./shared/PageHeader";
@@ -30,6 +30,7 @@ import "../styles/deadThread.css";
 function ThreadPage() {
   const { boardId, threadId } = useParams();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [thread, setThread] = useState(null);
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -64,6 +65,43 @@ function ThreadPage() {
   useEffect(() => {
     postsRef.current = posts;
   }, [posts]);
+
+  // Handle quote parameter from URL
+  useEffect(() => {
+    const quotePostId = searchParams.get("quote");
+    if (quotePostId && !threadDead) {
+      // Open reply form
+      setShowReplyForm(true);
+
+      // Add quote to content
+      const replyLink = `>>${quotePostId}`;
+      setContent((prev) => {
+        if (!prev || prev.endsWith("\n")) {
+          return prev + replyLink + "\n";
+        } else {
+          return prev + "\n" + replyLink + "\n";
+        }
+      });
+
+      // Clear the quote parameter from URL
+      setSearchParams((prev) => {
+        const newParams = new URLSearchParams(prev);
+        newParams.delete("quote");
+        return newParams;
+      });
+
+      // Focus textarea after a delay
+      setTimeout(() => {
+        if (contentTextareaRef.current) {
+          contentTextareaRef.current.focus();
+          contentTextareaRef.current.scrollIntoView({
+            behavior: "smooth",
+            block: "center",
+          });
+        }
+      }, 100);
+    }
+  }, [searchParams, threadDead, setSearchParams]);
 
   // Add custom CSS for highlight animation
   useEffect(() => {

@@ -1,5 +1,5 @@
 // frontend/src/components/shared/ThreadCard.js
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import PostPreview from "./PostPreview";
 import HideButton from "../HideButton";
 import ThreadDeleteButton from "../ThreadDeleteButton";
@@ -20,15 +20,50 @@ export default function ThreadCard({
   onTogglePostHidden,
   onStickyChanged,
 }) {
+  const navigate = useNavigate();
   const hasReplies = thread.latestReplies && thread.latestReplies.length > 0;
   const opPost = thread.posts?.[0];
 
   const { isOwnThread, removeOwnThread } = useThreadOwnership();
   const { adminUser, isModerator } = useAdminStatus();
 
+  // Handle clicking anywhere on the card to navigate to thread
+  const handleCardClick = (e) => {
+    // Don't navigate if clicking on interactive elements
+    if (
+      e.target.closest("button") ||
+      e.target.closest("a") ||
+      e.target.closest(".btn") ||
+      e.target.closest(".form-check") ||
+      e.target.closest('[role="button"]') ||
+      e.target.closest(".dropdown")
+    ) {
+      return;
+    }
+
+    navigate(`/board/${boardId}/thread/${thread.id}`);
+  };
+
+  // Handle post number click to navigate with quote
+  const handlePostNumberClick = (postId) => {
+    navigate(`/board/${boardId}/thread/${thread.id}?quote=${postId}`);
+  };
+
   return (
-    <div className="card bg-high-dark border-secondary mb-4">
-      <div className="card-body">
+    <div className="card bg-high-dark border-secondary mb-4 position-relative">
+      {/* Invisible clickable overlay */}
+      <div
+        className="position-absolute top-0 start-0 w-100 h-100"
+        style={{
+          zIndex: 1,
+          cursor: "pointer",
+          backgroundColor: "transparent",
+        }}
+        onClick={handleCardClick}
+        aria-label={`Go to thread: ${thread.topic}`}
+      />
+
+      <div className="card-body" style={{ position: "relative", zIndex: 2 }}>
         <div className="d-flex flex-column flex-sm-row justify-content-between align-items-start mb-2 gap-2">
           <div className="d-flex align-items-center gap-2 w-100 w-sm-auto">
             <HideButton
@@ -39,6 +74,7 @@ export default function ThreadCard({
             <Link
               to={`/board/${boardId}/thread/${thread.id}`}
               className="text-decoration-none flex-grow-1"
+              style={{ zIndex: 3 }}
             >
               <h5
                 className="mb-0 text-light text-break"
@@ -64,24 +100,28 @@ export default function ThreadCard({
               {thread.post_count} {thread.post_count === 1 ? "post" : "posts"}
             </small>
 
-            <StickyToggle
-              threadId={thread.id}
-              boardId={boardId}
-              isSticky={thread.is_sticky}
-              adminUser={adminUser}
-              onStickyChanged={onStickyChanged}
-            />
+            <div style={{ zIndex: 3 }}>
+              <StickyToggle
+                threadId={thread.id}
+                boardId={boardId}
+                isSticky={thread.is_sticky}
+                adminUser={adminUser}
+                onStickyChanged={onStickyChanged}
+              />
+            </div>
 
-            <ThreadDeleteButton
-              threadId={thread.id}
-              boardId={boardId}
-              isOwnThread={isOwnThread(thread.id)}
-              isModerator={isModerator}
-              adminUser={adminUser}
-              onDeleted={() => {
-                removeOwnThread(thread.id);
-              }}
-            />
+            <div style={{ zIndex: 3 }}>
+              <ThreadDeleteButton
+                threadId={thread.id}
+                boardId={boardId}
+                isOwnThread={isOwnThread(thread.id)}
+                isModerator={isModerator}
+                adminUser={adminUser}
+                onDeleted={() => {
+                  removeOwnThread(thread.id);
+                }}
+              />
+            </div>
           </div>
         </div>
 
@@ -105,7 +145,7 @@ export default function ThreadCard({
                   }
                   onToggleHidden={() => onTogglePostHidden(opPost.id)}
                   onToggleUserHidden={onToggleUserHidden}
-                  onPostNumberClick={() => {}}
+                  onPostNumberClick={handlePostNumberClick}
                   onPostLinkClick={() => {}}
                   boardSettings={{
                     thread_ids_enabled: board?.thread_ids_enabled,
@@ -134,6 +174,7 @@ export default function ThreadCard({
                     <Link
                       to={`/board/${boardId}/thread/${thread.id}`}
                       className="btn btn-outline-secondary btn-sm"
+                      style={{ zIndex: 3 }}
                     >
                       View all {thread.totalReplies} replies
                     </Link>
@@ -159,7 +200,7 @@ export default function ThreadCard({
                       }
                       onToggleHidden={() => onTogglePostHidden(reply.id)}
                       onToggleUserHidden={onToggleUserHidden}
-                      onPostNumberClick={() => {}}
+                      onPostNumberClick={handlePostNumberClick}
                       onPostLinkClick={() => {}}
                       boardSettings={{
                         thread_ids_enabled: board?.thread_ids_enabled,
@@ -176,6 +217,7 @@ export default function ThreadCard({
                   <Link
                     to={`/board/${boardId}/thread/${thread.id}`}
                     className="btn btn-outline-primary btn-sm"
+                    style={{ zIndex: 3 }}
                   >
                     View Thread →
                   </Link>
