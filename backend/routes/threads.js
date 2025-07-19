@@ -66,12 +66,82 @@ router.get("/", validators.validateBoard, async (req, res, next) => {
 // Apply checkBannedIP middleware BEFORE upload to block banned users early
 router.post(
   "/",
-  validators.createThread,
+  // First validate the board ID
+  validators.validateBoard,
+  // Then check if user is banned
   checkBannedIP,
+  // Apply rate limiting
   postCreationLimiter,
   uploadLimiter,
+  // Handle file upload and URL transformation
   uploadWithUrlTransform("image"),
-  validateContent,
+  // Custom validation for thread creation
+  async (req, res, next) => {
+    console.log("=== THREAD CREATION VALIDATION DEBUG ===");
+    console.log("Request body:", req.body);
+    console.log(
+      "Request file:",
+      req.file
+        ? {
+            filename: req.file.filename,
+            originalname: req.file.originalname,
+            mimetype: req.file.mimetype,
+            size: req.file.size,
+            location: req.file.location,
+          }
+        : "No file"
+    );
+    console.log("Request params:", req.params);
+
+    const { topic, content } = req.body;
+    const errors = [];
+
+    // Validate topic
+    if (!topic || typeof topic !== "string" || topic.trim().length === 0) {
+      errors.push({ field: "topic", message: "Topic is required" });
+    } else if (topic.trim().length > 100) {
+      errors.push({
+        field: "topic",
+        message: "Topic must be 100 characters or less",
+      });
+    }
+
+    // Validate content
+    if (
+      !content ||
+      typeof content !== "string" ||
+      content.trim().length === 0
+    ) {
+      errors.push({ field: "content", message: "Content is required" });
+    } else if (
+      postsConfig.characterLimit &&
+      content.trim().length > postsConfig.characterLimit
+    ) {
+      errors.push({
+        field: "content",
+        message: `Content must be ${postsConfig.characterLimit} characters or less`,
+      });
+    }
+
+    // Validate file
+    if (!req.file) {
+      errors.push({
+        field: "image",
+        message: "Image or video file is required for new threads",
+      });
+    }
+
+    if (errors.length > 0) {
+      console.log("Validation errors:", errors);
+      return res.status(400).json({
+        error: "Validation failed",
+        details: errors,
+      });
+    }
+
+    console.log("Validation passed, proceeding to create thread");
+    next();
+  },
   async (req, res, next) => {
     const { boardId } = req.params;
     const { topic, content } = req.body;
@@ -79,22 +149,23 @@ router.post(
 
     console.log(`Route: POST /api/boards/${boardId}/threads`);
     console.log(`Thread topic: "${topic}"`);
+    console.log(`Thread content: "${content}"`);
     console.log(`IP Address: ${ipAddress}`);
-    console.log(`Request headers:`, {
-      "cf-connecting-ip": req.headers["cf-connecting-ip"],
-      "x-forwarded-for": req.headers["x-forwarded-for"],
-      "x-real-ip": req.headers["x-real-ip"],
-      "true-client-ip": req.headers["true-client-ip"],
-    });
+    console.log(
+      `File info:`,
+      req.file
+        ? {
+            filename: req.file.filename,
+            originalname: req.file.originalname,
+            mimetype: req.file.mimetype,
+            size: req.file.size,
+            location: req.file.location,
+            fileType: req.file.fileType,
+          }
+        : "No file"
+    );
 
     try {
-      // Validation is now handled by validator middleware
-
-      if (!req.file) {
-        console.log(`Route: Invalid request - missing media file`);
-        return res.status(400).json({ error: "Image or video is required" });
-      }
-
       // Check if board exists and get board settings
       const board = await boardModel.getBoardById(boardId);
       if (!board) {
@@ -117,12 +188,14 @@ router.post(
       // req.file.location now contains the transformed URL with custom domain
       const result = await threadModel.createThread(
         boardId,
-        topic,
-        content,
+        topic.trim(),
+        content.trim(),
         req.file.location,
         ipAddress,
         boardSettings
       );
+
+      console.log(`Route: Thread created successfully:`, result);
 
       // Notify connected clients about the new thread
       const socketIo = io();
@@ -131,7 +204,7 @@ router.post(
         socketIo.to(boardId).emit("thread_created", {
           threadId: result.threadId,
           boardId,
-          topic,
+          topic: topic.trim(),
         });
       } else {
         console.log(
@@ -143,7 +216,7 @@ router.post(
         message: "Thread created successfully",
         threadId: result.threadId,
         boardId,
-        postId: result.postId, // <-- ADD THIS LINE
+        postId: result.postId,
       });
     } catch (error) {
       console.error(
