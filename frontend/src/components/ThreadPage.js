@@ -24,6 +24,8 @@ import usePostOwnership from "../hooks/usePostOwnership";
 import useThreadOwnership from "../hooks/useThreadOwnership";
 import { API_BASE_URL } from "../config/api";
 import { handleApiError } from "../utils/apiErrorHandler";
+// Import the CSS file directly
+import "../styles/deadThread.css";
 
 function ThreadPage() {
   const { boardId, threadId } = useParams();
@@ -63,14 +65,8 @@ function ThreadPage() {
     postsRef.current = posts;
   }, [posts]);
 
-  // Add custom CSS for highlight animation and import dead thread styles
+  // Add custom CSS for highlight animation
   useEffect(() => {
-    // Import dead thread styles
-    const link = document.createElement("link");
-    link.rel = "stylesheet";
-    link.href = "/styles/deadThread.css";
-    document.head.appendChild(link);
-
     const style = document.createElement("style");
     style.textContent = `
       @keyframes postHighlight {
@@ -97,7 +93,6 @@ function ThreadPage() {
     document.head.appendChild(style);
 
     return () => {
-      document.head.removeChild(link);
       document.head.removeChild(style);
     };
   }, []);
