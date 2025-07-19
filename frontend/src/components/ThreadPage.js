@@ -149,17 +149,8 @@ function ThreadPage() {
   const fetchPosts = useCallback(
     async (isSocketUpdate = false) => {
       try {
-        console.log(
-          `Fetching posts for thread ${threadId} on board ${boardId}`
-        );
-
         const response = await fetch(
           `${API_BASE_URL}/api/boards/${boardId}/threads/${threadId}/posts?includeSurveys=true`
-        );
-
-        console.log("=== SURVEY DEBUG: Fetch URL ===");
-        console.log(
-          `URL: ${API_BASE_URL}/api/boards/${boardId}/threads/${threadId}/posts?includeSurveys=true`
         );
 
         if (!response.ok) {
@@ -174,17 +165,6 @@ function ThreadPage() {
         }
 
         const data = await response.json();
-        console.log("=== SURVEY DEBUG: Raw API response ===");
-        console.log("Full response object:", JSON.stringify(data, null, 2));
-        console.log("Response type:", typeof data);
-        console.log("Is array?", Array.isArray(data));
-        console.log("Has posts property?", data.hasOwnProperty("posts"));
-        if (data.posts && Array.isArray(data.posts)) {
-          console.log("Posts array length:", data.posts.length);
-          data.posts.forEach((post, index) => {
-            console.log(`Raw post ${index}:`, JSON.stringify(post, null, 2));
-          });
-        }
 
         // Check thread dead status from response
         if (data.thread) {
@@ -201,8 +181,6 @@ function ThreadPage() {
         } else if (data && data.data && Array.isArray(data.data)) {
           newPosts = data.data;
         }
-
-        console.log(`Fetched ${newPosts.length} posts`);
 
         // If this is a socket update and we have existing posts, mark new ones
         if (isSocketUpdate && postsRef.current.length > 0) {
@@ -254,7 +232,6 @@ function ThreadPage() {
 
   // Combined fetch function
   const fetchData = useCallback(async () => {
-    console.log("Starting fetchData...");
     setLoading(true);
     setError(null);
     resetBanStatus();
@@ -271,11 +248,8 @@ function ThreadPage() {
 
       // Check if thread exists
       if (!threadSuccess) {
-        console.log("Thread not found");
         return;
       }
-
-      console.log(`Data fetch complete. Posts loaded: ${postsSuccess}`);
     } catch (err) {
       console.error("Error in fetchData:", err);
       setError(err.message || "Failed to load thread data");
@@ -292,7 +266,6 @@ function ThreadPage() {
   // Socket event handlers
   const handlePostCreated = useCallback(
     (data) => {
-      console.log("Post created event received:", data);
       if (
         data.boardId === boardId &&
         data.threadId === parseInt(threadId, 10)
@@ -305,7 +278,6 @@ function ThreadPage() {
 
   const handlePostDeleted = useCallback(
     (data) => {
-      console.log("Post deleted event received:", data);
       if (
         data.boardId === boardId &&
         data.threadId === parseInt(threadId, 10)
@@ -323,7 +295,6 @@ function ThreadPage() {
 
   const handleThreadDeleted = useCallback(
     (data) => {
-      console.log("Thread deleted event received:", data);
       if (
         data.boardId === boardId &&
         data.threadId === parseInt(threadId, 10)
@@ -337,7 +308,6 @@ function ThreadPage() {
 
   const handlePostColorChanged = useCallback(
     (data) => {
-      console.log("Post color changed event received:", data);
       if (
         data.boardId === boardId &&
         data.threadId === parseInt(threadId, 10)
@@ -355,7 +325,6 @@ function ThreadPage() {
 
   const handleThreadStickyUpdated = useCallback(
     (data) => {
-      console.log("Thread sticky updated event received:", data);
       if (
         data.boardId === boardId &&
         data.threadId === parseInt(threadId, 10)
@@ -373,7 +342,6 @@ function ThreadPage() {
 
   const handleThreadDied = useCallback(
     (data) => {
-      console.log("Thread died event received:", data);
       if (
         data.boardId === boardId &&
         data.threadId === parseInt(threadId, 10)
@@ -698,9 +666,6 @@ function ThreadPage() {
   if (error) {
     return <ErrorDisplay error={error} backLink={`/board/${boardId}`} />;
   }
-
-  // Debug logging
-  console.log("Rendering ThreadPage with posts:", posts);
 
   // Check if thread has reached bump limit
   const hasReachedBumpLimit =

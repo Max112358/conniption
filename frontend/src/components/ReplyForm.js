@@ -70,19 +70,9 @@ const ReplyForm = forwardRef(
     const handleFormSubmit = (e) => {
       e.preventDefault();
 
-      console.log("=== REPLY FORM DEBUG: Form submission ===");
-      console.log("Content:", content);
-      console.log("Has image:", !!image);
-      console.log("Include survey:", includeSurvey);
-      console.log("Don't bump:", dontBump);
-      console.log("Has reached bump limit:", hasReachedBumpLimit);
-      console.log("Raw survey data:", JSON.stringify(surveyData, null, 2));
-
       // Validate survey if enabled
       if (includeSurvey) {
-        console.log("=== REPLY FORM DEBUG: Validating survey ===");
         const validation = validateSurveyData(surveyData);
-        console.log("Survey validation result:", validation);
 
         if (!validation.valid) {
           console.error("Survey validation failed:", validation.error);
@@ -99,12 +89,6 @@ const ReplyForm = forwardRef(
           }
         : null;
 
-      console.log("=== REPLY FORM DEBUG: Processed survey data ===");
-      console.log(
-        "Processed survey data:",
-        JSON.stringify(processedSurveyData, null, 2)
-      );
-
       const submitData = {
         content,
         image,
@@ -112,19 +96,6 @@ const ReplyForm = forwardRef(
         surveyData: processedSurveyData,
         dontBump: dontBump || hasReachedBumpLimit, // Force don't bump if bump limit reached
       };
-
-      console.log("=== REPLY FORM DEBUG: Final submit data ===");
-      console.log(
-        "Submit data:",
-        JSON.stringify(
-          {
-            ...submitData,
-            image: image ? `[File: ${image.name}, ${image.size} bytes]` : null,
-          },
-          null,
-          2
-        )
-      );
 
       // Pass all data to parent handler
       onSubmit(submitData);

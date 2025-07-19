@@ -24,12 +24,6 @@ export default function SurveyView({
   const [loading, setLoading] = useState(true);
   const [isChangingVote, setIsChangingVote] = useState(false); // Track if user is changing vote
 
-  console.log(`=== SURVEY DEBUG: SurveyView for post ${postId} ===`);
-  console.log("Survey prop received:", survey);
-  console.log("Thread ID:", threadId);
-  console.log("Board ID:", boardId);
-  console.log("Is Thread Dead:", isThreadDead);
-
   // Fetch survey data and user's response
   const fetchSurveyData = useCallback(async () => {
     try {
@@ -62,10 +56,7 @@ export default function SurveyView({
   // Fetch results
   const fetchResults = useCallback(async () => {
     try {
-      console.log("=== SURVEY VIEW DEBUG: Fetching results ===");
       const url = `${API_BASE_URL}/api/boards/${boardId}/surveys/${surveyData.id}/results`;
-      console.log("Fetching from URL:", url);
-
       const response = await fetch(url);
 
       if (!response.ok) {
@@ -73,27 +64,6 @@ export default function SurveyView({
       }
 
       const data = await response.json();
-      console.log("=== SURVEY VIEW DEBUG: Raw response from API ===");
-      console.log(JSON.stringify(data, null, 2));
-
-      console.log("=== SURVEY VIEW DEBUG: Results breakdown ===");
-      if (data.results) {
-        console.log("Total responses:", data.results.total_responses);
-        console.log("Survey type:", data.results.survey_type);
-        console.log("Results array:", data.results.results);
-
-        if (data.results.results) {
-          data.results.results.forEach((result, index) => {
-            console.log(`Option ${index + 1}:`, {
-              id: result.option_id,
-              text: result.option_text,
-              votes: result.vote_count,
-              percentage: result.percentage,
-            });
-          });
-        }
-      }
-
       setResults(data.results);
     } catch (err) {
       console.error("Error fetching results:", err);
