@@ -83,25 +83,23 @@ function ThreadPage() {
         }
       });
 
-      // Clear the quote parameter from URL
-      setSearchParams((prev) => {
-        const newParams = new URLSearchParams(prev);
-        newParams.delete("quote");
-        return newParams;
-      });
+      // Clear the quote parameter from URL using replace to avoid back button issues
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, document.title, newUrl);
 
-      // Focus textarea after a delay
+      // Focus textarea and scroll to bottom after a delay
       setTimeout(() => {
         if (contentTextareaRef.current) {
           contentTextareaRef.current.focus();
-          contentTextareaRef.current.scrollIntoView({
+          // Scroll to the bottom of the page to show the reply form
+          window.scrollTo({
+            top: document.documentElement.scrollHeight,
             behavior: "smooth",
-            block: "center",
           });
         }
       }, 100);
     }
-  }, [searchParams, threadDead, setSearchParams]);
+  }, [searchParams, threadDead]);
 
   // Add custom CSS for highlight animation
   useEffect(() => {
@@ -593,13 +591,14 @@ function ThreadPage() {
         setContent(currentContent + "\n" + replyLink + "\n");
       }
 
-      // Focus textarea after a short delay if form was just opened
+      // Focus textarea and scroll to bottom after a short delay
       setTimeout(() => {
         if (contentTextareaRef.current) {
           contentTextareaRef.current.focus();
-          contentTextareaRef.current.scrollIntoView({
+          // Scroll to the bottom of the page
+          window.scrollTo({
+            top: document.documentElement.scrollHeight,
             behavior: "smooth",
-            block: "center",
           });
         }
       }, 100);
