@@ -244,7 +244,7 @@ function ThreadPage() {
         fetchPosts(false),
       ]);
 
-      const [, threadSuccess, postsSuccess] = results;
+      const [, threadSuccess] = results;
 
       // Check if thread exists
       if (!threadSuccess) {
