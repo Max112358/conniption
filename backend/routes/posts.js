@@ -1,4 +1,4 @@
-// backend/routes/posts.js - Updated survey creation endpoint
+// backend/routes/posts.js - Updated with validators
 const express = require("express");
 const router = express.Router({ mergeParams: true }); // mergeParams to access boardId and threadId
 const { pool } = require("../config/database");
@@ -19,11 +19,14 @@ const {
   validateContent,
 } = require("../middleware/security");
 
+// Import validators
+const validators = require("../middleware/validators");
+
 /**
  * @route   GET /api/boards/:boardId/threads/:threadId/posts
  * @desc    Get posts for a specific thread
  */
-router.get("/", async (req, res, next) => {
+router.get("/", validators.validateThread, async (req, res, next) => {
   const { boardId, threadId } = req.params;
   const { includeSurveys = "true" } = req.query; // Default to including surveys
 
@@ -102,6 +105,7 @@ router.get("/", async (req, res, next) => {
 // Apply checkBannedIP middleware BEFORE upload to block banned users early
 router.post(
   "/",
+  validators.validateThread,
   checkBannedIP,
   postCreationLimiter, // Add rate limiting
   uploadLimiter, // Add upload rate limiting if file present
@@ -261,7 +265,7 @@ router.post(
  * @desc    Delete a post (by original poster or admin)
  * @access  Public (but requires IP match or admin auth)
  */
-router.delete("/:postId", async (req, res, next) => {
+router.delete("/:postId", validators.validatePost, async (req, res, next) => {
   const { boardId, threadId, postId } = req.params;
   const ipAddress = getClientIp(req);
 
@@ -433,167 +437,123 @@ router.delete("/:postId", async (req, res, next) => {
  * @desc    Create a survey attached to a post - NO EXPIRATION
  * @access  Public (must be post owner)
  */
-router.post("/:postId/survey", checkBannedIP, async (req, res, next) => {
-  const { boardId, threadId, postId } = req.params;
-  const { survey_type, question, options } = req.body; // REMOVED expires_at
-  const ipAddress = getClientIp(req);
+router.post(
+  "/:postId/survey",
+  validators.createSurvey,
+  checkBannedIP,
+  async (req, res, next) => {
+    const { boardId, threadId, postId } = req.params;
+    const { survey_type, question, options } = req.body; // REMOVED expires_at
+    const ipAddress = getClientIp(req);
 
-  console.log(
-    `Route: POST /api/boards/${boardId}/threads/${threadId}/posts/${postId}/survey`
-  );
+    console.log(
+      `Route: POST /api/boards/${boardId}/threads/${threadId}/posts/${postId}/survey`
+    );
 
-  try {
-    // Check if thread is dead
-    const thread = await threadModel.getThreadById(threadId, boardId);
-    if (!thread) {
-      return res.status(404).json({ error: "Thread not found" });
-    }
+    try {
+      // Check if thread is dead
+      const thread = await threadModel.getThreadById(threadId, boardId);
+      if (!thread) {
+        return res.status(404).json({ error: "Thread not found" });
+      }
 
-    if (thread.is_dead) {
-      console.log(
-        `Route: Thread ${threadId} is dead - rejecting survey creation`
-      );
-      return res.status(403).json({
-        error: "Cannot create surveys in archived threads",
-      });
-    }
-
-    // Validate input
-    if (!survey_type || !question || !options) {
-      return res.status(400).json({
-        error: "Missing required fields",
-        required: ["survey_type", "question", "options"],
-      });
-    }
-
-    if (!["single", "multiple"].includes(survey_type)) {
-      return res.status(400).json({
-        error: "Invalid survey type",
-        allowed: ["single", "multiple"],
-      });
-    }
-
-    if (
-      !Array.isArray(options) ||
-      options.length < surveysConfig.minOptions ||
-      options.length > surveysConfig.maxOptions
-    ) {
-      return res.status(400).json({
-        error: `Options must be an array with ${surveysConfig.minOptions}-${surveysConfig.maxOptions} items`,
-      });
-    }
-
-    // Validate question length
-    if (question.length > surveysConfig.questionCharacterLimit) {
-      console.log(
-        `Route: Survey question exceeds character limit - ${question.length} characters (limit: ${surveysConfig.questionCharacterLimit})`
-      );
-      return res.status(400).json({
-        error: `Survey question exceeds the maximum character limit of ${surveysConfig.questionCharacterLimit} characters`,
-        currentLength: question.length,
-        maxLength: surveysConfig.questionCharacterLimit,
-      });
-    }
-
-    // Validate each option length
-    for (let i = 0; i < options.length; i++) {
-      if (options[i].length > surveysConfig.optionCharacterLimit) {
+      if (thread.is_dead) {
         console.log(
-          `Route: Survey option ${i + 1} exceeds character limit - ${
-            options[i].length
-          } characters (limit: ${surveysConfig.optionCharacterLimit})`
+          `Route: Thread ${threadId} is dead - rejecting survey creation`
         );
-        return res.status(400).json({
-          error: `Survey option ${
-            i + 1
-          } exceeds the maximum character limit of ${
-            surveysConfig.optionCharacterLimit
-          } characters`,
-          option: options[i],
-          currentLength: options[i].length,
-          maxLength: surveysConfig.optionCharacterLimit,
+        return res.status(403).json({
+          error: "Cannot create surveys in archived threads",
         });
       }
-    }
 
-    // Check if user is the post owner
-    const post = await postModel.getPostById(postId, boardId);
-    if (!post) {
-      return res.status(404).json({ error: "Post not found" });
-    }
+      // Validation is now handled by the validator middleware
 
-    if (post.ip_address !== ipAddress) {
-      return res.status(403).json({
-        error: "Only the post owner can attach a survey",
+      // Check if user is the post owner
+      const post = await postModel.getPostById(postId, boardId);
+      if (!post) {
+        return res.status(404).json({ error: "Post not found" });
+      }
+
+      if (post.ip_address !== ipAddress) {
+        return res.status(403).json({
+          error: "Only the post owner can attach a survey",
+        });
+      }
+
+      // Check if post already has a survey
+      const existingSurvey = await surveyModel.getSurveyByPostId(
+        postId,
+        boardId
+      );
+      if (existingSurvey) {
+        return res.status(409).json({
+          error: "Post already has a survey attached",
+        });
+      }
+
+      // Create survey WITHOUT expiration
+      const survey = await surveyModel.createSurvey({
+        post_id: parseInt(postId),
+        thread_id: parseInt(threadId),
+        board_id: boardId,
+        survey_type,
+        question,
+        options,
+        // NO expires_at field
       });
-    }
 
-    // Check if post already has a survey
-    const existingSurvey = await surveyModel.getSurveyByPostId(postId, boardId);
-    if (existingSurvey) {
-      return res.status(409).json({
-        error: "Post already has a survey attached",
+      console.log(`Route: Created survey ${survey.id} for post ${postId}`);
+      res.status(201).json({
+        message: "Survey created successfully",
+        survey,
       });
+    } catch (error) {
+      console.error(`Route Error - POST survey:`, error);
+      next(error);
     }
-
-    // Create survey WITHOUT expiration
-    const survey = await surveyModel.createSurvey({
-      post_id: parseInt(postId),
-      thread_id: parseInt(threadId),
-      board_id: boardId,
-      survey_type,
-      question,
-      options,
-      // NO expires_at field
-    });
-
-    console.log(`Route: Created survey ${survey.id} for post ${postId}`);
-    res.status(201).json({
-      message: "Survey created successfully",
-      survey,
-    });
-  } catch (error) {
-    console.error(`Route Error - POST survey:`, error);
-    next(error);
   }
-});
+);
 
 /**
  * @route   GET /api/boards/:boardId/threads/:threadId/posts/:postId/survey
  * @desc    Get survey attached to a post - NO EXPIRATION CHECKS
  * @access  Public
  */
-router.get("/:postId/survey", async (req, res, next) => {
-  const { boardId, postId } = req.params;
-  const ipAddress = getClientIp(req);
+router.get(
+  "/:postId/survey",
+  validators.validatePost,
+  async (req, res, next) => {
+    const { boardId, postId } = req.params;
+    const ipAddress = getClientIp(req);
 
-  console.log(
-    `Route: GET /api/boards/${boardId}/threads/.../posts/${postId}/survey`
-  );
-
-  try {
-    const survey = await surveyModel.getSurveyByPostId(postId, boardId);
-
-    if (!survey) {
-      return res.status(404).json({ error: "Survey not found" });
-    }
-
-    // NO expiration checks - surveys never expire
-
-    // Get user's existing response if any
-    const userResponse = await surveyModel.getUserResponse(
-      survey.id,
-      ipAddress
+    console.log(
+      `Route: GET /api/boards/${boardId}/threads/.../posts/${postId}/survey`
     );
-    if (userResponse) {
-      survey.user_response = userResponse;
-    }
 
-    res.json({ survey });
-  } catch (error) {
-    console.error(`Route Error - GET survey:`, error);
-    next(error);
+    try {
+      const survey = await surveyModel.getSurveyByPostId(postId, boardId);
+
+      if (!survey) {
+        return res.status(404).json({ error: "Survey not found" });
+      }
+
+      // NO expiration checks - surveys never expire
+
+      // Get user's existing response if any
+      const userResponse = await surveyModel.getUserResponse(
+        survey.id,
+        ipAddress
+      );
+      if (userResponse) {
+        survey.user_response = userResponse;
+      }
+
+      res.json({ survey });
+    } catch (error) {
+      console.error(`Route Error - GET survey:`, error);
+      next(error);
+    }
   }
-});
+);
 
 module.exports = router;

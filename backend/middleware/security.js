@@ -3,6 +3,10 @@
 const rateLimit = require("express-rate-limit");
 const xss = require("xss-clean");
 const hpp = require("hpp");
+const csrf = require("csurf");
+
+// Import the content sanitizer
+const contentSanitizer = require("./contentSanitizer");
 
 // Rate limiting configurations
 const createAccountLimiter = rateLimit({
@@ -37,37 +41,6 @@ const uploadLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
-
-// Input sanitization middleware
-const sanitizeInput = (req, res, next) => {
-  // Sanitize request body
-  if (req.body) {
-    Object.keys(req.body).forEach((key) => {
-      if (typeof req.body[key] === "string") {
-        // Remove any HTML tags and trim whitespace
-        req.body[key] = req.body[key].trim();
-
-        // For content fields, preserve line breaks but remove HTML
-        if (key === "content" || key === "topic" || key === "question") {
-          req.body[key] = req.body[key]
-            .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
-            .replace(/<[^>]+>/g, "");
-        }
-      }
-    });
-  }
-
-  // Sanitize query parameters
-  if (req.query) {
-    Object.keys(req.query).forEach((key) => {
-      if (typeof req.query[key] === "string") {
-        req.query[key] = req.query[key].trim();
-      }
-    });
-  }
-
-  next();
-};
 
 // Content validation middleware
 const validateContent = (req, res, next) => {
@@ -106,7 +79,6 @@ const validateContent = (req, res, next) => {
 };
 
 // CSRF protection setup (to be used with express-session)
-const csrf = require("csurf");
 const csrfProtection = csrf({ cookie: false });
 
 // Password validation
@@ -154,12 +126,11 @@ module.exports = {
   generalLimiter,
   postCreationLimiter,
   uploadLimiter,
-  sanitizeInput,
+  sanitizeInput: contentSanitizer.middleware, // Use the imported sanitizer's middleware
   validateContent,
   csrfProtection,
   validatePassword,
   // Export individual middleware
   preventXSS: xss(),
   preventParameterPollution: hpp(),
-  // REMOVED: preventNoSQLInjection - not applicable to PostgreSQL
 };

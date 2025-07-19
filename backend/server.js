@@ -17,8 +17,13 @@ const errorHandler = require("./middleware/errorHandler");
 const { checkBanned, enforceBan } = require("./middleware/adminAuth");
 const securityHeaders = require("./middleware/securityHeaders");
 
-// Import security middleware
-const rateLimit = require("express-rate-limit");
+// Import security middleware from security.js
+const {
+  generalLimiter,
+  sanitizeInput,
+  preventXSS,
+  preventParameterPollution,
+} = require("./middleware/security");
 
 // Import route handlers
 const boardRoutes = require("./routes/boards");
@@ -99,52 +104,21 @@ app.use(
 // Apply custom security headers
 app.use(securityHeaders);
 
-// General rate limiter
-const generalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
-  message: "Too many requests from this IP, please try again later",
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-
 // Apply general rate limiting to API routes
 app.use("/api/", generalLimiter);
+
+// Apply XSS protection
+app.use(preventXSS);
+
+// Prevent parameter pollution
+app.use(preventParameterPollution);
 
 // Add JSON body parser with size limit
 app.use(express.json({ limit: "10mb" })); // Slightly higher than 4MB to account for base64 encoding
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
-// Input sanitization middleware
-app.use((req, res, next) => {
-  // Sanitize request body
-  if (req.body) {
-    Object.keys(req.body).forEach((key) => {
-      if (typeof req.body[key] === "string") {
-        // Remove any HTML tags and trim whitespace
-        req.body[key] = req.body[key].trim();
-
-        // For content fields, preserve line breaks but remove HTML
-        if (key === "content" || key === "topic" || key === "question") {
-          req.body[key] = req.body[key]
-            .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
-            .replace(/<[^>]+>/g, "");
-        }
-      }
-    });
-  }
-
-  // Sanitize query parameters
-  if (req.query) {
-    Object.keys(req.query).forEach((key) => {
-      if (typeof req.query[key] === "string") {
-        req.query[key] = req.query[key].trim();
-      }
-    });
-  }
-
-  next();
-});
+// Apply input sanitization from security.js
+app.use(sanitizeInput);
 
 // Session configuration with enhanced security
 const sessionSecret =
@@ -269,50 +243,8 @@ app.use((req, res) => {
   res.status(404).json({ error: "Not found" });
 });
 
-// Enhanced error handler middleware (should be last)
-app.use((err, req, res, next) => {
-  // Log the error with context
-  console.error("Error caught by error handler:");
-  console.error({
-    error: err.message,
-    stack: err.stack,
-    url: req.url,
-    method: req.method,
-    ip: getClientIp(req),
-    userAgent: req.headers["user-agent"],
-  });
-
-  // Determine status code
-  const statusCode = err.statusCode || err.status || 500;
-
-  // In production, send generic error messages
-  if (process.env.NODE_ENV === "production") {
-    const genericMessages = {
-      400: "Bad Request",
-      401: "Unauthorized",
-      403: "Forbidden",
-      404: "Not Found",
-      409: "Conflict",
-      413: "Payload Too Large",
-      429: "Too Many Requests",
-      500: "Internal Server Error",
-      503: "Service Unavailable",
-    };
-
-    res.status(statusCode).json({
-      error: genericMessages[statusCode] || "An error occurred",
-      // Include request ID if available for tracking
-      requestId: req.id,
-    });
-  } else {
-    // In development, include error details
-    res.status(statusCode).json({
-      error: err.message || "An unexpected error occurred",
-      stack: err.stack,
-      details: err.details || null,
-    });
-  }
-});
+// Use the enhanced error handler
+app.use(errorHandler);
 
 // Set up HTTP server and Socket.io
 const server = http.createServer(app);
