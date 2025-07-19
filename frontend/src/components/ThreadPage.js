@@ -30,7 +30,7 @@ import "../styles/deadThread.css";
 function ThreadPage() {
   const { boardId, threadId } = useParams();
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const [thread, setThread] = useState(null);
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
