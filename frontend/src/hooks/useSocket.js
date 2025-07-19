@@ -1,5 +1,5 @@
 // frontend/src/hooks/useSocket.js
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import io from "socket.io-client";
 import { SOCKET_URL } from "../config/api";
 
@@ -16,10 +16,69 @@ function useSocket({ room, enabled = true, events = {} }) {
   const socketRef = useRef(null);
   const isConnecting = useRef(false);
   const currentRoom = useRef(null);
+  const reconnectAttempts = useRef(0);
+  const maxReconnectAttempts = 3;
+
+  // Memoize the event handler to prevent unnecessary re-renders
+  const handleConnect = useCallback(() => {
+    console.log(`Socket connected to room: ${room}`);
+    setIsConnected(true);
+    isConnecting.current = false;
+    reconnectAttempts.current = 0;
+
+    // Join room after connection
+    if (room && socketRef.current) {
+      socketRef.current.emit("join_board", room);
+    }
+  }, [room]);
+
+  const handleDisconnect = useCallback(
+    (reason) => {
+      console.log(`Socket disconnected from room ${room}:`, reason);
+      setIsConnected(false);
+      isConnecting.current = false;
+    },
+    [room]
+  );
+
+  const handleConnectError = useCallback((error) => {
+    console.error("Socket connection error:", error.message || error);
+    setIsConnected(false);
+    isConnecting.current = false;
+
+    // Increment reconnect attempts
+    reconnectAttempts.current++;
+
+    // If we've exceeded max attempts, stop trying
+    if (reconnectAttempts.current >= maxReconnectAttempts) {
+      console.log(
+        `Max reconnection attempts (${maxReconnectAttempts}) reached. Stopping reconnection.`
+      );
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+      }
+    }
+  }, []);
 
   useEffect(() => {
-    // Skip if not enabled or already connecting
-    if (!enabled || isConnecting.current) {
+    // Skip if not enabled
+    if (!enabled) {
+      // If we have a socket and it's disabled, disconnect it
+      if (socketRef.current?.connected) {
+        console.log(`Disconnecting socket for room: ${room} (disabled)`);
+        if (room) {
+          socketRef.current.emit("leave_board", room);
+        }
+        socketRef.current.disconnect();
+        socketRef.current = null;
+        currentRoom.current = null;
+        setIsConnected(false);
+      }
+      return;
+    }
+
+    // Skip if already connecting
+    if (isConnecting.current) {
       return;
     }
 
@@ -40,41 +99,49 @@ function useSocket({ room, enabled = true, events = {} }) {
       return;
     }
 
-    isConnecting.current = true;
+    // If we have a socket for a different room, clean it up first
+    if (socketRef.current && currentRoom.current !== room) {
+      console.log(
+        `Cleaning up previous socket for room: ${currentRoom.current}`
+      );
 
-    // Create new socket connection
+      // Leave the old room
+      if (currentRoom.current) {
+        socketRef.current.emit("leave_board", currentRoom.current);
+      }
+
+      // Disconnect the old socket
+      socketRef.current.disconnect();
+      socketRef.current = null;
+      currentRoom.current = null;
+    }
+
+    // Don't create a new connection if we're at max attempts
+    if (reconnectAttempts.current >= maxReconnectAttempts) {
+      return;
+    }
+
+    isConnecting.current = true;
+    console.log(`Creating new socket connection for room: ${room}`);
+
+    // Create new socket connection with optimized settings
     const socket = io(SOCKET_URL, {
       transports: ["websocket", "polling"],
-      reconnectionAttempts: 5,
+      reconnection: true,
+      reconnectionAttempts: maxReconnectAttempts,
       reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      timeout: 20000,
+      autoConnect: true,
     });
 
     socketRef.current = socket;
     currentRoom.current = room;
 
     // Connection event handlers
-    socket.on("connect", () => {
-      console.log(`Socket connected to room: ${room}`);
-      setIsConnected(true);
-      isConnecting.current = false;
-
-      // Join room after connection
-      if (room) {
-        socket.emit("join_board", room);
-      }
-    });
-
-    socket.on("disconnect", (reason) => {
-      console.log(`Socket disconnected from room ${room}:`, reason);
-      setIsConnected(false);
-      isConnecting.current = false;
-    });
-
-    socket.on("connect_error", (error) => {
-      console.error("Socket connection error:", error);
-      setIsConnected(false);
-      isConnecting.current = false;
-    });
+    socket.on("connect", handleConnect);
+    socket.on("disconnect", handleDisconnect);
+    socket.on("connect_error", handleConnectError);
 
     // Attach custom event handlers
     Object.entries(events).forEach(([event, handler]) => {
@@ -93,9 +160,9 @@ function useSocket({ room, enabled = true, events = {} }) {
       }
 
       // Remove all event listeners
-      socket.off("connect");
-      socket.off("disconnect");
-      socket.off("connect_error");
+      socket.off("connect", handleConnect);
+      socket.off("disconnect", handleDisconnect);
+      socket.off("connect_error", handleConnectError);
 
       // Remove custom event handlers
       Object.keys(events).forEach((event) => {
@@ -103,18 +170,24 @@ function useSocket({ room, enabled = true, events = {} }) {
       });
 
       // Disconnect socket
-      if (socket.connected) {
-        socket.disconnect();
-      }
+      socket.disconnect();
 
-      // Clear refs
+      // Clear refs only if this is the current socket
       if (socketRef.current === socket) {
         socketRef.current = null;
         currentRoom.current = null;
+        isConnecting.current = false;
+        reconnectAttempts.current = 0;
       }
-      isConnecting.current = false;
     };
-  }, [room, enabled, events]);
+  }, [
+    room,
+    enabled,
+    events,
+    handleConnect,
+    handleDisconnect,
+    handleConnectError,
+  ]);
 
   return { isConnected, socket: socketRef.current };
 }
