@@ -5,8 +5,9 @@ const xss = require("xss-clean");
 const hpp = require("hpp");
 const csrf = require("csurf");
 
-// Import the content sanitizer
+// Import the content sanitizer and validators
 const contentSanitizer = require("./contentSanitizer");
+const { validateContentLength } = require("./validators");
 
 // Rate limiting configurations
 const createAccountLimiter = rateLimit({
@@ -42,9 +43,9 @@ const uploadLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-// Content validation middleware
+// Enhanced content validation middleware using config
 const validateContent = (req, res, next) => {
-  const { content, topic, question } = req.body;
+  const validationErrors = [];
 
   // Check for spam patterns
   const spamPatterns = [
@@ -58,10 +59,6 @@ const validateContent = (req, res, next) => {
     return spamPatterns.some((pattern) => pattern.test(text));
   };
 
-  if (checkSpam(content) || checkSpam(topic) || checkSpam(question)) {
-    return res.status(400).json({ error: "Content appears to be spam" });
-  }
-
   // Check for excessive caps
   const checkExcessiveCaps = (text) => {
     if (!text || text.length < 10) return false;
@@ -69,10 +66,102 @@ const validateContent = (req, res, next) => {
     return capsCount / text.length > 0.7;
   };
 
-  if (checkExcessiveCaps(content) || checkExcessiveCaps(topic)) {
-    return res
-      .status(400)
-      .json({ error: "Please avoid excessive capitalization" });
+  // Validate content using config-based length validation
+  const { content, topic, question, options, reason } = req.body;
+
+  // Check content length using config
+  if (content) {
+    const validation = validateContentLength(content, "post");
+    if (!validation.valid) {
+      validationErrors.push(validation);
+    }
+
+    if (checkSpam(content)) {
+      validationErrors.push({
+        valid: false,
+        message: "Content appears to be spam",
+      });
+    }
+
+    if (checkExcessiveCaps(content)) {
+      validationErrors.push({
+        valid: false,
+        message: "Please avoid excessive capitalization in content",
+      });
+    }
+  }
+
+  // Check topic length using config
+  if (topic) {
+    const validation = validateContentLength(topic, "topic");
+    if (!validation.valid) {
+      validationErrors.push(validation);
+    }
+
+    if (checkSpam(topic)) {
+      validationErrors.push({
+        valid: false,
+        message: "Topic appears to be spam",
+      });
+    }
+
+    if (checkExcessiveCaps(topic)) {
+      validationErrors.push({
+        valid: false,
+        message: "Please avoid excessive capitalization in topic",
+      });
+    }
+  }
+
+  // Check survey question length using config
+  if (question) {
+    const validation = validateContentLength(question, "survey_question");
+    if (!validation.valid) {
+      validationErrors.push(validation);
+    }
+
+    if (checkSpam(question)) {
+      validationErrors.push({
+        valid: false,
+        message: "Survey question appears to be spam",
+      });
+    }
+  }
+
+  // Check survey options length using config
+  if (options && Array.isArray(options)) {
+    options.forEach((option, index) => {
+      const validation = validateContentLength(option, "survey_option");
+      if (!validation.valid) {
+        validationErrors.push({
+          ...validation,
+          message: `Option ${index + 1}: ${validation.message}`,
+        });
+      }
+
+      if (checkSpam(option)) {
+        validationErrors.push({
+          valid: false,
+          message: `Option ${index + 1} appears to be spam`,
+        });
+      }
+    });
+  }
+
+  // Check reason length using config
+  if (reason) {
+    const validation = validateContentLength(reason, "reason");
+    if (!validation.valid) {
+      validationErrors.push(validation);
+    }
+  }
+
+  // If any validation errors, return them
+  if (validationErrors.length > 0) {
+    return res.status(400).json({
+      error: "Content validation failed",
+      details: validationErrors,
+    });
   }
 
   next();
@@ -127,7 +216,7 @@ module.exports = {
   postCreationLimiter,
   uploadLimiter,
   sanitizeInput: contentSanitizer.middleware, // Use the imported sanitizer's middleware
-  validateContent,
+  validateContent, // Now uses config-based validation
   csrfProtection,
   validatePassword,
   // Export individual middleware
