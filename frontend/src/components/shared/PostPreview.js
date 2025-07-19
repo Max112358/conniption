@@ -122,14 +122,15 @@ export default function PostPreview({
             {post.survey && (
               <div className={`mt-2 ${compact ? "small" : ""}`}>
                 <div
-                  className={`alert alert-info py-1 px-2 mb-0 ${
+                  className={`border border-info rounded py-1 px-2 mb-0 bg-dark text-light ${
                     isThreadDead ? "opacity-50" : ""
                   }`}
                 >
-                  <i className="bi bi-bar-chart-fill me-1 text-secondary"></i>
-                  <strong>Poll:</strong> {post.survey.question}
+                  <i className="bi bi-bar-chart-fill me-1 text-info"></i>
+                  <strong className="text-info">Poll:</strong>{" "}
+                  {post.survey.question}
                   {post.survey.response_count > 0 && (
-                    <span className="ms-2 badge bg-primary">
+                    <span className="ms-2 badge bg-info text-dark">
                       {post.survey.response_count} votes
                     </span>
                   )}
