@@ -27,23 +27,6 @@ export default function ThreadCard({
   const { isOwnThread, removeOwnThread } = useThreadOwnership();
   const { adminUser, isModerator } = useAdminStatus();
 
-  // Handle clicking anywhere on the card to navigate to thread
-  const handleCardClick = (e) => {
-    // Don't navigate if clicking on interactive elements
-    if (
-      e.target.closest("button") ||
-      e.target.closest("a") ||
-      e.target.closest(".btn") ||
-      e.target.closest(".form-check") ||
-      e.target.closest('[role="button"]') ||
-      e.target.closest(".dropdown")
-    ) {
-      return;
-    }
-
-    navigate(`/board/${boardId}/thread/${thread.id}`);
-  };
-
   // Handle post number click to navigate with quote
   const handlePostNumberClick = (postId) => {
     navigate(`/board/${boardId}/thread/${thread.id}?quote=${postId}`);
