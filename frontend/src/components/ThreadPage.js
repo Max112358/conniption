@@ -49,10 +49,10 @@ function ThreadPage() {
   const [imagePreview, setImagePreview] = useState(null);
   const [postLoading, setPostLoading] = useState(false);
   const [postError, setPostError] = useState(null);
-  const [shouldScrollToForm, setShouldScrollToForm] = useState(false);
 
   const contentTextareaRef = useRef(null);
   const postsRef = useRef(posts);
+  const replyFormRef = useRef(null);
 
   const { togglePostHidden, toggleUserHidden, isPostHidden, isUserHidden } =
     useHideManager();
@@ -70,10 +70,9 @@ function ThreadPage() {
   // Handle quote parameter from URL
   useEffect(() => {
     const quotePostId = searchParams.get("quote");
-    if (quotePostId && !threadDead) {
+    if (quotePostId && !threadDead && !loading) {
       // Open reply form
       setShowReplyForm(true);
-      setShouldScrollToForm(true);
 
       // Add quote to content
       const replyLink = `>>${quotePostId}`;
@@ -89,39 +88,28 @@ function ThreadPage() {
       const newUrl = window.location.pathname;
       window.history.replaceState({}, document.title, newUrl);
     }
-  }, [searchParams, threadDead]);
+  }, [searchParams, threadDead, loading]);
 
   // Separate effect to handle scrolling after reply form is shown
   useEffect(() => {
-    if (showReplyForm && shouldScrollToForm) {
-      // Reset the flag
-      setShouldScrollToForm(false);
+    if (showReplyForm && replyFormRef.current) {
+      // Use requestAnimationFrame to ensure DOM is updated
+      requestAnimationFrame(() => {
+        // Scroll the reply form into view
+        replyFormRef.current.scrollIntoView({
+          behavior: "smooth",
+          block: "end",
+        });
 
-      // Small delay to ensure DOM is fully updated
-      const timeoutId = setTimeout(() => {
-        // Focus the textarea
-        if (contentTextareaRef.current) {
-          contentTextareaRef.current.focus();
-        }
-
-        // Scroll to bottom to show reply form
-        const scrollToBottom = () => {
-          window.scrollTo({
-            top: document.documentElement.scrollHeight,
-            behavior: "smooth",
-          });
-        };
-
-        // Try scrolling, and if the form isn't fully rendered, try again
-        scrollToBottom();
-
-        // Double-check after another short delay
-        setTimeout(scrollToBottom, 200);
-      }, 100);
-
-      return () => clearTimeout(timeoutId);
+        // Focus the textarea after scrolling
+        setTimeout(() => {
+          if (contentTextareaRef.current) {
+            contentTextareaRef.current.focus();
+          }
+        }, 500); // Wait for smooth scroll to complete
+      });
     }
-  }, [showReplyForm, shouldScrollToForm]);
+  }, [showReplyForm]);
 
   // Add custom CSS for highlight animation
   useEffect(() => {
@@ -596,18 +584,9 @@ function ThreadPage() {
         return;
       }
 
-      // If reply form is not open, open it first and mark that we should scroll
+      // If reply form is not open, open it first
       if (!showReplyForm) {
         setShowReplyForm(true);
-        setShouldScrollToForm(true);
-      } else {
-        // Form is already open, just scroll to it
-        setTimeout(() => {
-          window.scrollTo({
-            top: document.documentElement.scrollHeight,
-            behavior: "smooth",
-          });
-        }, 100);
       }
 
       const replyLink = `>>${postId}`;
@@ -899,45 +878,47 @@ function ThreadPage() {
         </div>
 
         {/* Reply Form */}
-        {!threadDead && !showReplyForm && posts.length > 0 && (
-          <div className="text-center mb-4">
-            <button
-              className="btn btn-primary"
-              onClick={() => setShowReplyForm(true)}
-              disabled={banned}
-            >
-              Reply to Thread
-            </button>
-          </div>
-        )}
+        <div ref={replyFormRef}>
+          {!threadDead && !showReplyForm && posts.length > 0 && (
+            <div className="text-center mb-4">
+              <button
+                className="btn btn-primary"
+                onClick={() => setShowReplyForm(true)}
+                disabled={banned}
+              >
+                Reply to Thread
+              </button>
+            </div>
+          )}
 
-        {!threadDead && showReplyForm && (
-          <ReplyForm
-            ref={contentTextareaRef}
-            content={content}
-            setContent={setContent}
-            image={image}
-            setImage={setImage}
-            imagePreview={imagePreview}
-            setImagePreview={setImagePreview}
-            onSubmit={handleSubmitPost}
-            loading={postLoading}
-            error={postError}
-            currentPostCount={thread?.post_count || posts.length}
-            bumpLimit={bumpLimit}
-          />
-        )}
+          {!threadDead && showReplyForm && (
+            <ReplyForm
+              ref={contentTextareaRef}
+              content={content}
+              setContent={setContent}
+              image={image}
+              setImage={setImage}
+              imagePreview={imagePreview}
+              setImagePreview={setImagePreview}
+              onSubmit={handleSubmitPost}
+              loading={postLoading}
+              error={postError}
+              currentPostCount={thread?.post_count || posts.length}
+              bumpLimit={bumpLimit}
+            />
+          )}
 
-        {threadDead && posts.length > 0 && (
-          <div className="card bg-dark border-danger reply-form-disabled">
-            <div className="card-body text-center py-5">
-              <div className="reply-form-disabled-message">
-                <i className="bi bi-lock-fill me-2"></i>
-                This thread is archived. No new posts allowed.
+          {threadDead && posts.length > 0 && (
+            <div className="card bg-dark border-danger reply-form-disabled">
+              <div className="card-body text-center py-5">
+                <div className="reply-form-disabled-message">
+                  <i className="bi bi-lock-fill me-2"></i>
+                  This thread is archived. No new posts allowed.
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );
