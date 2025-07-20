@@ -66,12 +66,12 @@ export default function ThreadCard({
         aria-label={`Go to thread: ${thread.topic}`}
       />
 
-      <div className="card-body" style={{ position: "relative", zIndex: 2 }}>
+      <div className="card-body" style={{ position: "relative" }}>
         <div className="d-flex flex-column flex-sm-row justify-content-between align-items-start mb-2 gap-2">
           <div className="d-flex align-items-center gap-2 w-100 w-sm-auto">
             <div
-              style={{ position: "relative", zIndex: 3 }}
               className="interactive-element"
+              style={{ position: "relative", zIndex: 10 }}
             >
               <HideButton
                 isHidden={isHidden}
@@ -105,8 +105,8 @@ export default function ThreadCard({
             </small>
 
             <div
-              style={{ position: "relative", zIndex: 3 }}
               className="interactive-element"
+              style={{ position: "relative", zIndex: 10 }}
             >
               <StickyToggle
                 threadId={thread.id}
@@ -118,8 +118,8 @@ export default function ThreadCard({
             </div>
 
             <div
-              style={{ position: "relative", zIndex: 3 }}
               className="interactive-element"
+              style={{ position: "relative", zIndex: 10 }}
             >
               <ThreadDeleteButton
                 threadId={thread.id}
@@ -184,7 +184,7 @@ export default function ThreadCard({
                     <Link
                       to={`/board/${boardId}/thread/${thread.id}`}
                       className="btn btn-outline-secondary btn-sm interactive-element"
-                      style={{ position: "relative", zIndex: 3 }}
+                      style={{ position: "relative", zIndex: 10 }}
                     >
                       View all {thread.totalReplies} replies
                     </Link>
@@ -227,7 +227,7 @@ export default function ThreadCard({
                   <Link
                     to={`/board/${boardId}/thread/${thread.id}`}
                     className="btn btn-outline-primary btn-sm interactive-element"
-                    style={{ position: "relative", zIndex: 3 }}
+                    style={{ position: "relative", zIndex: 10 }}
                   >
                     View Thread →
                   </Link>
