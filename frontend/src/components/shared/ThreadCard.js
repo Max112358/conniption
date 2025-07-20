@@ -137,7 +137,7 @@ export default function ThreadCard({
           <>
             {/* OP Content - Using PostPreview */}
             {opPost ? (
-              <div className="mb-3">
+              <div className="mb-3" style={{ position: "relative", zIndex: 2 }}>
                 <PostPreview
                   post={{
                     ...opPost,
@@ -189,7 +189,10 @@ export default function ThreadCard({
                   )}
                 </div>
 
-                <div className="ms-3">
+                <div
+                  className="ms-3"
+                  style={{ position: "relative", zIndex: 2 }}
+                >
                   {thread.latestReplies.map((reply) => (
                     <PostPreview
                       key={reply.id}
