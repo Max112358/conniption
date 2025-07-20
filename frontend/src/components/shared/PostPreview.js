@@ -56,7 +56,7 @@ export default function PostPreview({
       className={`${containerClass} ${
         postColor !== "black" ? `post-color-${postColor}` : ""
       }`}
-      style={{ position: "relative", cursor: "pointer" }}
+      style={{ position: "relative", cursor: "pointer", zIndex: 3 }}
       onClick={handleContainerClick}
     >
       {!compact && (

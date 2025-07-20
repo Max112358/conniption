@@ -27,6 +27,23 @@ export default function ThreadCard({
   const { isOwnThread, removeOwnThread } = useThreadOwnership();
   const { adminUser, isModerator } = useAdminStatus();
 
+  // Handle clicking anywhere on the card to navigate to thread
+  const handleCardClick = (e) => {
+    // Don't navigate if clicking on interactive elements
+    if (
+      e.target.closest("button") ||
+      e.target.closest("a") ||
+      e.target.closest(".btn") ||
+      e.target.closest(".form-check") ||
+      e.target.closest('[role="button"]') ||
+      e.target.closest(".dropdown")
+    ) {
+      return;
+    }
+
+    navigate(`/board/${boardId}/thread/${thread.id}`);
+  };
+
   // Handle post number click to navigate with quote
   const handlePostNumberClick = (postId) => {
     navigate(`/board/${boardId}/thread/${thread.id}?quote=${postId}`);
@@ -34,7 +51,19 @@ export default function ThreadCard({
 
   return (
     <div className="card bg-high-dark border-secondary mb-4 thread-card-hover position-relative">
-      <div className="card-body" style={{ position: "relative" }}>
+      {/* Invisible clickable overlay */}
+      <div
+        className="position-absolute top-0 start-0 w-100 h-100"
+        style={{
+          zIndex: 1,
+          cursor: "pointer",
+          backgroundColor: "transparent",
+        }}
+        onClick={handleCardClick}
+        aria-label={`Go to thread: ${thread.topic}`}
+      />
+
+      <div className="card-body" style={{ position: "relative", zIndex: 2 }}>
         <div className="d-flex flex-column flex-sm-row justify-content-between align-items-start mb-2 gap-2">
           <div className="d-flex align-items-center gap-2 w-100 w-sm-auto">
             <div style={{ position: "relative", zIndex: 3 }}>
