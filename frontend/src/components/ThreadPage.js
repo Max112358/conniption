@@ -86,20 +86,25 @@ function ThreadPage() {
       // Clear the quote parameter from URL using replace to avoid back button issues
       const newUrl = window.location.pathname;
       window.history.replaceState({}, document.title, newUrl);
-
-      // Focus textarea and scroll to bottom after a delay
-      setTimeout(() => {
-        if (contentTextareaRef.current) {
-          contentTextareaRef.current.focus();
-          // Scroll to the bottom of the page to show the reply form
-          window.scrollTo({
-            top: document.documentElement.scrollHeight,
-            behavior: "smooth",
-          });
-        }
-      }, 100);
     }
   }, [searchParams, threadDead]);
+
+  // Separate effect to handle scrolling after reply form is shown
+  useEffect(() => {
+    if (showReplyForm && contentTextareaRef.current) {
+      // Small delay to ensure DOM is fully updated
+      setTimeout(() => {
+        // Focus the textarea
+        contentTextareaRef.current.focus();
+
+        // Scroll to bottom to show reply form
+        window.scrollTo({
+          top: document.documentElement.scrollHeight,
+          behavior: "smooth",
+        });
+      }, 100);
+    }
+  }, [showReplyForm]);
 
   // Add custom CSS for highlight animation
   useEffect(() => {
@@ -574,9 +579,8 @@ function ThreadPage() {
         return;
       }
 
-      const textarea = contentTextareaRef.current;
-      if (!textarea) {
-        // If reply form is not open, open it first
+      // If reply form is not open, open it first
+      if (!showReplyForm) {
         setShowReplyForm(true);
       }
 
@@ -591,19 +595,9 @@ function ThreadPage() {
         setContent(currentContent + "\n" + replyLink + "\n");
       }
 
-      // Focus textarea and scroll to bottom after a short delay
-      setTimeout(() => {
-        if (contentTextareaRef.current) {
-          contentTextareaRef.current.focus();
-          // Scroll to the bottom of the page
-          window.scrollTo({
-            top: document.documentElement.scrollHeight,
-            behavior: "smooth",
-          });
-        }
-      }, 100);
+      // The scrolling will be handled by the useEffect watching showReplyForm
     },
-    [content, threadDead]
+    [content, threadDead, showReplyForm]
   );
 
   // Handle clicking on a post link to scroll to that post

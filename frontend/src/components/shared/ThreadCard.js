@@ -63,18 +63,20 @@ export default function ThreadCard({
         aria-label={`Go to thread: ${thread.topic}`}
       />
 
-      <div className="card-body" style={{ position: "relative", zIndex: 2 }}>
+      <div className="card-body" style={{ position: "relative" }}>
         <div className="d-flex flex-column flex-sm-row justify-content-between align-items-start mb-2 gap-2">
           <div className="d-flex align-items-center gap-2 w-100 w-sm-auto">
-            <HideButton
-              isHidden={isHidden}
-              onToggle={onToggleHidden}
-              title={isHidden ? "Unhide this thread" : "Hide this thread"}
-            />
+            <div style={{ position: "relative", zIndex: 3 }}>
+              <HideButton
+                isHidden={isHidden}
+                onToggle={onToggleHidden}
+                title={isHidden ? "Unhide this thread" : "Hide this thread"}
+              />
+            </div>
             <Link
               to={`/board/${boardId}/thread/${thread.id}`}
               className="text-decoration-none flex-grow-1"
-              style={{ zIndex: 3 }}
+              style={{ position: "relative", zIndex: 3 }}
             >
               <h5
                 className="mb-0 text-light text-break"
@@ -92,15 +94,21 @@ export default function ThreadCard({
           </div>
 
           <div className="d-flex align-items-center flex-wrap gap-2 gap-sm-3 ms-sm-2 w-100 w-sm-auto justify-content-end">
-            <small className="text-secondary text-nowrap">
+            <small
+              className="text-secondary text-nowrap"
+              style={{ position: "relative", zIndex: 3 }}
+            >
               {new Date(thread.created_at).toLocaleString()}
             </small>
 
-            <small className="text-secondary text-nowrap">
+            <small
+              className="text-secondary text-nowrap"
+              style={{ position: "relative", zIndex: 3 }}
+            >
               {thread.post_count} {thread.post_count === 1 ? "post" : "posts"}
             </small>
 
-            <div style={{ zIndex: 3 }}>
+            <div style={{ position: "relative", zIndex: 3 }}>
               <StickyToggle
                 threadId={thread.id}
                 boardId={boardId}
@@ -110,7 +118,7 @@ export default function ThreadCard({
               />
             </div>
 
-            <div style={{ zIndex: 3 }}>
+            <div style={{ position: "relative", zIndex: 3 }}>
               <ThreadDeleteButton
                 threadId={thread.id}
                 boardId={boardId}

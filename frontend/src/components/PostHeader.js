@@ -173,11 +173,6 @@ export default function PostHeader({
   const replies = getReplies();
 
   const handlePostNumberClick = (e) => {
-    // Prevent event from bubbling to thread card
-    if (e) {
-      e.stopPropagation();
-    }
-
     if (isThreadDead) return; // Don't allow quoting in dead threads
     if (onPostNumberClick) {
       onPostNumberClick(post.id);
@@ -188,11 +183,13 @@ export default function PostHeader({
     <div className="d-flex align-items-center gap-2 flex-wrap">
       {/* Post hide button */}
       {onTogglePostHidden && (
-        <HideButton
-          isHidden={isPostHidden}
-          onToggle={() => onTogglePostHidden(post.id)}
-          title={isPostHidden ? "Unhide this post" : "Hide this post"}
-        />
+        <div style={{ position: "relative", zIndex: 10 }}>
+          <HideButton
+            isHidden={isPostHidden}
+            onToggle={() => onTogglePostHidden(post.id)}
+            title={isPostHidden ? "Unhide this post" : "Hide this post"}
+          />
+        </div>
       )}
 
       {/* OP badge */}
@@ -202,7 +199,11 @@ export default function PostHeader({
         <span className="text-secondary">Post #</span>
         <span
           className={`${isThreadDead ? "text-secondary" : "text-primary"}`}
-          style={{ cursor: isThreadDead ? "default" : "pointer", zIndex: 10 }}
+          style={{
+            cursor: isThreadDead ? "default" : "pointer",
+            position: "relative",
+            zIndex: 10,
+          }}
           onClick={handlePostNumberClick}
           title={
             isThreadDead
@@ -216,11 +217,13 @@ export default function PostHeader({
 
       {/* User hide button */}
       {showThreadId && post.thread_user_id && onToggleUserHidden && (
-        <HideButton
-          isHidden={isUserHidden}
-          onToggle={() => onToggleUserHidden(post.thread_user_id)}
-          title={isUserHidden ? "Unhide this user" : "Hide this user"}
-        />
+        <div style={{ position: "relative", zIndex: 10 }}>
+          <HideButton
+            isHidden={isUserHidden}
+            onToggle={() => onToggleUserHidden(post.thread_user_id)}
+            title={isUserHidden ? "Unhide this user" : "Hide this user"}
+          />
+        </div>
       )}
 
       {/* Thread ID */}
@@ -285,9 +288,13 @@ export default function PostHeader({
               <span key={replyId}>
                 <span
                   className="text-info small"
-                  style={{ cursor: "pointer", textDecoration: "underline" }}
+                  style={{
+                    cursor: "pointer",
+                    textDecoration: "underline",
+                    position: "relative",
+                    zIndex: 10,
+                  }}
                   onClick={(e) => {
-                    e.stopPropagation();
                     onPostLinkClick(replyId, post.thread_id);
                   }}
                   onMouseEnter={(e) => {
