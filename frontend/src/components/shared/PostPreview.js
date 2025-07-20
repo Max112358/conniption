@@ -1,5 +1,6 @@
 // frontend/src/components/shared/PostPreview.js
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import PostHeader from "../PostHeader";
 import PostContent from "../PostContent";
 import MediaThumbnail from "./MediaThumbnail";
@@ -23,10 +24,31 @@ export default function PostPreview({
   isThreadDead = false,
 }) {
   const [postColor] = useState(post.color || "black");
+  const navigate = useNavigate();
 
   const containerClass = compact
     ? "border border-secondary rounded p-2 mb-2"
     : "card bg-dark border-secondary mb-3 shadow";
+
+  // Handle clicks on the post preview to navigate to thread
+  const handleContainerClick = (e) => {
+    // Don't navigate if clicking on interactive elements
+    if (
+      e.target.closest("button") ||
+      e.target.closest("a") ||
+      e.target.closest(".btn") ||
+      e.target.closest(".form-check") ||
+      e.target.closest('[role="button"]') ||
+      e.target.closest(".dropdown") ||
+      e.target.classList.contains("text-primary") || // Post number links
+      e.target.classList.contains("text-info") // Reply links
+    ) {
+      return;
+    }
+
+    // Navigate to the thread
+    navigate(`/board/${boardId}/thread/${thread.id}`);
+  };
 
   return (
     <div
@@ -34,7 +56,8 @@ export default function PostPreview({
       className={`${containerClass} ${
         postColor !== "black" ? `post-color-${postColor}` : ""
       }`}
-      style={{ position: "relative" }}
+      style={{ position: "relative", cursor: "pointer" }}
+      onClick={handleContainerClick}
     >
       {!compact && (
         <div

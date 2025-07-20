@@ -49,6 +49,7 @@ function ThreadPage() {
   const [imagePreview, setImagePreview] = useState(null);
   const [postLoading, setPostLoading] = useState(false);
   const [postError, setPostError] = useState(null);
+  const [shouldScrollToForm, setShouldScrollToForm] = useState(false);
 
   const contentTextareaRef = useRef(null);
   const postsRef = useRef(posts);
@@ -72,6 +73,7 @@ function ThreadPage() {
     if (quotePostId && !threadDead) {
       // Open reply form
       setShowReplyForm(true);
+      setShouldScrollToForm(true);
 
       // Add quote to content
       const replyLink = `>>${quotePostId}`;
@@ -91,20 +93,35 @@ function ThreadPage() {
 
   // Separate effect to handle scrolling after reply form is shown
   useEffect(() => {
-    if (showReplyForm && contentTextareaRef.current) {
+    if (showReplyForm && shouldScrollToForm) {
+      // Reset the flag
+      setShouldScrollToForm(false);
+
       // Small delay to ensure DOM is fully updated
-      setTimeout(() => {
+      const timeoutId = setTimeout(() => {
         // Focus the textarea
-        contentTextareaRef.current.focus();
+        if (contentTextareaRef.current) {
+          contentTextareaRef.current.focus();
+        }
 
         // Scroll to bottom to show reply form
-        window.scrollTo({
-          top: document.documentElement.scrollHeight,
-          behavior: "smooth",
-        });
+        const scrollToBottom = () => {
+          window.scrollTo({
+            top: document.documentElement.scrollHeight,
+            behavior: "smooth",
+          });
+        };
+
+        // Try scrolling, and if the form isn't fully rendered, try again
+        scrollToBottom();
+
+        // Double-check after another short delay
+        setTimeout(scrollToBottom, 200);
       }, 100);
+
+      return () => clearTimeout(timeoutId);
     }
-  }, [showReplyForm]);
+  }, [showReplyForm, shouldScrollToForm]);
 
   // Add custom CSS for highlight animation
   useEffect(() => {
@@ -579,9 +596,18 @@ function ThreadPage() {
         return;
       }
 
-      // If reply form is not open, open it first
+      // If reply form is not open, open it first and mark that we should scroll
       if (!showReplyForm) {
         setShowReplyForm(true);
+        setShouldScrollToForm(true);
+      } else {
+        // Form is already open, just scroll to it
+        setTimeout(() => {
+          window.scrollTo({
+            top: document.documentElement.scrollHeight,
+            behavior: "smooth",
+          });
+        }, 100);
       }
 
       const replyLink = `>>${postId}`;
@@ -594,8 +620,6 @@ function ThreadPage() {
         // Otherwise add a newline before the link
         setContent(currentContent + "\n" + replyLink + "\n");
       }
-
-      // The scrolling will be handled by the useEffect watching showReplyForm
     },
     [content, threadDead, showReplyForm]
   );

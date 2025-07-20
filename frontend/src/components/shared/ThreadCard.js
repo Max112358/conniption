@@ -51,18 +51,6 @@ export default function ThreadCard({
 
   return (
     <div className="card bg-high-dark border-secondary mb-4 thread-card-hover position-relative">
-      {/* Invisible clickable overlay */}
-      <div
-        className="position-absolute top-0 start-0 w-100 h-100"
-        style={{
-          zIndex: 1,
-          cursor: "pointer",
-          backgroundColor: "transparent",
-        }}
-        onClick={handleCardClick}
-        aria-label={`Go to thread: ${thread.topic}`}
-      />
-
       <div className="card-body" style={{ position: "relative" }}>
         <div className="d-flex flex-column flex-sm-row justify-content-between align-items-start mb-2 gap-2">
           <div className="d-flex align-items-center gap-2 w-100 w-sm-auto">

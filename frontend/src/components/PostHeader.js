@@ -173,6 +173,11 @@ export default function PostHeader({
   const replies = getReplies();
 
   const handlePostNumberClick = (e) => {
+    // Stop the click from bubbling up to parent containers
+    if (e) {
+      e.stopPropagation();
+    }
+
     if (isThreadDead) return; // Don't allow quoting in dead threads
     if (onPostNumberClick) {
       onPostNumberClick(post.id);
@@ -295,6 +300,7 @@ export default function PostHeader({
                     zIndex: 10,
                   }}
                   onClick={(e) => {
+                    e.stopPropagation();
                     onPostLinkClick(replyId, post.thread_id);
                   }}
                   onMouseEnter={(e) => {
