@@ -427,32 +427,6 @@ export default function SurveyView({
                 </button>
               )}
 
-            {/* Show "Rescind Vote" button if user has voted */}
-            {hasUserVoted &&
-              showResults &&
-              !isChangingVote &&
-              !isThreadDead && (
-                <button
-                  className="btn btn-sm btn-outline-danger ms-2"
-                  onClick={handleRescindVote}
-                  disabled={rescinding}
-                  title="Remove your vote from this poll"
-                >
-                  {rescinding ? (
-                    <>
-                      <span
-                        className="spinner-border spinner-border-sm me-2"
-                        role="status"
-                        aria-hidden="true"
-                      ></span>
-                      Rescinding...
-                    </>
-                  ) : (
-                    "Rescind Vote"
-                  )}
-                </button>
-              )}
-
             {/* Buttons for when user is changing vote */}
             {isChangingVote && !isThreadDead && (
               <>
