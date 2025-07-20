@@ -188,7 +188,10 @@ export default function PostHeader({
     <div className="d-flex align-items-center gap-2 flex-wrap">
       {/* Post hide button */}
       {onTogglePostHidden && (
-        <div style={{ position: "relative", zIndex: 10 }}>
+        <div
+          style={{ position: "relative", zIndex: 10 }}
+          className="interactive-element"
+        >
           <HideButton
             isHidden={isPostHidden}
             onToggle={() => onTogglePostHidden(post.id)}
@@ -203,7 +206,9 @@ export default function PostHeader({
       <div>
         <span className="text-secondary">Post #</span>
         <span
-          className={`${isThreadDead ? "text-secondary" : "text-primary"}`}
+          className={`post-number interactive-element ${
+            isThreadDead ? "text-secondary" : "text-primary"
+          }`}
           style={{
             cursor: isThreadDead ? "default" : "pointer",
             position: "relative",
@@ -222,7 +227,10 @@ export default function PostHeader({
 
       {/* User hide button */}
       {showThreadId && post.thread_user_id && onToggleUserHidden && (
-        <div style={{ position: "relative", zIndex: 10 }}>
+        <div
+          style={{ position: "relative", zIndex: 10 }}
+          className="interactive-element"
+        >
           <HideButton
             isHidden={isUserHidden}
             onToggle={() => onToggleUserHidden(post.thread_user_id)}
@@ -292,7 +300,7 @@ export default function PostHeader({
             return (
               <span key={replyId}>
                 <span
-                  className="text-info small"
+                  className="text-info small interactive-element"
                   style={{
                     cursor: "pointer",
                     textDecoration: "underline",

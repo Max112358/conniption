@@ -36,7 +36,9 @@ export default function ThreadCard({
       e.target.closest(".btn") ||
       e.target.closest(".form-check") ||
       e.target.closest('[role="button"]') ||
-      e.target.closest(".dropdown")
+      e.target.closest(".dropdown") ||
+      e.target.closest(".post-number") || // Add this class to post numbers
+      e.target.closest(".interactive-element") // General class for interactive elements
     ) {
       return;
     }
@@ -44,14 +46,15 @@ export default function ThreadCard({
     navigate(`/board/${boardId}/thread/${thread.id}`);
   };
 
-  // Handle post number click to navigate with quote
+  // Enhanced post number click to navigate with quote and scroll to form
   const handlePostNumberClick = (postId) => {
+    // Navigate to thread with quote parameter
     navigate(`/board/${boardId}/thread/${thread.id}?quote=${postId}`);
   };
 
   return (
     <div className="card bg-high-dark border-secondary mb-4 thread-card-hover position-relative">
-      {/* Invisible clickable overlay */}
+      {/* Invisible clickable overlay - covers the entire card */}
       <div
         className="position-absolute top-0 start-0 w-100 h-100"
         style={{
@@ -66,18 +69,17 @@ export default function ThreadCard({
       <div className="card-body" style={{ position: "relative", zIndex: 2 }}>
         <div className="d-flex flex-column flex-sm-row justify-content-between align-items-start mb-2 gap-2">
           <div className="d-flex align-items-center gap-2 w-100 w-sm-auto">
-            <div style={{ position: "relative", zIndex: 3 }}>
+            <div
+              style={{ position: "relative", zIndex: 3 }}
+              className="interactive-element"
+            >
               <HideButton
                 isHidden={isHidden}
                 onToggle={onToggleHidden}
                 title={isHidden ? "Unhide this thread" : "Hide this thread"}
               />
             </div>
-            <Link
-              to={`/board/${boardId}/thread/${thread.id}`}
-              className="text-decoration-none flex-grow-1"
-              style={{ position: "relative", zIndex: 3 }}
-            >
+            <div className="flex-grow-1" style={{ minWidth: 0 }}>
               <h5
                 className="mb-0 text-light text-break"
                 style={{ minWidth: 0 }}
@@ -90,25 +92,22 @@ export default function ThreadCard({
                 )}
                 {thread.topic}
               </h5>
-            </Link>
+            </div>
           </div>
 
           <div className="d-flex align-items-center flex-wrap gap-2 gap-sm-3 ms-sm-2 w-100 w-sm-auto justify-content-end">
-            <small
-              className="text-secondary text-nowrap"
-              style={{ position: "relative", zIndex: 3 }}
-            >
+            <small className="text-secondary text-nowrap">
               {new Date(thread.created_at).toLocaleString()}
             </small>
 
-            <small
-              className="text-secondary text-nowrap"
-              style={{ position: "relative", zIndex: 3 }}
-            >
+            <small className="text-secondary text-nowrap">
               {thread.post_count} {thread.post_count === 1 ? "post" : "posts"}
             </small>
 
-            <div style={{ position: "relative", zIndex: 3 }}>
+            <div
+              style={{ position: "relative", zIndex: 3 }}
+              className="interactive-element"
+            >
               <StickyToggle
                 threadId={thread.id}
                 boardId={boardId}
@@ -118,7 +117,10 @@ export default function ThreadCard({
               />
             </div>
 
-            <div style={{ position: "relative", zIndex: 3 }}>
+            <div
+              style={{ position: "relative", zIndex: 3 }}
+              className="interactive-element"
+            >
               <ThreadDeleteButton
                 threadId={thread.id}
                 boardId={boardId}
@@ -137,7 +139,7 @@ export default function ThreadCard({
           <>
             {/* OP Content - Using PostPreview */}
             {opPost ? (
-              <div className="mb-3" style={{ position: "relative", zIndex: 2 }}>
+              <div className="mb-3">
                 <PostPreview
                   post={{
                     ...opPost,
@@ -181,18 +183,15 @@ export default function ThreadCard({
                   {thread.totalReplies > 5 && (
                     <Link
                       to={`/board/${boardId}/thread/${thread.id}`}
-                      className="btn btn-outline-secondary btn-sm"
-                      style={{ zIndex: 3 }}
+                      className="btn btn-outline-secondary btn-sm interactive-element"
+                      style={{ position: "relative", zIndex: 3 }}
                     >
                       View all {thread.totalReplies} replies
                     </Link>
                   )}
                 </div>
 
-                <div
-                  className="ms-3"
-                  style={{ position: "relative", zIndex: 2 }}
-                >
+                <div className="ms-3">
                   {thread.latestReplies.map((reply) => (
                     <PostPreview
                       key={reply.id}
@@ -227,8 +226,8 @@ export default function ThreadCard({
                 <div className="text-center mt-2">
                   <Link
                     to={`/board/${boardId}/thread/${thread.id}`}
-                    className="btn btn-outline-primary btn-sm"
-                    style={{ zIndex: 3 }}
+                    className="btn btn-outline-primary btn-sm interactive-element"
+                    style={{ position: "relative", zIndex: 3 }}
                   >
                     View Thread →
                   </Link>
