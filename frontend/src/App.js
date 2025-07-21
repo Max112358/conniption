@@ -16,6 +16,7 @@ import CreateBan from "./components/admin/CreateBan";
 import AdminUserManagement from "./components/admin/AdminUserManagement";
 import AdminHousekeeping from "./components/admin/AdminHousekeeping";
 import RangebanManagement from "./components/admin/RangebanManagement";
+import IPHistoryPage from "./components/admin/IPHistoryPage";
 
 import "./styles/colors.css";
 import "./styles/spoilers.css"; //spoiler text styles
@@ -59,6 +60,7 @@ export default function App() {
           <Route path="users" element={<AdminUserManagement />} />
           <Route path="housekeeping" element={<AdminHousekeeping />} />
           <Route path="rangebans" element={<RangebanManagement />} />
+          <Route path="ip-history/:ipAddress" element={<IPHistoryPage />} />
           {/* Add more admin routes as needed */}
 
           {/* Default redirect for /admin to dashboard */}

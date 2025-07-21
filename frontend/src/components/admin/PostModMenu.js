@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { API_BASE_URL } from "../../config/api";
+import IPHistoryModal from "./IPHistoryModal";
 
 export default function PostModMenu({
   post,
@@ -15,6 +16,7 @@ export default function PostModMenu({
   const [showMenu, setShowMenu] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showColorPicker, setShowColorPicker] = useState(false);
+  const [showIPHistory, setShowIPHistory] = useState(false);
   const [deleteReason, setDeleteReason] = useState("");
   const [colorReason, setColorReason] = useState("");
   const [selectedColor, setSelectedColor] = useState(post.color || "black");
@@ -22,10 +24,12 @@ export default function PostModMenu({
   const [changingColor, setChangingColor] = useState(false);
   const [error, setError] = useState(null);
   const [colorError, setColorError] = useState(null);
+  const [fetchingIP, setFetchingIP] = useState(false);
+  const [postIP, setPostIP] = useState(null);
   const navigate = useNavigate();
 
-  // Only show menu for admins and moderators
-  if (!isAdmin && !isMod) {
+  // Only show menu for admins, moderators, and janitors
+  if (!isAdmin && !isMod && adminUser?.role !== "janitor") {
     return null;
   }
 
@@ -43,6 +47,48 @@ export default function PostModMenu({
 
   // Check if user can change colors (moderators and admins only, not janitors)
   const canChangeColor = isAdmin || (isMod && adminUser?.role !== "janitor");
+
+  // Fetch IP address for the post
+  const fetchPostIP = async () => {
+    setFetchingIP(true);
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/admin/posts/${post.id}/ip?boardId=${board.id}&threadId=${thread.id}`,
+        {
+          credentials: "include",
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch IP address");
+      }
+
+      const data = await response.json();
+      setPostIP(data.ip_address);
+      return data.ip_address;
+    } catch (err) {
+      console.error("Error fetching IP:", err);
+      setError("Failed to fetch IP address");
+      return null;
+    } finally {
+      setFetchingIP(false);
+    }
+  };
+
+  // Handle checking mod history
+  const handleCheckModHistory = async () => {
+    setShowMenu(false);
+
+    // If we don't have the IP yet, fetch it first
+    let ipToCheck = postIP;
+    if (!ipToCheck) {
+      ipToCheck = await fetchPostIP();
+    }
+
+    if (ipToCheck) {
+      setShowIPHistory(true);
+    }
+  };
 
   // Handle ban user navigation
   const handleBanUser = () => {
@@ -212,6 +258,16 @@ export default function PostModMenu({
             <h6 className="dropdown-header text-secondary">Post #{post.id}</h6>
 
             <button
+              className="dropdown-item bg-dark text-light"
+              type="button"
+              onClick={handleCheckModHistory}
+              disabled={fetchingIP}
+            >
+              <i className="bi bi-clock-history me-2"></i>
+              {fetchingIP ? "Loading..." : "Check Mod History"}
+            </button>
+
+            <button
               className="dropdown-item text-danger bg-dark text-light"
               type="button"
               onClick={handleBanUser}
@@ -249,6 +305,14 @@ export default function PostModMenu({
           </div>
         )}
       </div>
+
+      {/* IP History Modal */}
+      {showIPHistory && postIP && (
+        <IPHistoryModal
+          ipAddress={postIP}
+          onClose={() => setShowIPHistory(false)}
+        />
+      )}
 
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && (
