@@ -17,46 +17,46 @@ export default function IPHistoryPage() {
   const [actionTypeFilter, setActionTypeFilter] = useState("");
 
   useEffect(() => {
-    fetchIPHistory();
-  }, [ipAddress, boardFilter, actionTypeFilter]);
+    const fetchIPHistory = async () => {
+      try {
+        setLoading(true);
+        setError(null);
 
-  const fetchIPHistory = async () => {
-    try {
-      setLoading(true);
-      setError(null);
+        const params = new URLSearchParams();
+        if (boardFilter) params.append("board_id", boardFilter);
+        if (actionTypeFilter) params.append("action_type", actionTypeFilter);
 
-      const params = new URLSearchParams();
-      if (boardFilter) params.append("board_id", boardFilter);
-      if (actionTypeFilter) params.append("action_type", actionTypeFilter);
+        const response = await fetch(
+          `${API_BASE_URL}/api/admin/ip-history/${ipAddress}?${params}`,
+          {
+            credentials: "include",
+          }
+        );
 
-      const response = await fetch(
-        `${API_BASE_URL}/api/admin/ip-history/${ipAddress}?${params}`,
-        {
-          credentials: "include",
+        if (!response.ok) {
+          if (response.status === 401) {
+            navigate("/admin/login");
+            return;
+          }
+          if (response.status === 403) {
+            throw new Error("Not authorized to view IP history");
+          }
+          throw new Error("Failed to fetch IP history");
         }
-      );
 
-      if (!response.ok) {
-        if (response.status === 401) {
-          navigate("/admin/login");
-          return;
-        }
-        if (response.status === 403) {
-          throw new Error("Not authorized to view IP history");
-        }
-        throw new Error("Failed to fetch IP history");
+        const data = await response.json();
+        setSummary(data.summary);
+        setActions(data.actions || []);
+      } catch (err) {
+        console.error("Error fetching IP history:", err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
       }
+    };
 
-      const data = await response.json();
-      setSummary(data.summary);
-      setActions(data.actions || []);
-    } catch (err) {
-      console.error("Error fetching IP history:", err);
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+    fetchIPHistory();
+  }, [ipAddress, boardFilter, actionTypeFilter, navigate]);
 
   const getActionBadgeColor = (actionType) => {
     switch (actionType) {
