@@ -1,5 +1,7 @@
 // backend/server.js
 const express = require("express");
+const { initDatabase } = require("./utils/dbInit");
+const migrationRunner = require("./utils/migrationRunner");
 const http = require("http");
 const socketIo = require("socket.io");
 const path = require("path");
@@ -32,9 +34,6 @@ const adminRoutes = require("./routes/admin");
 // Import socket handler
 const setupSocketHandlers = require("./utils/socketHandler");
 
-// Import database initialization
-const { initDatabase } = require("./utils/dbInit");
-
 // Import scheduled jobs
 const scheduledJobs = require("./utils/scheduledJobs");
 
@@ -47,9 +46,6 @@ const housekeepingPath = path.join(__dirname, "services");
 if (!fs.existsSync(housekeepingPath)) {
   fs.mkdirSync(housekeepingPath, { recursive: true });
 }
-
-// Initialize database on startup
-initDatabase().catch(console.error);
 
 // Set up Express app
 const app = express();
@@ -299,22 +295,65 @@ io.use((socket, next) => {
 // Set up socket handlers
 setupSocketHandlers(io);
 
-// Start server
-const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-  console.log(`Socket.io server ready for connections`);
-  console.log(`Environment: ${process.env.NODE_ENV || "development"}`);
+// Initialize database and run migrations before starting server
+const startServer = async () => {
+  try {
+    console.log("Starting server initialization...");
 
-  if (process.env.NODE_ENV === "production" && !process.env.SESSION_SECRET) {
-    console.error("FATAL: SESSION_SECRET not set in production!");
+    // Step 1: Initialize database tables
+    console.log("Initializing database schema...");
+    await initDatabase();
+    console.log("Database schema initialized successfully");
+
+    // Step 2: Run pending migrations
+    console.log("Checking for pending migrations...");
+    const migrationSuccess = await migrationRunner.runPendingMigrations();
+
+    if (!migrationSuccess) {
+      console.error("Migration failed! Server startup aborted.");
+      process.exit(1);
+    }
+    console.log("All migrations completed successfully");
+
+    // Step 3: Start server
+    const PORT = process.env.PORT || 5000;
+    server.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`);
+      console.log(`Socket.io server ready for connections`);
+      console.log(`Environment: ${process.env.NODE_ENV || "development"}`);
+
+      if (
+        process.env.NODE_ENV === "production" &&
+        !process.env.SESSION_SECRET
+      ) {
+        console.error("FATAL: SESSION_SECRET not set in production!");
+        process.exit(1);
+      }
+
+      // Start scheduled jobs after server is running
+      scheduledJobs.start();
+      console.log("Scheduled jobs started");
+    });
+  } catch (error) {
+    console.error("Server startup error:", error);
+
+    // Log to database if possible
+    try {
+      await pool.query(
+        `INSERT INTO application_errors (error_type, message, stack, created_at)
+         VALUES ($1, $2, $3, CURRENT_TIMESTAMP)`,
+        ["startup_error", error.message, error.stack]
+      );
+    } catch (dbError) {
+      console.error("Failed to log startup error to database:", dbError);
+    }
+
     process.exit(1);
   }
+};
 
-  // Start scheduled jobs after server is running
-  scheduledJobs.start();
-  console.log("Scheduled jobs started");
-});
+// Start the server
+startServer();
 
 // Graceful shutdown handling
 let isShuttingDown = false;

@@ -19,6 +19,7 @@ const moderationRoutes = require("./admin/moderation");
 const actionsRoutes = require("./admin/actions");
 const housekeepingRoutes = require("./admin/housekeeping");
 const stickyRoutes = require("./admin/sticky");
+const ipHistoryRoutes = require("./admin/ipHistory");
 
 // Rate limiters for different admin operations
 const loginLimiter = rateLimit({
@@ -179,6 +180,9 @@ router.use("/rangebans", requireAdmin, sensitiveActionLimiter, rangebanRoutes);
 
 // Moderation actions history routes - view only, all authenticated users
 router.use("/actions", actionsRoutes);
+
+// IP action history routes - moderator or higher
+router.use("/ip-history", requireModerator, ipHistoryRoutes);
 
 // Housekeeping routes - admin only
 router.use("/housekeeping", requireAdmin, housekeepingRoutes);

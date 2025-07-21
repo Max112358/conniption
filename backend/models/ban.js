@@ -1,5 +1,6 @@
 // backend/models/ban.js
 const { pool } = require("../config/database");
+const ipActionHistoryModel = require("./ipActionHistory");
 
 /**
  * Ban model functions
@@ -52,6 +53,34 @@ const banModel = {
           banData.post_id,
         ]
       );
+
+      // Get admin username for IP action history
+      const adminResult = await client.query(
+        `SELECT username FROM admin_users WHERE id = $1`,
+        [banData.admin_user_id]
+      );
+      const adminUsername = adminResult.rows[0]?.username || "Unknown";
+
+      // Record in IP action history
+      await ipActionHistoryModel.recordAction({
+        ip_address: banData.ip_address,
+        action_type: "banned",
+        admin_user_id: banData.admin_user_id,
+        admin_username: adminUsername,
+        board_id: banData.board_id,
+        thread_id: banData.thread_id,
+        post_id: banData.post_id,
+        ban_id: ban.id,
+        reason: banData.reason,
+        details: {
+          expires_at: banData.expires_at,
+          is_global: !banData.board_id,
+          post_content_preview: banData.post_content
+            ? banData.post_content.substring(0, 100)
+            : null,
+          had_image: !!banData.post_image_url,
+        },
+      });
 
       await client.query("COMMIT");
       console.log(`Model: Created ban with ID: ${ban.id}`);
@@ -155,7 +184,7 @@ const banModel = {
 
       const result = await pool.query(
         `SELECT id, ip_address, board_id, reason, expires_at, created_at, is_active,
-                post_content, post_image_url, thread_id, post_id
+                post_content, post_image_url, thread_id, post_id, appeal_status, appeal_text
          FROM bans
          WHERE ip_address = $1 
          AND is_active = TRUE
@@ -225,28 +254,42 @@ const banModel = {
     try {
       await client.query("BEGIN");
 
+      // Get current ban info
+      const currentBan = await client.query(
+        `SELECT * FROM bans WHERE id = $1`,
+        [banId]
+      );
+
+      if (currentBan.rows.length === 0) {
+        await client.query("ROLLBACK");
+        console.log(`Model: Ban not found with ID: ${banId}`);
+        return null;
+      }
+
+      const ban = currentBan.rows[0];
+
       // Prepare update fields
       const updateFields = [];
       const values = [];
       let paramCounter = 1;
 
       if (updates.reason !== undefined) {
-        updateFields.push(`reason = $${paramCounter++}`);
+        updateFields.push(`reason = ${paramCounter++}`);
         values.push(updates.reason);
       }
 
       if (updates.expires_at !== undefined) {
-        updateFields.push(`expires_at = $${paramCounter++}`);
+        updateFields.push(`expires_at = ${paramCounter++}`);
         values.push(updates.expires_at);
       }
 
       if (updates.is_active !== undefined) {
-        updateFields.push(`is_active = $${paramCounter++}`);
+        updateFields.push(`is_active = ${paramCounter++}`);
         values.push(updates.is_active);
       }
 
       if (updates.appeal_status !== undefined) {
-        updateFields.push(`appeal_status = $${paramCounter++}`);
+        updateFields.push(`appeal_status = ${paramCounter++}`);
         values.push(updates.appeal_status);
       }
 
@@ -263,18 +306,19 @@ const banModel = {
       const result = await client.query(
         `UPDATE bans
          SET ${updateFields.join(", ")}
-         WHERE id = $${paramCounter}
+         WHERE id = ${paramCounter}
          RETURNING id, ip_address, board_id, reason, expires_at, created_at, admin_user_id, is_active, appeal_text, appeal_status, post_content, post_image_url, thread_id, post_id`,
         values
       );
 
-      if (result.rows.length === 0) {
-        await client.query("ROLLBACK");
-        console.log(`Model: Ban not found with ID: ${banId}`);
-        return null;
-      }
+      const updatedBan = result.rows[0];
 
-      const ban = result.rows[0];
+      // Get admin username
+      const adminResult = await client.query(
+        `SELECT username FROM admin_users WHERE id = $1`,
+        [updates.admin_user_id]
+      );
+      const adminUsername = adminResult.rows[0]?.username || "Unknown";
 
       // Log moderation action for unban if is_active was set to false
       if (updates.is_active === false) {
@@ -284,12 +328,27 @@ const banModel = {
            VALUES ($1, 'unban', $2, $3, $4, $5)`,
           [
             updates.admin_user_id,
-            ban.board_id,
+            updatedBan.board_id,
             updates.reason || "Ban removed",
-            ban.ip_address,
-            ban.id,
+            updatedBan.ip_address,
+            updatedBan.id,
           ]
         );
+
+        // Record unban in IP action history
+        await ipActionHistoryModel.recordAction({
+          ip_address: updatedBan.ip_address,
+          action_type: "unbanned",
+          admin_user_id: updates.admin_user_id,
+          admin_username: adminUsername,
+          board_id: updatedBan.board_id,
+          ban_id: updatedBan.id,
+          reason: updates.reason || "Ban removed",
+          details: {
+            original_reason: ban.reason,
+            was_global: !ban.board_id,
+          },
+        });
       }
 
       // Log moderation action for appeal response
@@ -303,20 +362,36 @@ const banModel = {
            VALUES ($1, 'appeal_response', $2, $3, $4, $5)`,
           [
             updates.admin_user_id,
-            ban.board_id,
+            updatedBan.board_id,
             `Appeal ${updates.appeal_status}: ${
               updates.reason || "No reason provided"
             }`,
-            ban.ip_address,
-            ban.id,
+            updatedBan.ip_address,
+            updatedBan.id,
           ]
         );
+
+        // Record appeal response in IP action history
+        await ipActionHistoryModel.recordAction({
+          ip_address: updatedBan.ip_address,
+          action_type: "appeal_response",
+          admin_user_id: updates.admin_user_id,
+          admin_username: adminUsername,
+          board_id: updatedBan.board_id,
+          ban_id: updatedBan.id,
+          reason: `Appeal ${updates.appeal_status}`,
+          details: {
+            appeal_status: updates.appeal_status,
+            appeal_text: ban.appeal_text,
+            response_reason: updates.reason,
+          },
+        });
       }
 
       await client.query("COMMIT");
       console.log(`Model: Updated ban with ID: ${banId}`);
 
-      return ban;
+      return updatedBan;
     } catch (error) {
       await client.query("ROLLBACK");
       console.error(`Model Error - updateBan(${banId}):`, error);
@@ -349,8 +424,23 @@ const banModel = {
         return null;
       }
 
+      const ban = result.rows[0];
+
+      // Record appeal submission in IP action history
+      await ipActionHistoryModel.recordAction({
+        ip_address: ban.ip_address,
+        action_type: "appeal_submitted",
+        board_id: ban.board_id,
+        ban_id: ban.id,
+        reason: "Ban appeal submitted",
+        details: {
+          appeal_text: appealText,
+          original_ban_reason: ban.reason,
+        },
+      });
+
       console.log(`Model: Submitted appeal for ban ID: ${banId}`);
-      return result.rows[0];
+      return ban;
     } catch (error) {
       console.error(`Model Error - submitAppeal(${banId}):`, error);
       throw error;

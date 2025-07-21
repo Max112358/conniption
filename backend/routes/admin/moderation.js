@@ -6,6 +6,7 @@ const adminModel = require("../../models/admin");
 const moderationModel = require("../../models/moderation");
 const postModel = require("../../models/post");
 const adminAuth = require("../../middleware/adminAuth");
+const ipActionHistoryModel = require("../../models/ipActionHistory");
 
 /**
  * @route   GET /api/admin/posts/:postId/ip
@@ -73,6 +74,22 @@ router.get(
           post.ip_address,
         ]
       );
+
+      // Also record in IP action history
+      await ipActionHistoryModel.recordAction({
+        ip_address: post.ip_address,
+        action_type: "view_ip",
+        admin_user_id: req.session.adminUser.id,
+        admin_username: req.session.adminUser.username,
+        board_id: boardId,
+        thread_id: threadId,
+        post_id: postId,
+        reason: `IP address viewed for post ${postId}`,
+        details: {
+          content_preview: post.content ? post.content.substring(0, 50) : null,
+          had_image: !!post.image_url,
+        },
+      });
 
       console.log(
         `Route: Admin ${req.session.adminUser.username} viewed IP ${post.ip_address} for post ${postId}`
@@ -154,6 +171,7 @@ router.put(
         color: color,
         reason: reason || `Changed to ${color}`,
         admin_user_id: req.session.adminUser.id,
+        admin_username: req.session.adminUser.username,
       });
 
       if (!updatedPost) {
@@ -241,6 +259,7 @@ router.delete(
         reason,
         ip_address: ip_address || "Unknown",
         admin_user_id: req.session.adminUser.id,
+        admin_username: req.session.adminUser.username,
       });
 
       if (!deleted) {
@@ -302,6 +321,7 @@ router.delete(
         board_id: boardId,
         reason,
         admin_user_id: req.session.adminUser.id,
+        admin_username: req.session.adminUser.username,
       });
 
       if (!result.success) {
@@ -364,6 +384,7 @@ router.put("/posts/:postId", adminAuth.requireAuth, async (req, res, next) => {
       reason,
       ip_address: ip_address || "Unknown",
       admin_user_id: req.session.adminUser.id,
+      admin_username: req.session.adminUser.username,
     });
 
     if (!updatedPost) {

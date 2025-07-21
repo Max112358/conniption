@@ -214,6 +214,27 @@ const createTables = async () => {
       )
     `);
 
+    // ==================== IP ACTION HISTORY TABLE ====================
+
+    // Create ip_action_history table to track all actions against IPs
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS ip_action_history (
+        id SERIAL PRIMARY KEY,
+        ip_address TEXT NOT NULL,
+        action_type TEXT NOT NULL CHECK (action_type IN ('post_deleted', 'thread_deleted', 'banned', 'unbanned', 'rangebanned', 'post_edited', 'color_changed', 'appeal_submitted', 'appeal_response')),
+        admin_user_id INTEGER REFERENCES admin_users(id) ON DELETE SET NULL,
+        admin_username TEXT,
+        board_id TEXT REFERENCES boards(id) ON DELETE CASCADE,
+        thread_id INTEGER,
+        post_id INTEGER,
+        ban_id INTEGER REFERENCES bans(id) ON DELETE SET NULL,
+        rangeban_id INTEGER REFERENCES rangebans(id) ON DELETE SET NULL,
+        reason TEXT,
+        details JSONB,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
     // ==================== SECURITY TRACKING TABLES ====================
 
     // Create admin access logs table
@@ -341,6 +362,16 @@ const createTables = async () => {
       CREATE INDEX IF NOT EXISTS idx_admin_sessions_expire ON admin_sessions(expire);
     `);
 
+    // Indexes for IP action history table
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_ip_action_history_ip_address ON ip_action_history(ip_address);
+      CREATE INDEX IF NOT EXISTS idx_ip_action_history_action_type ON ip_action_history(action_type);
+      CREATE INDEX IF NOT EXISTS idx_ip_action_history_board_id ON ip_action_history(board_id);
+      CREATE INDEX IF NOT EXISTS idx_ip_action_history_admin_user_id ON ip_action_history(admin_user_id);
+      CREATE INDEX IF NOT EXISTS idx_ip_action_history_created_at ON ip_action_history(created_at);
+      CREATE INDEX IF NOT EXISTS idx_ip_action_history_ban_id ON ip_action_history(ban_id);
+    `);
+
     // Indexes for security tracking tables
     await pool.query(`
       CREATE INDEX IF NOT EXISTS idx_admin_access_logs_user_id ON admin_access_logs(user_id);
@@ -408,6 +439,23 @@ const createTables = async () => {
       LEFT JOIN moderation_actions ma ON au.id = ma.admin_user_id
       WHERE au.is_active = TRUE
       GROUP BY au.id, au.username, au.role
+    `);
+
+    // Create view for IP action summary
+    await pool.query(`
+      CREATE OR REPLACE VIEW ip_action_summary AS
+      SELECT 
+        ip_address,
+        COUNT(*) as total_actions,
+        COUNT(DISTINCT board_id) as boards_affected,
+        COUNT(CASE WHEN action_type = 'banned' THEN 1 END) as ban_count,
+        COUNT(CASE WHEN action_type = 'post_deleted' THEN 1 END) as posts_deleted,
+        COUNT(CASE WHEN action_type = 'thread_deleted' THEN 1 END) as threads_deleted,
+        MIN(created_at) as first_action,
+        MAX(created_at) as last_action,
+        COUNT(DISTINCT admin_user_id) as unique_admins
+      FROM ip_action_history
+      GROUP BY ip_address
     `);
 
     console.log("Database tables created successfully");

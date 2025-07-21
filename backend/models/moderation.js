@@ -1,6 +1,7 @@
 // backend/models/moderation.js
 const { pool } = require("../config/database");
 const fileUtils = require("../utils/fileUtils");
+const ipActionHistoryModel = require("./ipActionHistory");
 
 /**
  * Moderation model functions
@@ -158,6 +159,21 @@ const moderationModel = {
         ]
       );
 
+      // Record in IP action history
+      await ipActionHistoryModel.recordAction({
+        ip_address: data.ip_address,
+        action_type: "thread_deleted",
+        admin_user_id: data.admin_user_id,
+        admin_username: data.admin_username,
+        board_id: data.board_id,
+        thread_id: data.thread_id,
+        reason: data.reason,
+        details: {
+          thread_topic: threadResult.rows[0].topic,
+          image_count: imageUrls.length,
+        },
+      });
+
       // Delete images from R2
       for (const imageUrl of imageUrls) {
         try {
@@ -183,8 +199,7 @@ const moderationModel = {
   /**
    * Delete a post and record the moderation action
    * @param {Object} data - Data for deletion
-   * @returns {Promise<boolean>} True if deleted successfully
-   * @returns {Promise<{ipAddress: string}>} IP address of the deleted post
+   * @returns {Promise<Object>} Success object with IP address
    */
   deletePost: async (data) => {
     console.log(
@@ -233,6 +248,22 @@ const moderationModel = {
         ]
       );
 
+      // Record in IP action history
+      await ipActionHistoryModel.recordAction({
+        ip_address: ipAddress,
+        action_type: "post_deleted",
+        admin_user_id: data.admin_user_id,
+        admin_username: data.admin_username,
+        board_id: data.board_id,
+        thread_id: data.thread_id,
+        post_id: data.post_id,
+        reason: data.reason,
+        details: {
+          content_preview: postContent ? postContent.substring(0, 100) : null,
+          had_image: !!imageUrl,
+        },
+      });
+
       // Delete image from R2 if exists
       if (imageUrl) {
         try {
@@ -276,6 +307,22 @@ const moderationModel = {
     try {
       await client.query("BEGIN");
 
+      // Get original post content and IP
+      const originalResult = await client.query(
+        `SELECT content, ip_address FROM posts 
+         WHERE id = $1 AND thread_id = $2 AND board_id = $3`,
+        [data.post_id, data.thread_id, data.board_id]
+      );
+
+      if (originalResult.rows.length === 0) {
+        console.log(`Model: Post not found with ID: ${data.post_id}`);
+        await client.query("ROLLBACK");
+        return null;
+      }
+
+      const originalContent = originalResult.rows[0].content;
+      const ipAddress = originalResult.rows[0].ip_address || "Unknown";
+
       // Update post content
       const result = await client.query(
         `UPDATE posts 
@@ -284,12 +331,6 @@ const moderationModel = {
          RETURNING id, content, image_url, created_at, color`,
         [data.content, data.post_id, data.thread_id, data.board_id]
       );
-
-      if (result.rows.length === 0) {
-        console.log(`Model: Post not found with ID: ${data.post_id}`);
-        await client.query("ROLLBACK");
-        return null;
-      }
 
       // Log moderation action
       await client.query(
@@ -305,6 +346,22 @@ const moderationModel = {
           data.ip_address,
         ]
       );
+
+      // Record in IP action history
+      await ipActionHistoryModel.recordAction({
+        ip_address: ipAddress,
+        action_type: "post_edited",
+        admin_user_id: data.admin_user_id,
+        admin_username: data.admin_username,
+        board_id: data.board_id,
+        thread_id: data.thread_id,
+        post_id: data.post_id,
+        reason: data.reason,
+        details: {
+          original_content: originalContent,
+          new_content: data.content,
+        },
+      });
 
       await client.query("COMMIT");
       console.log(`Model: Successfully edited post ${data.post_id}`);
@@ -372,6 +429,22 @@ const moderationModel = {
         ]
       );
 
+      // Record in IP action history
+      await ipActionHistoryModel.recordAction({
+        ip_address: ipAddress,
+        action_type: "color_changed",
+        admin_user_id: data.admin_user_id,
+        admin_username: data.admin_username,
+        board_id: data.board_id,
+        thread_id: data.thread_id,
+        post_id: data.post_id,
+        reason: data.reason,
+        details: {
+          old_color: oldColor,
+          new_color: data.color,
+        },
+      });
+
       await client.query("COMMIT");
       console.log(
         `Model: Successfully changed post ${data.post_id} color to ${data.color}`
@@ -383,6 +456,43 @@ const moderationModel = {
       throw error;
     } finally {
       client.release();
+    }
+  },
+
+  /**
+   * Log a moderation action (helper function)
+   * @param {Object} actionData - Action data
+   * @returns {Promise<Object>} Created action
+   */
+  logAction: async (actionData) => {
+    console.log(`Model: Logging moderation action: ${actionData.action_type}`);
+
+    try {
+      const result = await pool.query(
+        `INSERT INTO moderation_actions 
+         (admin_user_id, action_type, board_id, thread_id, post_id, ban_id, rangeban_id, reason, ip_address, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, CURRENT_TIMESTAMP)
+         RETURNING *`,
+        [
+          actionData.admin_user_id,
+          actionData.action_type,
+          actionData.board_id || null,
+          actionData.thread_id || null,
+          actionData.post_id || null,
+          actionData.ban_id || null,
+          actionData.rangeban_id || null,
+          actionData.reason,
+          actionData.ip_address || null,
+        ]
+      );
+
+      console.log(
+        `Model: Logged moderation action with ID: ${result.rows[0].id}`
+      );
+      return result.rows[0];
+    } catch (error) {
+      console.error(`Model Error - logAction:`, error);
+      throw error;
     }
   },
 
