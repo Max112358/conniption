@@ -202,7 +202,7 @@ export default function MediaViewer({ src, alt, postId, fileType }) {
                 style={{ maxWidth: "100px" }}
               />
 
-              <small className="text-muted">
+              <small className="text-secondary">
                 Volume: {Math.round(volume * 100)}%
               </small>
             </div>

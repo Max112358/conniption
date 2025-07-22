@@ -55,7 +55,7 @@ export default function SurveyCorrelations({ surveyId, boardId }) {
 
   if (!correlations || correlations.correlations.length === 0) {
     return (
-      <div className="text-muted text-center p-3">
+      <div className="text-secondary text-center p-3">
         No correlations data available yet.
       </div>
     );
@@ -65,7 +65,7 @@ export default function SurveyCorrelations({ surveyId, boardId }) {
     <div className="card bg-dark border-secondary mt-3">
       <div className="card-header border-secondary">
         <h6 className="mb-0">
-          <i className="bi bi-diagram-3 me-2"></i>
+          <i className="bi bi-diagram-3 text-secondary me-2"></i>
           Option Correlations
         </h6>
       </div>
@@ -89,7 +89,7 @@ export default function SurveyCorrelations({ surveyId, boardId }) {
                   <td>
                     <div>
                       <span className="text-primary">{corr.option1.text}</span>
-                      <span className="text-muted mx-2">×</span>
+                      <span className="text-secondary mx-2">×</span>
                       <span className="text-info">{corr.option2.text}</span>
                     </div>
                   </td>
@@ -120,7 +120,7 @@ export default function SurveyCorrelations({ surveyId, boardId }) {
           </table>
         </div>
 
-        <div className="text-muted small mt-2">
+        <div className="text-secondary small mt-2">
           <i className="bi bi-info-circle me-1"></i>
           Percentage shows how often option 2 is selected when option 1 is
           selected

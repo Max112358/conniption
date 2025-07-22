@@ -865,10 +865,10 @@ function ThreadPage() {
               </div>
             ) : (
               <div className="text-center py-5">
-                <p className="text-muted">
+                <p className="text-secondary">
                   No posts available in this thread yet.
                 </p>
-                <p className="text-muted small">
+                <p className="text-secondary small">
                   This could mean the thread is new or there was an error
                   loading posts.
                 </p>

@@ -79,7 +79,7 @@ export default function PostDeleteButton({
                   </div>
                 )}
                 <p>Are you sure you want to delete this post?</p>
-                <p className="text-muted small mb-0">
+                <p className="text-secondary small mb-0">
                   This action cannot be undone.
                 </p>
               </div>

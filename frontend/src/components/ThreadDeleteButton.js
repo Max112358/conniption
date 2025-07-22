@@ -152,7 +152,7 @@ export default function ThreadDeleteButton({
                       required
                       disabled={deleting}
                     ></textarea>
-                    <div className="form-text text-muted">
+                    <div className="form-text text-secondary">
                       This will be logged in the moderation system.
                     </div>
                   </div>

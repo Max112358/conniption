@@ -167,7 +167,7 @@ export default function BanNotification({ ban, boardId, onClose }) {
                     </p>
 
                     {ban.thread_id && (
-                      <div className="mt-3 text-muted small">
+                      <div className="mt-3 text-secondary small">
                         <strong>Thread ID:</strong> {ban.thread_id} |{" "}
                         <strong>Post ID:</strong> {ban.post_id || "N/A"}
                       </div>
@@ -264,7 +264,7 @@ export default function BanNotification({ ban, boardId, onClose }) {
                             required
                             disabled={submitting}
                           ></textarea>
-                          <div className="form-text text-muted">
+                          <div className="form-text text-secondary">
                             Be honest and respectful in your appeal. Include any
                             relevant information that may help the moderators
                             reconsider the ban.
