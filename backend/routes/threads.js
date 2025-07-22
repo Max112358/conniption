@@ -1,4 +1,4 @@
-// backend/routes/threads.js
+// backend/routes/threads.js - Updated with stats tracking
 const express = require("express");
 const router = express.Router({ mergeParams: true }); // mergeParams to access boardId
 const threadModel = require("../models/thread");
@@ -17,6 +17,7 @@ const {
   uploadLimiter,
   validateContent,
 } = require("../middleware/security");
+const { trackPostCreation } = require("../middleware/statsTracking"); // Import stats tracking
 
 // Import validators
 const validators = require("../middleware/validators");
@@ -73,6 +74,8 @@ router.post(
   // Apply rate limiting
   postCreationLimiter,
   uploadLimiter,
+  // Add stats tracking
+  trackPostCreation,
   // Handle file upload and URL transformation
   uploadWithUrlTransform("image"),
   // Custom validation for thread creation
@@ -196,6 +199,11 @@ router.post(
       );
 
       console.log(`Route: Thread created successfully:`, result);
+
+      // Track post creation in statistics (the initial post of the thread)
+      if (res.locals.trackPost) {
+        await res.locals.trackPost(boardId);
+      }
 
       // Notify connected clients about the new thread
       const socketIo = io();

@@ -1,4 +1,4 @@
-// backend/routes/posts.js - Updated with validators
+// backend/routes/posts.js - Updated with validators and stats tracking
 const express = require("express");
 const router = express.Router({ mergeParams: true }); // mergeParams to access boardId and threadId
 const { pool } = require("../config/database");
@@ -18,6 +18,7 @@ const {
   uploadLimiter,
   validateContent,
 } = require("../middleware/security");
+const { trackPostCreation } = require("../middleware/statsTracking"); // Import stats tracking
 
 // Import validators
 const validators = require("../middleware/validators");
@@ -109,6 +110,7 @@ router.post(
   checkBannedIP,
   postCreationLimiter, // Add rate limiting
   uploadLimiter, // Add upload rate limiting if file present
+  trackPostCreation, // Add stats tracking
   uploadWithUrlTransform("image"),
   validateContent, // Add content validation
   async (req, res, next) => {
@@ -210,6 +212,11 @@ router.post(
         thread.is_dead, // Pass dead status to model
         dontBump // Pass dont_bump flag to model
       );
+
+      // Track post creation in statistics
+      if (res.locals.trackPost) {
+        await res.locals.trackPost(boardId);
+      }
 
       // Notify connected clients about the new post
       const socketIo = io();

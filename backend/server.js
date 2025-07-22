@@ -30,12 +30,17 @@ const {
 // Import route handlers
 const boardRoutes = require("./routes/boards");
 const adminRoutes = require("./routes/admin");
+const statsRoutes = require("./routes/stats"); // ADD THIS
 
 // Import socket handler
 const setupSocketHandlers = require("./utils/socketHandler");
 
 // Import scheduled jobs
 const scheduledJobs = require("./utils/scheduledJobs");
+
+// Import stats tracking middleware and scheduler
+const { trackPageViews } = require("./middleware/statsTracking"); // ADD THIS
+const statsScheduler = require("./services/statsScheduler"); // ADD THIS
 
 // Import utility functions
 const getClientIp = require("./utils/getClientIp");
@@ -116,6 +121,9 @@ app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 // Apply input sanitization from security.js
 app.use(sanitizeInput);
 
+// Apply page view tracking middleware - ADD THIS
+app.use(trackPageViews);
+
 // Session configuration with enhanced security
 const sessionSecret =
   process.env.SESSION_SECRET ||
@@ -190,6 +198,7 @@ app.use(checkBanned);
 
 // Register routes
 app.use("/api/admin", adminRoutes);
+app.use("/api/stats", statsRoutes); // ADD THIS
 
 // Apply ban enforcement to content routes only (not admin routes)
 app.use("/api/boards", enforceBan);
@@ -218,6 +227,7 @@ app.get("/health/detailed", (req, res) => {
     socketio: io ? "initialized" : "not initialized",
     environment: process.env.NODE_ENV || "development",
     housekeeping: scheduledJobs.getStatus(),
+    statsScheduler: statsScheduler.getStatus(), // ADD THIS
     uptime: process.uptime(),
     memory: process.memoryUsage(),
   });
@@ -333,6 +343,10 @@ const startServer = async () => {
       // Start scheduled jobs after server is running
       scheduledJobs.start();
       console.log("Scheduled jobs started");
+
+      // Start statistics scheduler - ADD THIS
+      statsScheduler.start();
+      console.log("Statistics scheduler started");
     });
   } catch (error) {
     console.error("Server startup error:", error);
