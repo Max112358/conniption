@@ -1,5 +1,5 @@
 // frontend/src/components/admin/AdminLogin.js
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { API_BASE_URL } from "../../config/api";
 
@@ -8,7 +8,35 @@ export default function AdminLogin() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [csrfToken, setCsrfToken] = useState(null);
+  const [fetchingCsrf, setFetchingCsrf] = useState(true);
   const navigate = useNavigate();
+
+  // Fetch CSRF token on component mount
+  useEffect(() => {
+    const fetchCsrfToken = async () => {
+      try {
+        setFetchingCsrf(true);
+        const response = await fetch(`${API_BASE_URL}/api/admin/csrf-token`, {
+          credentials: "include",
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch CSRF token");
+        }
+
+        const data = await response.json();
+        setCsrfToken(data.csrfToken);
+      } catch (err) {
+        console.error("Error fetching CSRF token:", err);
+        setError("Failed to initialize login form. Please refresh the page.");
+      } finally {
+        setFetchingCsrf(false);
+      }
+    };
+
+    fetchCsrfToken();
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -16,6 +44,11 @@ export default function AdminLogin() {
     // Validate form
     if (!username.trim() || !password) {
       setError("Username and password are required");
+      return;
+    }
+
+    if (!csrfToken) {
+      setError("Security token not available. Please refresh the page.");
       return;
     }
 
@@ -27,8 +60,13 @@ export default function AdminLogin() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "X-CSRF-Token": csrfToken, // Include CSRF token in headers
         },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({
+          username,
+          password,
+          _csrf: csrfToken, // Also include in body as fallback
+        }),
         credentials: "include", // Important for cookies/session
       });
 
@@ -57,6 +95,25 @@ export default function AdminLogin() {
       setLoading(false);
     }
   };
+
+  // Show loading state while fetching CSRF token
+  if (fetchingCsrf) {
+    return (
+      <div className="container-fluid min-vh-100 bg-dark text-light d-flex align-items-center justify-content-center py-5">
+        <div
+          className="card bg-mid-dark border-secondary shadow"
+          style={{ maxWidth: "400px", width: "100%" }}
+        >
+          <div className="card-body text-center">
+            <div className="spinner-border text-light mb-3" role="status">
+              <span className="visually-hidden">Loading...</span>
+            </div>
+            <p className="text-secondary mb-0">Initializing login form...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container-fluid min-vh-100 bg-dark text-light d-flex align-items-center justify-content-center py-5">
@@ -109,7 +166,7 @@ export default function AdminLogin() {
               <button
                 type="submit"
                 className="btn btn-primary"
-                disabled={loading}
+                disabled={loading || !csrfToken}
               >
                 {loading ? (
                   <>
