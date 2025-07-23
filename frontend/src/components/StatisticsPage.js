@@ -39,6 +39,22 @@ export default function StatisticsPage() {
   const [error, setError] = useState(null);
   const [selectedTimeframe, setSelectedTimeframe] = useState("24");
 
+  const fetchStatistics = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/stats`);
+      if (!response.ok) {
+        throw new Error("Failed to fetch statistics");
+      }
+      const data = await response.json();
+      setStats(data);
+      setLoading(false);
+    } catch (err) {
+      console.error("Error fetching statistics:", err);
+      setError("Failed to load statistics. Please try again later.");
+      setLoading(false);
+    }
+  };
+
   const fetchHourlyData = useCallback(async () => {
     try {
       const response = await fetch(
