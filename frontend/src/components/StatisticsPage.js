@@ -1,6 +1,6 @@
 // frontend/src/components/StatisticsPage.js
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { API_BASE_URL } from "../config/api";
 import logoSvg from "../assets/conniption_logo6.svg";
@@ -39,33 +39,7 @@ export default function StatisticsPage() {
   const [error, setError] = useState(null);
   const [selectedTimeframe, setSelectedTimeframe] = useState("24");
 
-  useEffect(() => {
-    fetchStatistics();
-  }, []);
-
-  useEffect(() => {
-    if (stats) {
-      fetchHourlyData();
-    }
-  }, [selectedTimeframe]);
-
-  const fetchStatistics = async () => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/stats`);
-      if (!response.ok) {
-        throw new Error("Failed to fetch statistics");
-      }
-      const data = await response.json();
-      setStats(data);
-      setLoading(false);
-    } catch (err) {
-      console.error("Error fetching statistics:", err);
-      setError("Failed to load statistics. Please try again later.");
-      setLoading(false);
-    }
-  };
-
-  const fetchHourlyData = async () => {
+  const fetchHourlyData = useCallback(async () => {
     try {
       const response = await fetch(
         `${API_BASE_URL}/api/stats/hourly?hours=${selectedTimeframe}`
@@ -78,7 +52,17 @@ export default function StatisticsPage() {
     } catch (err) {
       console.error("Error fetching hourly data:", err);
     }
-  };
+  }, [selectedTimeframe]);
+
+  useEffect(() => {
+    fetchStatistics();
+  }, []);
+
+  useEffect(() => {
+    if (stats) {
+      fetchHourlyData();
+    }
+  }, [stats, fetchHourlyData]);
 
   if (loading) {
     return <LoadingSpinner message="Loading statistics..." />;
