@@ -224,11 +224,10 @@ const statsModel = {
           COUNT(DISTINCT hashed_ip) as unique_visitors,
           COUNT(*) as page_views
         FROM page_views
-        WHERE viewed_at > CURRENT_TIMESTAMP - INTERVAL $1
+        WHERE viewed_at > CURRENT_TIMESTAMP - INTERVAL '${hours} hours'
         GROUP BY hour
         ORDER BY hour ASC
-      `,
-        [`${hours} hours`]
+      `
       );
 
       const postsResult = await pool.query(
@@ -237,11 +236,10 @@ const statsModel = {
           DATE_TRUNC('hour', created_at) as hour,
           COUNT(*) as posts_count
         FROM post_stats
-        WHERE created_at > CURRENT_TIMESTAMP - INTERVAL $1
+        WHERE created_at > CURRENT_TIMESTAMP - INTERVAL '${hours} hours'
         GROUP BY hour
         ORDER BY hour ASC
-      `,
-        [`${hours} hours`]
+      `
       );
 
       return {
@@ -263,16 +261,12 @@ const statsModel = {
     try {
       const viewsResult = await pool.query(
         `DELETE FROM page_views 
-         WHERE viewed_at < CURRENT_TIMESTAMP - INTERVAL $1
-         RETURNING *`,
-        [`${daysToKeep} days`]
+         WHERE viewed_at < CURRENT_TIMESTAMP - INTERVAL '${daysToKeep} days'`
       );
 
       const postsResult = await pool.query(
         `DELETE FROM post_stats 
-         WHERE created_at < CURRENT_TIMESTAMP - INTERVAL $1
-         RETURNING *`,
-        [`${daysToKeep} days`]
+         WHERE created_at < CURRENT_TIMESTAMP - INTERVAL '${daysToKeep} days'`
       );
 
       return {
@@ -284,6 +278,9 @@ const statsModel = {
       throw error;
     }
   },
+
+  // Add pool reference for use by other modules
+  pool: pool,
 };
 
 module.exports = statsModel;
