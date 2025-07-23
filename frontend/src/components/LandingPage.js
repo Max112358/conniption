@@ -176,6 +176,10 @@ export default function LandingPage() {
           <Link to="/contact" className="btn btn-outline-secondary btn-sm mx-1">
             <i className="bi bi-envelope me-1"></i> Contact Us
           </Link>
+
+          <Link to="/stats" className="btn btn-outline-secondary btn-sm mx-1">
+            <i className="bi bi-bar-chart-line me-1"></i> Statistics
+          </Link>
         </div>
       </div>
     </div>
