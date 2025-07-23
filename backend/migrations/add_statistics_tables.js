@@ -1,5 +1,16 @@
 // backend/migrations/add_statistics_tables.js
 const { pool } = require("../config/database");
+const crypto = require("crypto");
+
+/**
+ * Hash an IP address for privacy
+ * @param {string} ipAddress - The IP address to hash
+ * @returns {string} Hashed IP address
+ */
+const hashIpAddress = (ipAddress) => {
+  if (!ipAddress || ipAddress === "unknown") return "unknown";
+  return crypto.createHash("sha256").update(ipAddress).digest("hex");
+};
 
 /**
  * Migration to add statistics tracking tables
@@ -104,20 +115,56 @@ const runMigration = async () => {
     // Import historical data from existing posts table
     console.log("Importing historical post data...");
 
-    await pool.query(`
-      INSERT INTO post_stats (hashed_ip, country_code, board_id, created_at)
-      SELECT 
-        encode(digest(ip_address, 'sha256'), 'hex') as hashed_ip,
-        country_code,
-        board_id,
-        created_at
+    // Fetch existing posts and hash IPs in Node.js
+    const postsResult = await pool.query(`
+      SELECT ip_address, country_code, board_id, created_at
       FROM posts
       WHERE ip_address IS NOT NULL
-      ON CONFLICT DO NOTHING
     `);
 
-    const result = await pool.query("SELECT COUNT(*) FROM post_stats");
-    console.log(`Imported ${result.rows[0].count} historical post records`);
+    if (postsResult.rows.length > 0) {
+      // Prepare batch insert values
+      const values = postsResult.rows.map((post) => [
+        hashIpAddress(post.ip_address),
+        post.country_code,
+        post.board_id,
+        post.created_at,
+      ]);
+
+      // Insert in batches of 1000
+      const batchSize = 1000;
+      for (let i = 0; i < values.length; i += batchSize) {
+        const batch = values.slice(i, i + batchSize);
+
+        // Create placeholders for the query
+        const placeholders = batch
+          .map(
+            (_, index) =>
+              `($${index * 4 + 1}, $${index * 4 + 2}, $${index * 4 + 3}, $${
+                index * 4 + 4
+              })`
+          )
+          .join(", ");
+
+        // Flatten the values array
+        const flatValues = batch.flat();
+
+        await pool.query(
+          `
+          INSERT INTO post_stats (hashed_ip, country_code, board_id, created_at)
+          VALUES ${placeholders}
+          ON CONFLICT DO NOTHING
+        `,
+          flatValues
+        );
+      }
+
+      console.log(
+        `Imported ${postsResult.rows.length} historical post records`
+      );
+    } else {
+      console.log("No historical post data to import");
+    }
 
     console.log("Migration completed successfully");
   } catch (error) {
