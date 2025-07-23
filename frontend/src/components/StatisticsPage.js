@@ -318,7 +318,7 @@ export default function StatisticsPage() {
           <div className="col-12">
             <div className="card bg-mid-dark border-secondary">
               <div className="card-header border-secondary d-flex justify-content-between align-items-center">
-                <h3 className="h5 mb-0">Visitor Activity</h3>
+                <h3 className="h5 mb-0 text-light">Visitor Activity</h3>
                 <select
                   className="form-select form-select-sm bg-dark text-light border-secondary"
                   style={{ width: "auto" }}
@@ -345,7 +345,7 @@ export default function StatisticsPage() {
           <div className="col-12">
             <div className="card bg-mid-dark border-secondary">
               <div className="card-header border-secondary">
-                <h3 className="h5 mb-0">Post Activity</h3>
+                <h3 className="h5 mb-0 text-light">Post Activity</h3>
               </div>
               <div className="card-body">
                 <div style={{ height: "300px" }}>
@@ -363,7 +363,7 @@ export default function StatisticsPage() {
           <div className="col-12">
             <div className="card bg-mid-dark border-secondary">
               <div className="card-header border-secondary">
-                <h3 className="h5 mb-0">Board Activity</h3>
+                <h3 className="h5 mb-0 text-light">Board Activity</h3>
               </div>
               <div className="card-body">
                 <div style={{ height: "400px" }}>
@@ -379,7 +379,9 @@ export default function StatisticsPage() {
           <div className="col-md-6 mb-3">
             <div className="card bg-mid-dark border-secondary h-100">
               <div className="card-header border-secondary">
-                <h3 className="h5 mb-0">Top Countries by Visitors</h3>
+                <h3 className="h5 mb-0 text-light">
+                  Top Countries by Visitors
+                </h3>
               </div>
               <div className="card-body">
                 <div style={{ height: "300px" }}>
@@ -403,7 +405,7 @@ export default function StatisticsPage() {
           <div className="col-md-6 mb-3">
             <div className="card bg-mid-dark border-secondary h-100">
               <div className="card-header border-secondary">
-                <h3 className="h5 mb-0">Top Countries by Posts</h3>
+                <h3 className="h5 mb-0 text-light">Top Countries by Posts</h3>
               </div>
               <div className="card-body">
                 <div style={{ height: "300px" }}>
@@ -425,7 +427,7 @@ export default function StatisticsPage() {
           <div className="col-12">
             <div className="card bg-mid-dark border-secondary">
               <div className="card-header border-secondary">
-                <h3 className="h5 mb-0">Board Statistics Details</h3>
+                <h3 className="h5 mb-0 text-light">Board Statistics Details</h3>
               </div>
               <div className="card-body">
                 <div className="table-responsive">
