@@ -61,30 +61,38 @@ const banModel = {
       );
       const adminUsername = adminResult.rows[0]?.username || "Unknown";
 
-      // Record in IP action history
-      await ipActionHistoryModel.recordAction({
-        ip_address: banData.ip_address,
-        action_type: "banned",
-        admin_user_id: banData.admin_user_id,
-        admin_username: adminUsername,
-        board_id: banData.board_id,
-        thread_id: banData.thread_id,
-        post_id: banData.post_id,
-        ban_id: ban.id,
-        reason: banData.reason,
-        details: {
-          expires_at: banData.expires_at,
-          is_global: !banData.board_id,
-          post_content_preview: banData.post_content
-            ? banData.post_content.substring(0, 100)
-            : null,
-          had_image: !!banData.post_image_url,
-        },
-      });
-
+      // Commit the transaction first so the ban exists for the foreign key
       await client.query("COMMIT");
-      console.log(`Model: Created ban with ID: ${ban.id}`);
 
+      // Record in IP action history AFTER the ban is committed
+      // This ensures the ban_id foreign key constraint is satisfied
+      try {
+        await ipActionHistoryModel.recordAction({
+          ip_address: banData.ip_address,
+          action_type: "banned",
+          admin_user_id: banData.admin_user_id,
+          admin_username: adminUsername,
+          board_id: banData.board_id,
+          thread_id: banData.thread_id,
+          post_id: banData.post_id,
+          ban_id: ban.id,
+          reason: banData.reason,
+          details: {
+            expires_at: banData.expires_at,
+            is_global: !banData.board_id,
+            post_content_preview: banData.post_content
+              ? banData.post_content.substring(0, 100)
+              : null,
+            had_image: !!banData.post_image_url,
+          },
+        });
+      } catch (ipHistoryError) {
+        // Log the error but don't fail the ban creation
+        console.error("Failed to record IP action history:", ipHistoryError);
+        // The ban was still created successfully
+      }
+
+      console.log(`Model: Created ban with ID: ${ban.id}`);
       return ban;
     } catch (error) {
       await client.query("ROLLBACK");
@@ -274,22 +282,22 @@ const banModel = {
       let paramCounter = 1;
 
       if (updates.reason !== undefined) {
-        updateFields.push(`reason = ${paramCounter++}`);
+        updateFields.push(`reason = $${paramCounter++}`);
         values.push(updates.reason);
       }
 
       if (updates.expires_at !== undefined) {
-        updateFields.push(`expires_at = ${paramCounter++}`);
+        updateFields.push(`expires_at = $${paramCounter++}`);
         values.push(updates.expires_at);
       }
 
       if (updates.is_active !== undefined) {
-        updateFields.push(`is_active = ${paramCounter++}`);
+        updateFields.push(`is_active = $${paramCounter++}`);
         values.push(updates.is_active);
       }
 
       if (updates.appeal_status !== undefined) {
-        updateFields.push(`appeal_status = ${paramCounter++}`);
+        updateFields.push(`appeal_status = $${paramCounter++}`);
         values.push(updates.appeal_status);
       }
 
@@ -306,7 +314,7 @@ const banModel = {
       const result = await client.query(
         `UPDATE bans
          SET ${updateFields.join(", ")}
-         WHERE id = ${paramCounter}
+         WHERE id = $${paramCounter}
          RETURNING id, ip_address, board_id, reason, expires_at, created_at, admin_user_id, is_active, appeal_text, appeal_status, post_content, post_image_url, thread_id, post_id`,
         values
       );
@@ -334,21 +342,6 @@ const banModel = {
             updatedBan.id,
           ]
         );
-
-        // Record unban in IP action history
-        await ipActionHistoryModel.recordAction({
-          ip_address: updatedBan.ip_address,
-          action_type: "unbanned",
-          admin_user_id: updates.admin_user_id,
-          admin_username: adminUsername,
-          board_id: updatedBan.board_id,
-          ban_id: updatedBan.id,
-          reason: updates.reason || "Ban removed",
-          details: {
-            original_reason: ban.reason,
-            was_global: !ban.board_id,
-          },
-        });
       }
 
       // Log moderation action for appeal response
@@ -370,27 +363,64 @@ const banModel = {
             updatedBan.id,
           ]
         );
-
-        // Record appeal response in IP action history
-        await ipActionHistoryModel.recordAction({
-          ip_address: updatedBan.ip_address,
-          action_type: "appeal_response",
-          admin_user_id: updates.admin_user_id,
-          admin_username: adminUsername,
-          board_id: updatedBan.board_id,
-          ban_id: updatedBan.id,
-          reason: `Appeal ${updates.appeal_status}`,
-          details: {
-            appeal_status: updates.appeal_status,
-            appeal_text: ban.appeal_text,
-            response_reason: updates.reason,
-          },
-        });
       }
 
+      // Commit the transaction first
       await client.query("COMMIT");
-      console.log(`Model: Updated ban with ID: ${banId}`);
 
+      // Record IP action history AFTER commit for unban
+      if (updates.is_active === false) {
+        try {
+          await ipActionHistoryModel.recordAction({
+            ip_address: updatedBan.ip_address,
+            action_type: "unbanned",
+            admin_user_id: updates.admin_user_id,
+            admin_username: adminUsername,
+            board_id: updatedBan.board_id,
+            ban_id: updatedBan.id,
+            reason: updates.reason || "Ban removed",
+            details: {
+              original_reason: ban.reason,
+              was_global: !ban.board_id,
+            },
+          });
+        } catch (ipHistoryError) {
+          console.error(
+            "Failed to record unban IP action history:",
+            ipHistoryError
+          );
+        }
+      }
+
+      // Record IP action history AFTER commit for appeal response
+      if (
+        updates.appeal_status === "approved" ||
+        updates.appeal_status === "denied"
+      ) {
+        try {
+          await ipActionHistoryModel.recordAction({
+            ip_address: updatedBan.ip_address,
+            action_type: "appeal_response",
+            admin_user_id: updates.admin_user_id,
+            admin_username: adminUsername,
+            board_id: updatedBan.board_id,
+            ban_id: updatedBan.id,
+            reason: `Appeal ${updates.appeal_status}`,
+            details: {
+              appeal_status: updates.appeal_status,
+              appeal_text: ban.appeal_text,
+              response_reason: updates.reason,
+            },
+          });
+        } catch (ipHistoryError) {
+          console.error(
+            "Failed to record appeal response IP action history:",
+            ipHistoryError
+          );
+        }
+      }
+
+      console.log(`Model: Updated ban with ID: ${banId}`);
       return updatedBan;
     } catch (error) {
       await client.query("ROLLBACK");
@@ -409,9 +439,12 @@ const banModel = {
    */
   submitAppeal: async (banId, appealText) => {
     console.log(`Model: Submitting appeal for ban ID: ${banId}`);
+    const client = await pool.connect();
 
     try {
-      const result = await pool.query(
+      await client.query("BEGIN");
+
+      const result = await client.query(
         `UPDATE bans
          SET appeal_text = $1, appeal_status = 'pending'
          WHERE id = $2 AND is_active = TRUE
@@ -420,30 +453,44 @@ const banModel = {
       );
 
       if (result.rows.length === 0) {
+        await client.query("ROLLBACK");
         console.log(`Model: Ban not found or not active with ID: ${banId}`);
         return null;
       }
 
       const ban = result.rows[0];
 
-      // Record appeal submission in IP action history
-      await ipActionHistoryModel.recordAction({
-        ip_address: ban.ip_address,
-        action_type: "appeal_submitted",
-        board_id: ban.board_id,
-        ban_id: ban.id,
-        reason: "Ban appeal submitted",
-        details: {
-          appeal_text: appealText,
-          original_ban_reason: ban.reason,
-        },
-      });
+      // Commit the transaction first
+      await client.query("COMMIT");
+
+      // Record appeal submission in IP action history AFTER commit
+      try {
+        await ipActionHistoryModel.recordAction({
+          ip_address: ban.ip_address,
+          action_type: "appeal_submitted",
+          board_id: ban.board_id,
+          ban_id: ban.id,
+          reason: "Ban appeal submitted",
+          details: {
+            appeal_text: appealText,
+            original_ban_reason: ban.reason,
+          },
+        });
+      } catch (ipHistoryError) {
+        console.error(
+          "Failed to record appeal submission IP action history:",
+          ipHistoryError
+        );
+      }
 
       console.log(`Model: Submitted appeal for ban ID: ${banId}`);
       return ban;
     } catch (error) {
+      await client.query("ROLLBACK");
       console.error(`Model Error - submitAppeal(${banId}):`, error);
       throw error;
+    } finally {
+      client.release();
     }
   },
 };
