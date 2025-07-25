@@ -245,7 +245,7 @@ const createTables = async () => {
       CREATE TABLE IF NOT EXISTS ip_action_history (
         id SERIAL PRIMARY KEY,
         ip_address TEXT NOT NULL,
-        action_type TEXT NOT NULL CHECK (action_type IN ('post_deleted', 'thread_deleted', 'banned', 'unbanned', 'rangebanned', 'post_edited', 'color_changed', 'appeal_submitted', 'appeal_response', 'ip_viewed', 'view_ip')),
+        action_type TEXT NOT NULL CHECK (action_type IN ('post_deleted', 'thread_deleted', 'banned', 'unbanned', 'rangebanned', 'post_edited', 'color_changed', 'appeal_submitted', 'appeal_response', 'view_ip')),
         admin_user_id INTEGER REFERENCES admin_users(id) ON DELETE SET NULL,
         admin_username TEXT,
         board_id TEXT REFERENCES boards(id) ON DELETE CASCADE,
