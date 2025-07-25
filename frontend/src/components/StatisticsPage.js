@@ -133,6 +133,43 @@ export default function StatisticsPage() {
     },
   };
 
+  // Special chart options for board activity chart
+  const boardChartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        labels: {
+          color: "#ffffff",
+        },
+      },
+      title: {
+        display: true,
+        color: "#ffffff",
+      },
+    },
+    scales: {
+      x: {
+        ticks: {
+          color: "#ffffff",
+          maxRotation: 45,
+          minRotation: 45,
+        },
+        grid: {
+          color: "rgba(255, 255, 255, 0.1)",
+        },
+      },
+      y: {
+        ticks: {
+          color: "#ffffff",
+        },
+        grid: {
+          color: "rgba(255, 255, 255, 0.1)",
+        },
+      },
+    },
+  };
+
   // Visitor activity line chart
   const visitorChartData = hourlyData
     ? {
@@ -182,9 +219,9 @@ export default function StatisticsPage() {
       }
     : null;
 
-  // Board activity bar chart
+  // Board activity bar chart - use shorter labels for better readability
   const boardChartData = {
-    labels: stats.boards.map((board) => board.boardName),
+    labels: stats.boards.map((board) => `/${board.boardId}/`),
     datasets: [
       {
         label: "Posts (Last 24h)",
@@ -367,7 +404,7 @@ export default function StatisticsPage() {
               </div>
               <div className="card-body">
                 <div style={{ height: "400px" }}>
-                  <Bar data={boardChartData} options={chartOptions} />
+                  <Bar data={boardChartData} options={boardChartOptions} />
                 </div>
               </div>
             </div>
