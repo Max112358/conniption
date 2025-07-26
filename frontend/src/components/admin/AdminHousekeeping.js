@@ -96,7 +96,7 @@ export default function AdminHousekeeping({ adminUser }) {
       {/* Status Card */}
       <div className="card bg-mid-dark border-secondary mb-4">
         <div className="card-header border-secondary">
-          <h2 className="h5 mb-0">Housekeeping Status</h2>
+          <h2 className="h5 mb-0 text-secondary">Housekeeping Status</h2>
         </div>
         <div className="card-body">
           {loading ? (
@@ -112,7 +112,7 @@ export default function AdminHousekeeping({ adminUser }) {
                   <h6 className="text-secondary">Scheduled Job Status</h6>
                   {status.jobs && status.jobs.housekeeping ? (
                     <div>
-                      <p className="mb-1">
+                      <p className="mb-1 text-secondary">
                         <strong>Status:</strong>{" "}
                         <span
                           className={`badge bg-${
@@ -141,7 +141,7 @@ export default function AdminHousekeeping({ adminUser }) {
                 </div>
                 <div className="col-md-6">
                   <h6 className="text-secondary">Schedule</h6>
-                  <p className="mb-0">
+                  <p className="mb-0 text-secondary">
                     Housekeeping runs automatically every hour and on server
                     startup.
                   </p>
@@ -157,7 +157,7 @@ export default function AdminHousekeeping({ adminUser }) {
       {/* Manual Run Card */}
       <div className="card bg-mid-dark border-secondary mb-4">
         <div className="card-header border-secondary">
-          <h2 className="h5 mb-0">Manual Housekeeping</h2>
+          <h2 className="h5 mb-0 text-secondary">Manual Housekeeping</h2>
         </div>
         <div className="card-body">
           <p className="text-light mb-3">
@@ -278,11 +278,11 @@ export default function AdminHousekeeping({ adminUser }) {
       {/* Information Card */}
       <div className="card bg-mid-dark border-secondary mt-4">
         <div className="card-header border-secondary">
-          <h2 className="h5 mb-0">About Housekeeping</h2>
+          <h2 className="h5 mb-0 text-light">About Housekeeping</h2>
         </div>
         <div className="card-body">
           <h6 className="text-secondary">What does housekeeping do?</h6>
-          <ul className="mb-3">
+          <ul className="mb-3 text-secondary">
             <li>Removes threads that exceed the 100 thread limit per board</li>
             <li>
               Deletes orphaned images from R2 that are no longer referenced in
@@ -295,7 +295,7 @@ export default function AdminHousekeeping({ adminUser }) {
           </ul>
 
           <h6 className="text-secondary">When should I run it manually?</h6>
-          <ul className="mb-0">
+          <ul className="mb-0 text-secondary">
             <li>After database maintenance or migrations</li>
             <li>If you suspect orphaned files are taking up storage space</li>
             <li>

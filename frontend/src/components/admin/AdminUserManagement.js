@@ -424,7 +424,7 @@ export default function AdminUserManagement() {
                       <option value="moderator">Moderator</option>
                       <option value="admin">Admin</option>
                     </select>
-                    <div className="form-text text-light">
+                    <div className="form-text text-secondary">
                       <strong>Janitor:</strong> Can delete posts and threads
                       <br />
                       <strong>Moderator:</strong> Can manage bans and appeals
@@ -456,7 +456,7 @@ export default function AdminUserManagement() {
                         </option>
                       ))}
                     </select>
-                    <div className="form-text text-light">
+                    <div className="form-text text-secondary">
                       Hold Ctrl/Cmd to select multiple boards. Leave empty to
                       grant access to all boards.
                     </div>
