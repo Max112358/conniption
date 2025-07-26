@@ -256,7 +256,7 @@ export default function AdminUserManagement() {
                   {users.map((user) => (
                     <tr
                       key={user.id}
-                      className={!user.is_active ? "text-muted" : ""}
+                      className={!user.is_active ? "text-light" : ""}
                     >
                       <td>{user.id}</td>
                       <td>{user.username}</td>
@@ -314,7 +314,7 @@ export default function AdminUserManagement() {
             </div>
           ) : (
             <div className="text-center py-5">
-              <p className="text-muted mb-0">No admin users found</p>
+              <p className="text-light mb-0">No admin users found</p>
             </div>
           )}
         </div>
@@ -424,7 +424,7 @@ export default function AdminUserManagement() {
                       <option value="moderator">Moderator</option>
                       <option value="admin">Admin</option>
                     </select>
-                    <div className="form-text text-muted">
+                    <div className="form-text text-light">
                       <strong>Janitor:</strong> Can delete posts and threads
                       <br />
                       <strong>Moderator:</strong> Can manage bans and appeals
@@ -456,7 +456,7 @@ export default function AdminUserManagement() {
                         </option>
                       ))}
                     </select>
-                    <div className="form-text text-muted">
+                    <div className="form-text text-light">
                       Hold Ctrl/Cmd to select multiple boards. Leave empty to
                       grant access to all boards.
                     </div>

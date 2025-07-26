@@ -136,7 +136,7 @@ export default function AdminHousekeeping({ adminUser }) {
                       )}
                     </div>
                   ) : (
-                    <p className="text-muted">No job information available</p>
+                    <p className="text-light">No job information available</p>
                   )}
                 </div>
                 <div className="col-md-6">
@@ -149,7 +149,7 @@ export default function AdminHousekeeping({ adminUser }) {
               </div>
             </div>
           ) : (
-            <p className="text-muted">No status information available</p>
+            <p className="text-light">No status information available</p>
           )}
         </div>
       </div>
@@ -160,7 +160,7 @@ export default function AdminHousekeeping({ adminUser }) {
           <h2 className="h5 mb-0">Manual Housekeeping</h2>
         </div>
         <div className="card-body">
-          <p className="text-muted mb-3">
+          <p className="text-light mb-3">
             Manually trigger housekeeping to clean up orphaned files in R2 and
             remove excess threads.
           </p>
@@ -222,7 +222,7 @@ export default function AdminHousekeeping({ adminUser }) {
                     </div>
                   )
                 ) : (
-                  <p className="text-muted">No thread cleanup data</p>
+                  <p className="text-light">No thread cleanup data</p>
                 )}
               </div>
 
@@ -267,7 +267,7 @@ export default function AdminHousekeeping({ adminUser }) {
                     </div>
                   )
                 ) : (
-                  <p className="text-muted">No file cleanup data</p>
+                  <p className="text-light">No file cleanup data</p>
                 )}
               </div>
             </div>

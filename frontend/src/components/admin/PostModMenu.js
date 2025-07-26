@@ -472,7 +472,7 @@ export default function PostModMenu({
                     placeholder="Enter reason for color change..."
                     disabled={changingColor}
                   ></textarea>
-                  <div className="form-text text-muted">
+                  <div className="form-text text-secondary">
                     Providing a reason helps maintain transparency in
                     moderation.
                   </div>

@@ -242,7 +242,7 @@ export default function BanManagement() {
       {/* Bans List */}
       <div className="card bg-mid-dark border-secondary">
         <div className="card-header border-secondary">
-          <h2 className="h5 mb-0">Bans List</h2>
+          <h2 className="h5 mb-0 text-light">Bans List</h2>
         </div>
         <div className="card-body p-0">
           {loading ? (
@@ -345,7 +345,7 @@ export default function BanManagement() {
             </div>
           ) : (
             <div className="text-center py-5">
-              <p className="text-muted mb-0">No bans found</p>
+              <p className="text-secondary mb-0">No bans found</p>
             </div>
           )}
         </div>
