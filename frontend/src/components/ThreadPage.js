@@ -54,6 +54,18 @@ function ThreadPage() {
   const postsRef = useRef(posts);
   const replyFormRef = useRef(null);
 
+  // Store stable references to params
+  const boardIdRef = useRef(boardId);
+  const threadIdRef = useRef(threadId);
+  const navigateRef = useRef(navigate);
+
+  // Update refs when values change
+  useEffect(() => {
+    boardIdRef.current = boardId;
+    threadIdRef.current = threadId;
+    navigateRef.current = navigate;
+  }, [boardId, threadId, navigate]);
+
   const { togglePostHidden, toggleUserHidden, isPostHidden, isUserHidden } =
     useHideManager();
 
@@ -196,7 +208,7 @@ function ThreadPage() {
     async (isSocketUpdate = false) => {
       try {
         const response = await fetch(
-          `${API_BASE_URL}/api/boards/${boardId}/threads/${threadId}/posts?includeSurveys=true`
+          `${API_BASE_URL}/api/boards/${boardIdRef.current}/threads/${threadIdRef.current}/posts?includeSurveys=true`
         );
 
         if (!response.ok) {
@@ -273,7 +285,7 @@ function ThreadPage() {
         return false;
       }
     },
-    [boardId, threadId, checkBanStatus]
+    [checkBanStatus]
   );
 
   // Combined fetch function
@@ -309,24 +321,24 @@ function ThreadPage() {
     fetchData();
   }, [fetchData]);
 
-  // Socket event handlers
+  // Create stable socket event handlers using refs
   const handlePostCreated = useCallback(
     (data) => {
       if (
-        data.boardId === boardId &&
-        data.threadId === parseInt(threadId, 10)
+        data.boardId === boardIdRef.current &&
+        data.threadId === parseInt(threadIdRef.current, 10)
       ) {
         fetchPosts(true);
       }
     },
-    [boardId, threadId, fetchPosts]
+    [fetchPosts]
   );
 
   const handlePostDeleted = useCallback(
     (data) => {
       if (
-        data.boardId === boardId &&
-        data.threadId === parseInt(threadId, 10)
+        data.boardId === boardIdRef.current &&
+        data.threadId === parseInt(threadIdRef.current, 10)
       ) {
         // Remove the deleted post from the UI
         setPosts((currentPosts) =>
@@ -336,76 +348,64 @@ function ThreadPage() {
         removeOwnPost(data.postId);
       }
     },
-    [boardId, threadId, removeOwnPost]
+    [removeOwnPost]
   );
 
-  const handleThreadDeleted = useCallback(
-    (data) => {
-      if (
-        data.boardId === boardId &&
-        data.threadId === parseInt(threadId, 10)
-      ) {
-        // Thread has been deleted, redirect to board
-        navigate(`/board/${boardId}`);
-      }
-    },
-    [boardId, threadId, navigate]
-  );
+  const handleThreadDeleted = useCallback((data) => {
+    if (
+      data.boardId === boardIdRef.current &&
+      data.threadId === parseInt(threadIdRef.current, 10)
+    ) {
+      // Thread has been deleted, redirect to board
+      navigateRef.current(`/board/${boardIdRef.current}`);
+    }
+  }, []);
 
-  const handlePostColorChanged = useCallback(
-    (data) => {
-      if (
-        data.boardId === boardId &&
-        data.threadId === parseInt(threadId, 10)
-      ) {
-        // Update the post color in the UI
-        setPosts((currentPosts) =>
-          currentPosts.map((p) =>
-            p.id === data.postId ? { ...p, color: data.color } : p
-          )
-        );
-      }
-    },
-    [boardId, threadId]
-  );
+  const handlePostColorChanged = useCallback((data) => {
+    if (
+      data.boardId === boardIdRef.current &&
+      data.threadId === parseInt(threadIdRef.current, 10)
+    ) {
+      // Update the post color in the UI
+      setPosts((currentPosts) =>
+        currentPosts.map((p) =>
+          p.id === data.postId ? { ...p, color: data.color } : p
+        )
+      );
+    }
+  }, []);
 
-  const handleThreadStickyUpdated = useCallback(
-    (data) => {
-      if (
-        data.boardId === boardId &&
-        data.threadId === parseInt(threadId, 10)
-      ) {
-        // Update the thread sticky status
-        setThread((currentThread) =>
-          currentThread
-            ? { ...currentThread, is_sticky: data.isSticky }
-            : currentThread
-        );
-      }
-    },
-    [boardId, threadId]
-  );
+  const handleThreadStickyUpdated = useCallback((data) => {
+    if (
+      data.boardId === boardIdRef.current &&
+      data.threadId === parseInt(threadIdRef.current, 10)
+    ) {
+      // Update the thread sticky status
+      setThread((currentThread) =>
+        currentThread
+          ? { ...currentThread, is_sticky: data.isSticky }
+          : currentThread
+      );
+    }
+  }, []);
 
-  const handleThreadDied = useCallback(
-    (data) => {
-      if (
-        data.boardId === boardId &&
-        data.threadId === parseInt(threadId, 10)
-      ) {
-        // Mark the thread as dead
-        setThreadDead(true);
-        setThreadDiedAt(data.diedAt);
-        setThread((currentThread) =>
-          currentThread
-            ? { ...currentThread, is_dead: true, died_at: data.diedAt }
-            : currentThread
-        );
-        // Hide reply form if it's open
-        setShowReplyForm(false);
-      }
-    },
-    [boardId, threadId]
-  );
+  const handleThreadDied = useCallback((data) => {
+    if (
+      data.boardId === boardIdRef.current &&
+      data.threadId === parseInt(threadIdRef.current, 10)
+    ) {
+      // Mark the thread as dead
+      setThreadDead(true);
+      setThreadDiedAt(data.diedAt);
+      setThread((currentThread) =>
+        currentThread
+          ? { ...currentThread, is_dead: true, died_at: data.diedAt }
+          : currentThread
+      );
+      // Hide reply form if it's open
+      setShowReplyForm(false);
+    }
+  }, []);
 
   const handleStickyChanged = useCallback((threadId, isSticky) => {
     // Update the thread sticky status locally
@@ -414,27 +414,17 @@ function ThreadPage() {
     );
   }, []);
 
-  // Socket configuration
-  const socketConfig = useMemo(
+  // Create stable socket events object
+  const socketEvents = useMemo(
     () => ({
-      room: `${boardId}-${threadId}`,
-      enabled: !loading && !error && !threadNotFound && !banned,
-      events: {
-        post_created: handlePostCreated,
-        post_deleted: handlePostDeleted,
-        thread_deleted: handleThreadDeleted,
-        post_color_changed: handlePostColorChanged,
-        thread_sticky_updated: handleThreadStickyUpdated,
-        thread_died: handleThreadDied,
-      },
+      post_created: handlePostCreated,
+      post_deleted: handlePostDeleted,
+      thread_deleted: handleThreadDeleted,
+      post_color_changed: handlePostColorChanged,
+      thread_sticky_updated: handleThreadStickyUpdated,
+      thread_died: handleThreadDied,
     }),
     [
-      boardId,
-      threadId,
-      loading,
-      error,
-      threadNotFound,
-      banned,
       handlePostCreated,
       handlePostDeleted,
       handleThreadDeleted,
@@ -442,6 +432,26 @@ function ThreadPage() {
       handleThreadStickyUpdated,
       handleThreadDied,
     ]
+  );
+
+  // Create stable socket config
+  const socketRoom = useMemo(
+    () => `${boardId}-${threadId}`,
+    [boardId, threadId]
+  );
+  const socketEnabled = useMemo(
+    () => !loading && !error && !threadNotFound && !banned,
+    [loading, error, threadNotFound, banned]
+  );
+
+  // Socket configuration - now properly memoized
+  const socketConfig = useMemo(
+    () => ({
+      room: socketRoom,
+      enabled: socketEnabled,
+      events: socketEvents,
+    }),
+    [socketRoom, socketEnabled, socketEvents]
   );
 
   const { isConnected } = useSocket(socketConfig);
