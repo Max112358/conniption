@@ -19,6 +19,17 @@ function useSocket({ room, enabled = true, events = {} }) {
   const reconnectAttempts = useRef(0);
   const maxReconnectAttempts = 3;
 
+  // Store event handlers in a ref
+  const eventHandlersRef = useRef(events);
+
+  // Update event handlers ref when they change
+  useEffect(() => {
+    eventHandlersRef.current = events;
+  }, [events]);
+
+  // Create stable event handler wrappers that always call the latest version
+  const stableEventHandlers = useRef({});
+
   // Memoize the event handler to prevent unnecessary re-renders
   const handleConnect = useCallback(() => {
     console.log(`Socket connected to room: ${room}`);
@@ -60,6 +71,7 @@ function useSocket({ room, enabled = true, events = {} }) {
     }
   }, []);
 
+  // Main effect - only depends on room and enabled
   useEffect(() => {
     // Skip if not enabled
     if (!enabled) {
@@ -82,20 +94,8 @@ function useSocket({ room, enabled = true, events = {} }) {
       return;
     }
 
-    // If we already have a connected socket for this room, just update handlers
+    // If we already have a connected socket for this room, don't recreate
     if (socketRef.current?.connected && currentRoom.current === room) {
-      // Remove old event handlers
-      Object.keys(events).forEach((event) => {
-        socketRef.current.off(event);
-      });
-
-      // Add new event handlers
-      Object.entries(events).forEach(([event, handler]) => {
-        if (handler && typeof handler === "function") {
-          socketRef.current.on(event, handler);
-        }
-      });
-
       return;
     }
 
@@ -143,11 +143,16 @@ function useSocket({ room, enabled = true, events = {} }) {
     socket.on("disconnect", handleDisconnect);
     socket.on("connect_error", handleConnectError);
 
-    // Attach custom event handlers
-    Object.entries(events).forEach(([event, handler]) => {
-      if (handler && typeof handler === "function") {
-        socket.on(event, handler);
-      }
+    // Create stable wrappers for custom events that always call the latest handler
+    Object.keys(eventHandlersRef.current).forEach((eventName) => {
+      const stableHandler = (...args) => {
+        const currentHandler = eventHandlersRef.current[eventName];
+        if (currentHandler && typeof currentHandler === "function") {
+          currentHandler(...args);
+        }
+      };
+      stableEventHandlers.current[eventName] = stableHandler;
+      socket.on(eventName, stableHandler);
     });
 
     // Cleanup function
@@ -165,9 +170,11 @@ function useSocket({ room, enabled = true, events = {} }) {
       socket.off("connect_error", handleConnectError);
 
       // Remove custom event handlers
-      Object.keys(events).forEach((event) => {
-        socket.off(event);
-      });
+      Object.entries(stableEventHandlers.current).forEach(
+        ([eventName, handler]) => {
+          socket.off(eventName, handler);
+        }
+      );
 
       // Disconnect socket
       socket.disconnect();
@@ -178,16 +185,10 @@ function useSocket({ room, enabled = true, events = {} }) {
         currentRoom.current = null;
         isConnecting.current = false;
         reconnectAttempts.current = 0;
+        stableEventHandlers.current = {};
       }
     };
-  }, [
-    room,
-    enabled,
-    events,
-    handleConnect,
-    handleDisconnect,
-    handleConnectError,
-  ]);
+  }, [room, enabled, handleConnect, handleDisconnect, handleConnectError]);
 
   return { isConnected, socket: socketRef.current };
 }
