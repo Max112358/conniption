@@ -1,4 +1,4 @@
-// backend/routes/threads.test.js
+// routes/threads.test.js
 const request = require("supertest");
 const express = require("express");
 const threadsRouter = require("./threads");
@@ -43,6 +43,40 @@ jest.mock("../utils/socketHandler", () => ({
 }));
 jest.mock("../utils/getClientIp", () => () => "127.0.0.1");
 jest.mock("../middleware/banCheck", () => (req, res, next) => next());
+jest.mock("../middleware/security", () => ({
+  postCreationLimiter: (req, res, next) => next(),
+  uploadLimiter: (req, res, next) => next(),
+  validateContent: (req, res, next) => next(),
+}));
+jest.mock("../middleware/statsTracking", () => ({
+  trackPostCreation: (req, res, next) => {
+    res.locals.trackPost = jest.fn();
+    next();
+  },
+}));
+jest.mock("../middleware/validators", () => ({
+  validateBoard: (req, res, next) => {
+    // Mock validation - check if boardId is valid format
+    const { boardId } = req.params;
+    if (!boardId || boardId.length < 2) {
+      return res.status(400).json({
+        error: "Validation failed",
+        details: [{ field: "boardId", message: "Invalid board ID" }],
+      });
+    }
+    next();
+  },
+  validateThread: (req, res, next) => {
+    const { threadId } = req.params;
+    if (!threadId || isNaN(threadId)) {
+      return res.status(400).json({
+        error: "Validation failed",
+        details: [{ field: "threadId", message: "Invalid thread ID" }],
+      });
+    }
+    next();
+  },
+}));
 jest.mock("./posts", () => require("express").Router());
 
 describe("Thread Routes", () => {
@@ -95,6 +129,13 @@ describe("Thread Routes", () => {
       expect(threadModel.getThreadsByBoardId).toHaveBeenCalledWith("tech");
     });
 
+    it("should return 400 when board ID is invalid", async () => {
+      const response = await request(app).get("/api/boards/x/threads");
+
+      expect(response.status).toBe(400);
+      expect(response.body).toHaveProperty("error", "Validation failed");
+    });
+
     it("should return 404 when board not found", async () => {
       boardModel.getBoardById.mockResolvedValue(null);
 
@@ -120,6 +161,7 @@ describe("Thread Routes", () => {
       threadModel.createThread.mockResolvedValue({
         threadId: 123,
         boardId: "tech",
+        postId: 456,
       });
 
       const response = await request(app)
@@ -154,9 +196,14 @@ describe("Thread Routes", () => {
         });
 
       expect(response.status).toBe(400);
-      expect(response.body).toHaveProperty(
-        "error",
-        "Topic and content are required"
+      expect(response.body).toHaveProperty("error", "Validation failed");
+      expect(response.body.details).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            field: "content",
+            message: "Content is required",
+          }),
+        ])
       );
     });
 
@@ -170,10 +217,25 @@ describe("Thread Routes", () => {
         });
 
       expect(response.status).toBe(400);
-      expect(response.body).toHaveProperty(
-        "error",
-        "Image or video is required"
+      expect(response.body).toHaveProperty("error", "Validation failed");
+      expect(response.body.details).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            field: "image",
+            message: "Image or video file is required for new threads",
+          }),
+        ])
       );
+    });
+
+    it("should return 400 when board ID is invalid", async () => {
+      const response = await request(app).post("/api/boards/x/threads").send({
+        topic: "New Thread Topic",
+        content: "This is the first post content",
+      });
+
+      expect(response.status).toBe(400);
+      expect(response.body).toHaveProperty("error", "Validation failed");
     });
 
     it("should return 404 when board not found", async () => {

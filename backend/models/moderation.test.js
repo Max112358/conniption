@@ -13,6 +13,9 @@ jest.mock("../config/database", () => ({
 jest.mock("../utils/fileUtils", () => ({
   deleteFile: jest.fn(),
 }));
+jest.mock("./ipActionHistory", () => ({
+  recordAction: jest.fn().mockResolvedValue({}),
+}));
 
 describe("Moderation Model", () => {
   let mockClient;
@@ -23,6 +26,7 @@ describe("Moderation Model", () => {
       release: jest.fn(),
     };
     pool.connect.mockResolvedValue(mockClient);
+    pool.query.mockClear();
     jest.clearAllMocks();
   });
 
@@ -104,6 +108,7 @@ describe("Moderation Model", () => {
         reason: "Inappropriate content",
         ip_address: "192.168.1.1",
         admin_user_id: 1,
+        admin_username: "admin",
       };
 
       mockClient.query
@@ -133,6 +138,7 @@ describe("Moderation Model", () => {
         board_id: "tech",
         reason: "Test",
         admin_user_id: 1,
+        admin_username: "admin",
       };
 
       mockClient.query
@@ -153,6 +159,7 @@ describe("Moderation Model", () => {
         reason: "Test",
         ip_address: "192.168.1.1",
         admin_user_id: 1,
+        admin_username: "admin",
       };
 
       mockClient.query
@@ -182,6 +189,7 @@ describe("Moderation Model", () => {
         board_id: "tech",
         reason: "Spam",
         admin_user_id: 1,
+        admin_username: "admin",
       };
 
       mockClient.query
@@ -219,6 +227,7 @@ describe("Moderation Model", () => {
         board_id: "tech",
         reason: "Test",
         admin_user_id: 1,
+        admin_username: "admin",
       };
 
       mockClient.query
@@ -243,6 +252,7 @@ describe("Moderation Model", () => {
         reason: "Fix typo",
         ip_address: "192.168.1.1",
         admin_user_id: 1,
+        admin_username: "admin",
       };
 
       const mockPost = {
@@ -255,6 +265,9 @@ describe("Moderation Model", () => {
 
       mockClient.query
         .mockResolvedValueOnce(undefined) // BEGIN
+        .mockResolvedValueOnce({
+          rows: [{ content: "Original content", ip_address: "192.168.1.1" }],
+        }) // SELECT original post
         .mockResolvedValueOnce({ rows: [mockPost] }) // UPDATE post
         .mockResolvedValueOnce(undefined) // INSERT moderation_action
         .mockResolvedValueOnce(undefined); // COMMIT
@@ -274,11 +287,12 @@ describe("Moderation Model", () => {
         content: "New content",
         reason: "Test",
         admin_user_id: 1,
+        admin_username: "admin",
       };
 
       mockClient.query
         .mockResolvedValueOnce(undefined) // BEGIN
-        .mockResolvedValueOnce({ rows: [] }) // UPDATE post (not found)
+        .mockResolvedValueOnce({ rows: [] }) // SELECT original post (not found)
         .mockResolvedValueOnce(undefined); // ROLLBACK
 
       const result = await moderationModel.editPost(editData);
@@ -297,6 +311,7 @@ describe("Moderation Model", () => {
         color: "red",
         reason: "Highlight",
         admin_user_id: 1,
+        admin_username: "admin",
       };
 
       const mockPost = {

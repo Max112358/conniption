@@ -149,15 +149,15 @@ describe("Housekeeping Service", () => {
             { board_id: "gaming", thread_count: "102" },
           ],
         }) // SELECT boards with >100 threads
-        .mockResolvedValueOnce({ rowCount: 5 }) // DELETE tech threads
-        .mockResolvedValueOnce({ rowCount: 2 }) // DELETE gaming threads
+        .mockResolvedValueOnce({ rowCount: 5 }) // UPDATE tech threads
+        .mockResolvedValueOnce({ rowCount: 2 }) // UPDATE gaming threads
         .mockResolvedValueOnce(undefined); // COMMIT
 
       const result = await housekeepingService.cleanupExcessThreads();
 
       expect(result).toEqual({
         boardsChecked: 2,
-        threadsDeleted: 7,
+        threadsMarkedDead: 7,
       });
       expect(mockClient.query).toHaveBeenCalledWith("BEGIN");
       expect(mockClient.query).toHaveBeenCalledWith("COMMIT");
@@ -180,7 +180,7 @@ describe("Housekeeping Service", () => {
 
       expect(result).toEqual({
         boardsChecked: 0,
-        threadsDeleted: 0,
+        threadsMarkedDead: 0,
       });
     });
 
@@ -309,11 +309,32 @@ describe("Housekeeping Service", () => {
 
   describe("runAllTasks", () => {
     it("should run all housekeeping tasks", async () => {
-      // Mock both cleanup functions
+      // Mock all cleanup functions
       housekeepingService.cleanupExcessThreads = jest.fn().mockResolvedValue({
         boardsChecked: 2,
-        threadsDeleted: 5,
+        threadsMarkedDead: 5,
       });
+
+      housekeepingService.cleanupExpiredDeadThreads = jest
+        .fn()
+        .mockResolvedValue({
+          threadsDeleted: 3,
+          duration: 100,
+        });
+
+      housekeepingService.cleanupOrphanedSurveys = jest.fn().mockResolvedValue({
+        surveysDeleted: 2,
+      });
+
+      housekeepingService.cleanupExpiredSessions = jest.fn().mockResolvedValue({
+        sessionsDeleted: 4,
+      });
+
+      housekeepingService.cleanupOldModerationLogs = jest
+        .fn()
+        .mockResolvedValue({
+          logsDeleted: 10,
+        });
 
       housekeepingService.cleanupOrphanedFiles = jest.fn().mockResolvedValue({
         totalFiles: 10,
@@ -326,7 +347,20 @@ describe("Housekeeping Service", () => {
       expect(result.timestamp).toBeDefined();
       expect(result.tasks.threadCleanup).toEqual({
         boardsChecked: 2,
-        threadsDeleted: 5,
+        threadsMarkedDead: 5,
+      });
+      expect(result.tasks.expiredDeadThreadCleanup).toEqual({
+        threadsDeleted: 3,
+        duration: 100,
+      });
+      expect(result.tasks.orphanedSurveyCleanup).toEqual({
+        surveysDeleted: 2,
+      });
+      expect(result.tasks.expiredSessionCleanup).toEqual({
+        sessionsDeleted: 4,
+      });
+      expect(result.tasks.oldModerationLogCleanup).toEqual({
+        logsDeleted: 10,
       });
       expect(result.tasks.fileCleanup).toEqual({
         totalFiles: 10,
@@ -340,6 +374,22 @@ describe("Housekeeping Service", () => {
         .fn()
         .mockRejectedValue(new Error("Thread cleanup failed"));
 
+      housekeepingService.cleanupExpiredDeadThreads = jest
+        .fn()
+        .mockRejectedValue(new Error("Expired thread cleanup failed"));
+
+      housekeepingService.cleanupOrphanedSurveys = jest
+        .fn()
+        .mockRejectedValue(new Error("Survey cleanup failed"));
+
+      housekeepingService.cleanupExpiredSessions = jest
+        .fn()
+        .mockRejectedValue(new Error("Session cleanup failed"));
+
+      housekeepingService.cleanupOldModerationLogs = jest
+        .fn()
+        .mockRejectedValue(new Error("Log cleanup failed"));
+
       housekeepingService.cleanupOrphanedFiles = jest.fn().mockResolvedValue({
         totalFiles: 5,
         deletedFiles: 2,
@@ -349,6 +399,18 @@ describe("Housekeeping Service", () => {
 
       expect(result.tasks.threadCleanup).toEqual({
         error: "Thread cleanup failed",
+      });
+      expect(result.tasks.expiredDeadThreadCleanup).toEqual({
+        error: "Expired thread cleanup failed",
+      });
+      expect(result.tasks.orphanedSurveyCleanup).toEqual({
+        error: "Survey cleanup failed",
+      });
+      expect(result.tasks.expiredSessionCleanup).toEqual({
+        error: "Session cleanup failed",
+      });
+      expect(result.tasks.oldModerationLogCleanup).toEqual({
+        error: "Log cleanup failed",
       });
       expect(result.tasks.fileCleanup).toEqual({
         totalFiles: 5,

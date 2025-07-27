@@ -17,6 +17,24 @@ jest.mock("../../middleware/adminAuth", () => ({
     }
   },
 }));
+jest.mock("../../config/database", () => ({
+  pool: {
+    query: jest.fn(),
+  },
+}));
+jest.mock("../../utils/getClientIp", () => () => "127.0.0.1");
+jest.mock("../../middleware/security", () => ({
+  validatePassword: () => ({ valid: true }),
+}));
+
+// Mock CSRF middleware to bypass in tests
+jest.mock("../../middleware/csrfProtection", () => ({
+  csrfProtection: (req, res, next) => next(),
+  sendCSRFToken: (req, res, next) => {
+    res.locals.csrfToken = "test-csrf-token";
+    next();
+  },
+}));
 
 describe("Admin Auth Routes", () => {
   let app;
@@ -47,7 +65,11 @@ describe("Admin Auth Routes", () => {
         email: "admin@test.com",
         role: "admin",
         boards: [],
+        is_locked: false,
       });
+
+      const { pool } = require("../../config/database");
+      pool.query.mockResolvedValue({ rows: [] });
 
       const response = await request(app).post("/api/admin/login").send({
         username: "admin",
@@ -68,6 +90,9 @@ describe("Admin Auth Routes", () => {
     });
 
     it("should return 400 when username is missing", async () => {
+      const { pool } = require("../../config/database");
+      pool.query.mockResolvedValue({ rows: [] });
+
       const response = await request(app).post("/api/admin/login").send({
         password: "password123",
       });
@@ -81,6 +106,9 @@ describe("Admin Auth Routes", () => {
     });
 
     it("should return 400 when password is missing", async () => {
+      const { pool } = require("../../config/database");
+      pool.query.mockResolvedValue({ rows: [] });
+
       const response = await request(app).post("/api/admin/login").send({
         username: "admin",
       });
@@ -92,6 +120,9 @@ describe("Admin Auth Routes", () => {
     it("should return 401 when credentials are invalid", async () => {
       adminModel.authenticateAdmin.mockResolvedValue(null);
 
+      const { pool } = require("../../config/database");
+      pool.query.mockResolvedValue({ rows: [] });
+
       const response = await request(app).post("/api/admin/login").send({
         username: "admin",
         password: "wrongpassword",
@@ -99,6 +130,31 @@ describe("Admin Auth Routes", () => {
 
       expect(response.status).toBe(401);
       expect(response.body).toHaveProperty("error", "Invalid credentials");
+    });
+
+    it("should return 403 when account is locked", async () => {
+      adminModel.authenticateAdmin.mockResolvedValue({
+        id: 1,
+        username: "admin",
+        email: "admin@test.com",
+        role: "admin",
+        boards: [],
+        is_locked: true,
+      });
+
+      const { pool } = require("../../config/database");
+      pool.query.mockResolvedValue({ rows: [] });
+
+      const response = await request(app).post("/api/admin/login").send({
+        username: "admin",
+        password: "password123",
+      });
+
+      expect(response.status).toBe(403);
+      expect(response.body).toHaveProperty(
+        "error",
+        "Account is locked. Please contact an administrator."
+      );
     });
 
     it("should handle database errors", async () => {
@@ -126,7 +182,11 @@ describe("Admin Auth Routes", () => {
         email: "admin@test.com",
         role: "admin",
         boards: [],
+        is_locked: false,
       });
+
+      const { pool } = require("../../config/database");
+      pool.query.mockResolvedValue({ rows: [] });
 
       await agent.post("/api/admin/login").send({
         username: "admin",
@@ -162,7 +222,11 @@ describe("Admin Auth Routes", () => {
         email: "admin@test.com",
         role: "admin",
         boards: [],
+        is_locked: false,
       });
+
+      const { pool } = require("../../config/database");
+      pool.query.mockResolvedValue({ rows: [] });
 
       await agent.post("/api/admin/login").send({
         username: "admin",
@@ -206,7 +270,11 @@ describe("Admin Auth Routes", () => {
         email: "admin@test.com",
         role: "admin",
         boards: [],
+        is_locked: false,
       });
+
+      const { pool } = require("../../config/database");
+      pool.query.mockResolvedValue({ rows: [] });
 
       await agent.post("/api/admin/login").send({
         username: "admin",
@@ -234,7 +302,11 @@ describe("Admin Auth Routes", () => {
         email: "admin@test.com",
         role: "admin",
         boards: [],
+        is_locked: false,
       });
+
+      const { pool } = require("../../config/database");
+      pool.query.mockResolvedValue({ rows: [] });
 
       await agent.post("/api/admin/login").send({
         username: "admin",
@@ -275,7 +347,11 @@ describe("Admin Auth Routes", () => {
         email: "admin@test.com",
         role: "admin",
         boards: [],
+        is_locked: false,
       });
+
+      const { pool } = require("../../config/database");
+      pool.query.mockResolvedValue({ rows: [] });
 
       await agent.post("/api/admin/login").send({
         username: "admin",
@@ -315,7 +391,11 @@ describe("Admin Auth Routes", () => {
         email: "admin@test.com",
         role: "admin",
         boards: [],
+        is_locked: false,
       });
+
+      const { pool } = require("../../config/database");
+      pool.query.mockResolvedValue({ rows: [] });
 
       await agent.post("/api/admin/login").send({
         username: "admin",
@@ -351,7 +431,11 @@ describe("Admin Auth Routes", () => {
         email: "admin@test.com",
         role: "admin",
         boards: [],
+        is_locked: false,
       });
+
+      const { pool } = require("../../config/database");
+      pool.query.mockResolvedValue({ rows: [] });
 
       await agent.post("/api/admin/login").send({
         username: "admin",
@@ -367,6 +451,56 @@ describe("Admin Auth Routes", () => {
 
       expect(response.status).toBe(404);
       expect(response.body).toHaveProperty("error", "User not found");
+    });
+  });
+
+  describe("GET /api/admin/session-check", () => {
+    it("should return authenticated true when logged in", async () => {
+      const agent = request.agent(app);
+
+      // First login
+      adminModel.authenticateAdmin.mockResolvedValue({
+        id: 1,
+        username: "admin",
+        email: "admin@test.com",
+        role: "admin",
+        boards: [],
+        is_locked: false,
+      });
+
+      const { pool } = require("../../config/database");
+      pool.query.mockResolvedValue({ rows: [] });
+
+      await agent.post("/api/admin/login").send({
+        username: "admin",
+        password: "password123",
+      });
+
+      const response = await agent.get("/api/admin/session-check");
+
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty("authenticated", true);
+      expect(response.body).toHaveProperty("user");
+    });
+
+    it("should return authenticated false when not logged in", async () => {
+      const response = await request(app).get("/api/admin/session-check");
+
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty("authenticated", false);
+    });
+  });
+
+  describe("GET /api/admin/csrf-token", () => {
+    it("should return CSRF token", async () => {
+      const response = await request(app).get("/api/admin/csrf-token");
+
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty("csrfToken", "test-csrf-token");
+      expect(response.body).toHaveProperty(
+        "message",
+        "Include this token in your requests"
+      );
     });
   });
 });

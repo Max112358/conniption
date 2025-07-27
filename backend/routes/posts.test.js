@@ -6,12 +6,14 @@ const postModel = require("../models/post");
 const threadModel = require("../models/thread");
 const boardModel = require("../models/board");
 const banModel = require("../models/ban");
+const surveyModel = require("../models/survey");
 
 // Mock dependencies
 jest.mock("../models/post");
 jest.mock("../models/thread");
 jest.mock("../models/board");
 jest.mock("../models/ban");
+jest.mock("../models/survey");
 jest.mock("../config/database", () => ({
   pool: {
     query: jest.fn(),
@@ -24,15 +26,18 @@ jest.mock("../config/database", () => ({
 jest.mock("../middleware/upload", () => ({
   uploadWithUrlTransform: () => [
     (req, res, next) => {
-      // Mock file upload if specified in test
-      if (req.headers["x-test-file"]) {
+      // Check if test wants to simulate no file
+      if (req.headers["x-test-no-file"] === "true") {
+        next();
+      } else {
+        // Mock file upload
         req.file = {
           location: "https://test.r2.dev/test-image.jpg",
           fileType: "image",
           size: 1024,
         };
+        next();
       }
-      next();
     },
   ],
 }));
@@ -44,6 +49,22 @@ jest.mock("../utils/socketHandler", () => ({
 }));
 jest.mock("../utils/getClientIp", () => () => "127.0.0.1");
 jest.mock("../middleware/banCheck", () => (req, res, next) => next());
+jest.mock("../middleware/security", () => ({
+  postCreationLimiter: (req, res, next) => next(),
+  uploadLimiter: (req, res, next) => next(),
+  validateContent: (req, res, next) => next(),
+}));
+jest.mock("../middleware/statsTracking", () => ({
+  trackPostCreation: (req, res, next) => {
+    res.locals.trackPost = jest.fn();
+    next();
+  },
+}));
+jest.mock("../middleware/validators", () => ({
+  validateThread: (req, res, next) => next(),
+  validatePost: (req, res, next) => next(),
+  createSurvey: (req, res, next) => next(),
+}));
 
 describe("Post Routes", () => {
   let app;
@@ -61,10 +82,12 @@ describe("Post Routes", () => {
         id: 123,
         board_id: "tech",
         topic: "Test Thread",
+        is_dead: false,
+        died_at: null,
+        post_count: 2,
       });
 
       // Mock the getPostsByThreadId to return posts without survey info
-      // The actual implementation adds survey info, but for this test we mock the final result
       postModel.getPostsByThreadId.mockResolvedValue([
         {
           id: 1,
@@ -91,6 +114,9 @@ describe("Post Routes", () => {
       // Mock getBansByPostId for each post
       banModel.getBansByPostId.mockResolvedValue([]);
 
+      // Mock getSurveysByPostIds to return empty array (no surveys)
+      surveyModel.getSurveysByPostIds.mockResolvedValue([]);
+
       const response = await request(app).get(
         "/api/boards/tech/threads/123/posts"
       );
@@ -99,6 +125,8 @@ describe("Post Routes", () => {
       expect(response.body).toHaveProperty("posts");
       expect(response.body.posts).toHaveLength(2);
       expect(response.body.posts[0]).toHaveProperty("isBanned", false);
+      expect(response.body).toHaveProperty("thread");
+      expect(response.body.thread).toHaveProperty("is_dead", false);
       expect(threadModel.getThreadById).toHaveBeenCalledWith("123", "tech");
       expect(postModel.getPostsByThreadId).toHaveBeenCalledWith("123", "tech");
     });
@@ -108,6 +136,8 @@ describe("Post Routes", () => {
         id: 123,
         board_id: "tech",
         topic: "Test Thread",
+        is_dead: false,
+        post_count: 1,
       });
 
       postModel.getPostsByThreadId.mockResolvedValue([
@@ -126,6 +156,9 @@ describe("Post Routes", () => {
           expires_at: null,
         },
       ]);
+
+      // Mock getSurveysByPostIds to return empty array (no surveys)
+      surveyModel.getSurveysByPostIds.mockResolvedValue([]);
 
       const response = await request(app).get(
         "/api/boards/tech/threads/123/posts"
@@ -156,6 +189,8 @@ describe("Post Routes", () => {
         board_id: "tech",
         topic: "Test Thread",
         thread_salt: "random-salt",
+        is_dead: false,
+        post_count: 10,
       });
 
       boardModel.getBoardById.mockResolvedValue({
@@ -173,6 +208,7 @@ describe("Post Routes", () => {
 
       const response = await request(app)
         .post("/api/boards/tech/threads/123/posts")
+        .set("x-test-no-file", "true") // Tell mock to not include file
         .send({ content: "This is a new post" });
 
       expect(response.status).toBe(201);
@@ -181,6 +217,8 @@ describe("Post Routes", () => {
         "Post created successfully"
       );
       expect(response.body).toHaveProperty("postId", 456);
+
+      // Updated expectation to match the new function signature
       expect(postModel.createPost).toHaveBeenCalledWith(
         "123",
         "tech",
@@ -191,7 +229,9 @@ describe("Post Routes", () => {
           thread_ids_enabled: true,
           country_flags_enabled: true,
         }),
-        "random-salt"
+        "random-salt",
+        false, // is_dead
+        false // dont_bump
       );
     });
 
@@ -201,6 +241,8 @@ describe("Post Routes", () => {
         board_id: "tech",
         topic: "Test Thread",
         thread_salt: "random-salt",
+        is_dead: false,
+        post_count: 5,
       });
 
       boardModel.getBoardById.mockResolvedValue({
@@ -228,8 +270,13 @@ describe("Post Routes", () => {
         "Post with image",
         "https://test.r2.dev/test-image.jpg",
         "127.0.0.1",
-        expect.any(Object),
-        "random-salt"
+        expect.objectContaining({
+          thread_ids_enabled: false,
+          country_flags_enabled: false,
+        }),
+        "random-salt",
+        false, // is_dead
+        false // dont_bump
       );
     });
 
@@ -239,6 +286,8 @@ describe("Post Routes", () => {
         board_id: "tech",
         topic: "Test Thread",
         thread_salt: "random-salt",
+        is_dead: false,
+        post_count: 3,
       });
 
       boardModel.getBoardById.mockResolvedValue({
@@ -266,14 +315,20 @@ describe("Post Routes", () => {
         "", // Empty string for content
         "https://test.r2.dev/test-image.jpg",
         "127.0.0.1",
-        expect.any(Object),
-        "random-salt"
+        expect.objectContaining({
+          thread_ids_enabled: false,
+          country_flags_enabled: false,
+        }),
+        "random-salt",
+        false, // is_dead
+        false // dont_bump
       );
     });
 
     it("should return 400 when neither content nor image provided", async () => {
       const response = await request(app)
         .post("/api/boards/tech/threads/123/posts")
+        .set("x-test-no-file", "true") // Tell mock to not include file
         .send({}); // No content and no file
 
       expect(response.status).toBe(400);
@@ -299,6 +354,7 @@ describe("Post Routes", () => {
         id: 123,
         board_id: "tech",
         topic: "Test Thread",
+        is_dead: false,
       });
 
       boardModel.getBoardById.mockResolvedValue(null);
@@ -309,6 +365,26 @@ describe("Post Routes", () => {
 
       expect(response.status).toBe(404);
       expect(response.body).toHaveProperty("error", "Board not found");
+    });
+
+    it("should return 403 when thread is dead", async () => {
+      threadModel.getThreadById.mockResolvedValue({
+        id: 123,
+        board_id: "tech",
+        topic: "Test Thread",
+        is_dead: true,
+        died_at: new Date(),
+      });
+
+      const response = await request(app)
+        .post("/api/boards/tech/threads/123/posts")
+        .send({ content: "New post" });
+
+      expect(response.status).toBe(403);
+      expect(response.body).toHaveProperty(
+        "error",
+        "This thread has been archived and no longer accepts new posts"
+      );
     });
   });
 

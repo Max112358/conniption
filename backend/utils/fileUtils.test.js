@@ -30,7 +30,7 @@ describe("File Utils", () => {
   describe("deleteFile", () => {
     it("should delete file from R2 successfully", async () => {
       const { DeleteObjectCommand } = require("@aws-sdk/client-s3");
-      const fileUrl = "https://test.r2.dev/image.jpg";
+      const fileUrl = "https://test.r2.dev/1234567890-0987654321.jpg";
 
       s3Client.send.mockResolvedValue({});
 
@@ -39,19 +39,19 @@ describe("File Utils", () => {
       expect(result).toBe(true);
       expect(DeleteObjectCommand).toHaveBeenCalledWith({
         Bucket: "test-bucket",
-        Key: "image.jpg",
+        Key: "1234567890-0987654321.jpg",
       });
       expect(s3Client.send).toHaveBeenCalled();
       expect(console.log).toHaveBeenCalledWith(
-        "Deleting file from R2: image.jpg"
+        "Deleting file from R2: 1234567890-0987654321.jpg"
       );
       expect(console.log).toHaveBeenCalledWith(
-        "File deleted successfully from R2: image.jpg"
+        "File deleted successfully from R2: 1234567890-0987654321.jpg"
       );
     });
 
     it("should handle deletion errors", async () => {
-      const fileUrl = "https://test.r2.dev/image.jpg";
+      const fileUrl = "https://test.r2.dev/1234567890-0987654321.jpg";
       const error = new Error("S3 deletion failed");
 
       s3Client.send.mockRejectedValue(error);
@@ -68,7 +68,8 @@ describe("File Utils", () => {
 
     it("should extract object key from complex URL", async () => {
       const { DeleteObjectCommand } = require("@aws-sdk/client-s3");
-      const fileUrl = "https://test.r2.dev/folder/subfolder/image.jpg";
+      const fileUrl =
+        "https://test.r2.dev/folder/subfolder/1234567890-0987654321.jpg";
 
       s3Client.send.mockResolvedValue({});
 
@@ -76,22 +77,79 @@ describe("File Utils", () => {
 
       expect(DeleteObjectCommand).toHaveBeenCalledWith({
         Bucket: "test-bucket",
-        Key: "image.jpg", // Should extract just the filename
+        Key: "1234567890-0987654321.jpg", // Should extract just the filename
       });
     });
 
     it("should handle URLs with query parameters", async () => {
+      // Note: Query parameters in filenames will fail validation since they don't match the expected pattern
+      // This test verifies that the validation correctly rejects such filenames
+      const fileUrl =
+        "https://test.r2.dev/1234567890-0987654321.jpg?v=1&cache=false";
+
+      await expect(fileUtils.deleteFile(fileUrl)).rejects.toThrow(
+        "Invalid filename format"
+      );
+    });
+
+    it("should reject invalid filename patterns", async () => {
+      const invalidUrls = [
+        "https://test.r2.dev/image.jpg", // Missing timestamp format
+        "https://test.r2.dev/123.jpg", // Invalid format
+        "https://test.r2.dev/123-456.txt", // Invalid extension
+      ];
+
+      for (const url of invalidUrls) {
+        await expect(fileUtils.deleteFile(url)).rejects.toThrow(
+          "Invalid filename format"
+        );
+      }
+    });
+
+    it("should reject URLs with invalid path components", async () => {
+      // URLs with path traversal components will have their final filename extracted
+      // These will fail on filename pattern validation since they don't match the expected format
+      const pathTraversalUrls = [
+        "https://test.r2.dev/../secret.jpg", // Becomes "secret.jpg"
+        "https://test.r2.dev/folder/../malicious.jpg", // Becomes "malicious.jpg"
+        "https://test.r2.dev/file%5Cname.jpg", // Becomes "file%5Cname.jpg" (URL encoded \)
+      ];
+
+      for (const url of pathTraversalUrls) {
+        await expect(fileUtils.deleteFile(url)).rejects.toThrow(
+          "Invalid filename format"
+        );
+      }
+    });
+
+    it("should accept valid filename patterns", async () => {
       const { DeleteObjectCommand } = require("@aws-sdk/client-s3");
-      const fileUrl = "https://test.r2.dev/image.jpg?v=1&cache=false";
+      const validUrls = [
+        "https://test.r2.dev/1234567890-0987654321.jpg",
+        "https://test.r2.dev/123-456.jpeg",
+        "https://test.r2.dev/789-012.png",
+        "https://test.r2.dev/345-678.gif",
+        "https://test.r2.dev/901-234.webp",
+        "https://test.r2.dev/567-890.mp4",
+        "https://test.r2.dev/123-789.webm",
+        "https://test.r2.dev/456-012.mp3",
+      ];
 
       s3Client.send.mockResolvedValue({});
 
-      await fileUtils.deleteFile(fileUrl);
+      for (const url of validUrls) {
+        await expect(fileUtils.deleteFile(url)).resolves.toBe(true);
+      }
+    });
 
-      expect(DeleteObjectCommand).toHaveBeenCalledWith({
-        Bucket: "test-bucket",
-        Key: "image.jpg?v=1&cache=false", // Should extract everything after last slash
-      });
+    it("should handle invalid URL format", async () => {
+      const invalidInputs = [null, undefined, "", 123, {}];
+
+      for (const input of invalidInputs) {
+        await expect(fileUtils.deleteFile(input)).rejects.toThrow(
+          "Invalid file URL provided"
+        );
+      }
     });
   });
 
@@ -110,11 +168,11 @@ describe("File Utils", () => {
 
       const mockObjects = [
         {
-          Key: "old-file.jpg",
+          Key: "1234567890-0987654321.jpg",
           LastModified: oldDate,
         },
         {
-          Key: "recent-file.jpg",
+          Key: "1111111111-2222222222.png",
           LastModified: recentDate,
         },
       ];
@@ -134,7 +192,7 @@ describe("File Utils", () => {
       });
       expect(DeleteObjectCommand).toHaveBeenCalledWith({
         Bucket: "test-bucket",
-        Key: "old-file.jpg",
+        Key: "1234567890-0987654321.jpg",
       });
       expect(console.log).toHaveBeenCalledWith(
         "Cleanup complete: 1 files deleted from R2"
@@ -167,7 +225,7 @@ describe("File Utils", () => {
       const recentDate = new Date();
       const mockObjects = [
         {
-          Key: "recent-file.jpg",
+          Key: "1234567890-0987654321.jpg",
           LastModified: recentDate,
         },
       ];
@@ -191,7 +249,7 @@ describe("File Utils", () => {
 
       const mockObjects = [
         {
-          Key: "old-file.jpg",
+          Key: "1234567890-0987654321.jpg",
           LastModified: oldDate,
         },
       ];
@@ -219,6 +277,56 @@ describe("File Utils", () => {
         "Error cleaning up old files in R2:",
         expect.any(Error)
       );
+    });
+
+    it("should skip suspicious object keys during cleanup", async () => {
+      const {
+        ListObjectsV2Command,
+        DeleteObjectCommand,
+      } = require("@aws-sdk/client-s3");
+
+      const oldDate = new Date();
+      oldDate.setHours(oldDate.getHours() - 2);
+
+      const mockObjects = [
+        {
+          Key: "1234567890-0987654321.jpg",
+          LastModified: oldDate,
+        },
+        {
+          Key: "../../../secret.jpg", // Suspicious key
+          LastModified: oldDate,
+        },
+        {
+          Key: "5555555555-6666666666.png",
+          LastModified: oldDate,
+        },
+      ];
+
+      s3Client.send
+        .mockResolvedValueOnce({
+          Contents: mockObjects,
+        }) // ListObjectsV2Command
+        .mockResolvedValue({}); // DeleteObjectCommand calls
+
+      const maxAge = 60 * 60 * 1000; // 1 hour
+      const result = await fileUtils.cleanupOldFiles(maxAge);
+
+      expect(result).toBe(2); // Should only delete the 2 valid files
+      expect(DeleteObjectCommand).toHaveBeenCalledTimes(2);
+      expect(console.warn).toHaveBeenCalledWith(
+        "Skipping suspicious object key: ../../../secret.jpg"
+      );
+    });
+
+    it("should validate maxAge parameter", async () => {
+      const invalidMaxAges = [null, undefined, -1, 0, "invalid", {}];
+
+      for (const maxAge of invalidMaxAges) {
+        await expect(fileUtils.cleanupOldFiles(maxAge)).rejects.toThrow(
+          "Invalid maxAge parameter"
+        );
+      }
     });
   });
 });

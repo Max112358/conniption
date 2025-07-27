@@ -1,4 +1,4 @@
-// backend/models/thread.test.js
+// models/thread.test.js
 const threadModel = require("./thread");
 const { pool } = require("../config/database");
 
@@ -114,8 +114,8 @@ describe("Thread Model", () => {
       mockClient.query
         .mockResolvedValueOnce(undefined) // BEGIN
         .mockResolvedValueOnce({ rows: [{ count: "50" }] }) // Thread count check
-        .mockResolvedValueOnce({ rows: [{ id: 123 }] }) // INSERT thread
-        .mockResolvedValueOnce({ rows: [] }) // INSERT post
+        .mockResolvedValueOnce({ rows: [{ id: 123 }] }) // INSERT thread - FIXED: Added rows array
+        .mockResolvedValueOnce({ rows: [{ id: 456 }] }) // INSERT post - FIXED: Added rows array
         .mockResolvedValueOnce(undefined); // COMMIT
 
       const result = await threadModel.createThread(
@@ -127,7 +127,7 @@ describe("Thread Model", () => {
         { thread_ids_enabled: true, country_flags_enabled: true }
       );
 
-      expect(result).toEqual({ threadId: 123, boardId: "tech" });
+      expect(result).toEqual({ threadId: 123, boardId: "tech", postId: 456 });
       expect(mockClient.query).toHaveBeenCalledWith("BEGIN");
       expect(mockClient.query).toHaveBeenCalledWith("COMMIT");
       expect(mockClient.release).toHaveBeenCalled();
@@ -142,16 +142,11 @@ describe("Thread Model", () => {
           rows: [
             {
               id: 1,
-              image_urls: [
-                "https://test.r2.dev/old1.jpg",
-                "https://test.r2.dev/old2.jpg",
-              ],
             },
           ],
-        }) // Get oldest thread
-        .mockResolvedValueOnce({ rows: [] }) // DELETE oldest thread
-        .mockResolvedValueOnce({ rows: [{ id: 123 }] }) // INSERT new thread
-        .mockResolvedValueOnce({ rows: [] }) // INSERT post
+        }) // Mark oldest thread as dead - FIXED: Return affected row
+        .mockResolvedValueOnce({ rows: [{ id: 123 }] }) // INSERT new thread - FIXED: Added rows array
+        .mockResolvedValueOnce({ rows: [{ id: 456 }] }) // INSERT post - FIXED: Added rows array
         .mockResolvedValueOnce(undefined); // COMMIT
 
       const result = await threadModel.createThread(
@@ -163,10 +158,11 @@ describe("Thread Model", () => {
         { thread_ids_enabled: false, country_flags_enabled: false }
       );
 
-      expect(result).toEqual({ threadId: 123, boardId: "tech" });
+      expect(result).toEqual({ threadId: 123, boardId: "tech", postId: 456 });
+      // Check that oldest thread was marked as dead instead of deleted
       expect(mockClient.query).toHaveBeenCalledWith(
-        expect.stringContaining("DELETE FROM threads"),
-        [1, "tech"]
+        expect.stringContaining("UPDATE threads"),
+        ["tech"]
       );
     });
 

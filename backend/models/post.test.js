@@ -1,4 +1,4 @@
-// backend/models/post.test.js
+// models/post.test.js
 const postModel = require("./post");
 const { pool } = require("../config/database");
 
@@ -89,8 +89,10 @@ describe("Post Model", () => {
     it("should create a post with image", async () => {
       mockClient.query
         .mockResolvedValueOnce(undefined) // BEGIN
-        .mockResolvedValueOnce({ rows: [{ id: 456 }] }) // INSERT post
-        .mockResolvedValueOnce(undefined) // UPDATE thread
+        .mockResolvedValueOnce({ rows: [{ is_dead: false, post_count: 5 }] }) // Thread check
+        .mockResolvedValueOnce({ rows: [{ id: 456 }] }) // INSERT post - FIXED: Added rows array
+        .mockResolvedValueOnce(undefined) // UPDATE thread post count
+        .mockResolvedValueOnce(undefined) // UPDATE thread updated_at (bump)
         .mockResolvedValueOnce(undefined); // COMMIT
 
       const result = await postModel.createPost(
@@ -111,8 +113,10 @@ describe("Post Model", () => {
     it("should create a post without image", async () => {
       mockClient.query
         .mockResolvedValueOnce(undefined) // BEGIN
-        .mockResolvedValueOnce({ rows: [{ id: 457 }] }) // INSERT post
-        .mockResolvedValueOnce(undefined) // UPDATE thread
+        .mockResolvedValueOnce({ rows: [{ is_dead: false, post_count: 5 }] }) // Thread check
+        .mockResolvedValueOnce({ rows: [{ id: 457 }] }) // INSERT post - FIXED: Added rows array
+        .mockResolvedValueOnce(undefined) // UPDATE thread post count
+        .mockResolvedValueOnce(undefined) // UPDATE thread updated_at (bump)
         .mockResolvedValueOnce(undefined); // COMMIT
 
       const result = await postModel.createPost(
@@ -130,10 +134,58 @@ describe("Post Model", () => {
       expect(mockClient.query).toHaveBeenCalledWith("COMMIT");
     });
 
+    it("should handle dead thread", async () => {
+      // The actual model checks for dead thread BEFORE starting transaction
+      await expect(
+        postModel.createPost(
+          123,
+          "tech",
+          "Test content",
+          null,
+          "127.0.0.1",
+          { thread_ids_enabled: false, country_flags_enabled: false },
+          "test-salt",
+          true // isDead parameter - this causes immediate rejection
+        )
+      ).rejects.toThrow("Cannot post to a dead thread");
+
+      // No database calls should be made if thread is dead
+      expect(mockClient.query).not.toHaveBeenCalled();
+    });
+
+    it("should handle dont_bump flag", async () => {
+      mockClient.query
+        .mockResolvedValueOnce(undefined) // BEGIN
+        .mockResolvedValueOnce({ rows: [{ is_dead: false, post_count: 5 }] }) // Thread check
+        .mockResolvedValueOnce({ rows: [{ id: 458 }] }) // INSERT post
+        .mockResolvedValueOnce(undefined) // UPDATE thread post count
+        .mockResolvedValueOnce(undefined); // COMMIT (no bump query)
+
+      const result = await postModel.createPost(
+        123,
+        "tech",
+        "Test content",
+        null,
+        "127.0.0.1",
+        { thread_ids_enabled: false, country_flags_enabled: false },
+        "test-salt",
+        false, // isDead
+        true // dontBump
+      );
+
+      expect(result).toEqual({ postId: 458, threadId: 123, boardId: "tech" });
+      // Should not bump thread when dontBump is true
+      expect(mockClient.query).not.toHaveBeenCalledWith(
+        expect.stringContaining("UPDATE threads SET updated_at"),
+        expect.anything()
+      );
+    });
+
     it("should handle transaction rollback on error", async () => {
       mockClient.query
         .mockResolvedValueOnce(undefined) // BEGIN
-        .mockRejectedValueOnce(new Error("Database error")); // INSERT fails
+        .mockResolvedValueOnce({ rows: [{ is_dead: false, post_count: 5 }] }) // Thread check
+        .mockRejectedValueOnce(new Error("Database error")); // Error on INSERT
 
       await expect(
         postModel.createPost(

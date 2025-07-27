@@ -9,6 +9,9 @@ jest.mock("../config/database", () => ({
     connect: jest.fn(),
   },
 }));
+jest.mock("./ipActionHistory", () => ({
+  recordAction: jest.fn().mockResolvedValue({}),
+}));
 
 describe("Ban Model", () => {
   let mockClient;
@@ -47,6 +50,7 @@ describe("Ban Model", () => {
         .mockResolvedValueOnce(undefined) // BEGIN
         .mockResolvedValueOnce({ rows: [mockBan] }) // INSERT ban
         .mockResolvedValueOnce(undefined) // INSERT moderation_action
+        .mockResolvedValueOnce({ rows: [{ username: "admin" }] }) // SELECT admin username
         .mockResolvedValueOnce(undefined); // COMMIT
 
       const result = await banModel.createBan(banData);
@@ -276,7 +280,9 @@ describe("Ban Model", () => {
 
       mockClient.query
         .mockResolvedValueOnce(undefined) // BEGIN
+        .mockResolvedValueOnce({ rows: [mockBan] }) // SELECT current ban
         .mockResolvedValueOnce({ rows: [mockBan] }) // UPDATE ban
+        .mockResolvedValueOnce({ rows: [{ username: "admin" }] }) // SELECT admin username
         .mockResolvedValueOnce(undefined); // COMMIT
 
       const result = await banModel.updateBan(1, updates);
@@ -302,7 +308,9 @@ describe("Ban Model", () => {
 
       mockClient.query
         .mockResolvedValueOnce(undefined) // BEGIN
+        .mockResolvedValueOnce({ rows: [mockBan] }) // SELECT current ban
         .mockResolvedValueOnce({ rows: [mockBan] }) // UPDATE ban
+        .mockResolvedValueOnce({ rows: [{ username: "admin" }] }) // SELECT admin username
         .mockResolvedValueOnce(undefined) // INSERT moderation_action
         .mockResolvedValueOnce(undefined); // COMMIT
 
@@ -319,7 +327,7 @@ describe("Ban Model", () => {
     it("should return null when ban not found", async () => {
       mockClient.query
         .mockResolvedValueOnce(undefined) // BEGIN
-        .mockResolvedValueOnce({ rows: [] }) // UPDATE returns no rows
+        .mockResolvedValueOnce({ rows: [] }) // SELECT current ban returns no rows
         .mockResolvedValueOnce(undefined); // ROLLBACK
 
       const result = await banModel.updateBan(999, { reason: "Test" });
@@ -331,7 +339,7 @@ describe("Ban Model", () => {
     it("should handle transaction rollback on error", async () => {
       mockClient.query
         .mockResolvedValueOnce(undefined) // BEGIN
-        .mockRejectedValueOnce(new Error("Database error")); // UPDATE fails
+        .mockRejectedValueOnce(new Error("Database error")); // SELECT fails
 
       await expect(banModel.updateBan(1, { reason: "Test" })).rejects.toThrow(
         "Database error"
@@ -357,7 +365,10 @@ describe("Ban Model", () => {
         appeal_status: "pending",
       };
 
-      pool.query.mockResolvedValue({ rows: [mockBan] });
+      mockClient.query
+        .mockResolvedValueOnce(undefined) // BEGIN
+        .mockResolvedValueOnce({ rows: [mockBan] }) // UPDATE ban with appeal
+        .mockResolvedValueOnce(undefined); // COMMIT
 
       const result = await banModel.submitAppeal(
         1,
@@ -365,14 +376,17 @@ describe("Ban Model", () => {
       );
 
       expect(result).toEqual(mockBan);
-      expect(pool.query).toHaveBeenCalledWith(expect.any(String), [
+      expect(mockClient.query).toHaveBeenCalledWith(expect.any(String), [
         "I promise to follow rules",
         1,
       ]);
     });
 
     it("should return null when ban not found or not active", async () => {
-      pool.query.mockResolvedValue({ rows: [] });
+      mockClient.query
+        .mockResolvedValueOnce(undefined) // BEGIN
+        .mockResolvedValueOnce({ rows: [] }) // UPDATE returns no rows
+        .mockResolvedValueOnce(undefined); // ROLLBACK
 
       const result = await banModel.submitAppeal(999, "Appeal text");
 
@@ -380,7 +394,9 @@ describe("Ban Model", () => {
     });
 
     it("should handle database errors", async () => {
-      pool.query.mockRejectedValue(new Error("Database error"));
+      mockClient.query
+        .mockResolvedValueOnce(undefined) // BEGIN
+        .mockRejectedValueOnce(new Error("Database error")); // UPDATE fails
 
       await expect(banModel.submitAppeal(1, "Appeal text")).rejects.toThrow(
         "Database error"
