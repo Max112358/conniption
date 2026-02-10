@@ -30,7 +30,7 @@ const preventXSS = (req, res, next) => {
         req.body[key] = cleanString(req.body[key]);
       } else if (Array.isArray(req.body[key])) {
         req.body[key] = req.body[key].map((item) =>
-          typeof item === "string" ? cleanString(item) : item
+          typeof item === "string" ? cleanString(item) : item,
         );
       }
     });
@@ -68,7 +68,7 @@ const createAccountLimiter = rateLimit({
 
 const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
+  max: 12000, // limit each IP to 100 requests per windowMs
   message: "Too many requests from this IP, please try again later",
   standardHeaders: true,
   legacyHeaders: false,
